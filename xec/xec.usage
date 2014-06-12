@@ -1,0 +1,17 @@
+xec [<option>]... [ <method> | get <property> | set <property> <value> | getall ];
+xec (-h|--help);
+
+option =
+       (-s|--service) <service>
+     | (-o|--object) <object>
+     | (-i|--interface) <interface>
+     | (-g|--get) <property>
+     | (-x|--set) <property> <value>
+     | (-t|--target-domid) <domid>
+;
+
+service   = ! xec -s org.freedesktop.DBus ListNames | grep -v "^:";
+method    = ! CMD=`echo $COMP_LINE | sed "s/^xec/xec -q --list-methods/"` && sh -c "$CMD";
+property  = ! CMD=`echo $COMP_LINE | sed "s/^xec/xec -q --list-properties/"` && sh -c "$CMD";
+interface = ! CMD=`echo $COMP_LINE | sed "s/^xec/xec -q --list-interfaces/"` && sh -c "$CMD";
+domid     = ! xec-vm -q | tail -n +3 | cut -d "|" -f 1 | sed 's/^[ \t]*//' | sed 's/[ \t]*$//';

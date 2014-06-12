@@ -1,0 +1,40 @@
+Name:       updatemgr
+Version:    1.0
+Cabal-Version:  >= 1.2
+Author:     Tomasz Wroblewski, Matthias Goergens
+Stability:  experimental
+Build-Type: Simple
+
+Executable updatemgr
+  Build-Depends:
+    parsec >= 3.1,
+    base,
+    directory,
+    time,
+    deepseq,
+    containers,
+    haskell98,
+    process,
+    unix,
+    text,
+    mtl,
+    network,
+    bytestring,
+    utf8-string,
+    filepath,
+    json,
+    regex-posix,
+    hsyslog,
+    MonadPrompt,
+    monad-control,
+    xch-rpc,
+    xchutils,
+    xenstore,
+    lifted-base,
+    transformers-base,
+    monad-control,
+    monad-loops,
+    hinotify,
+    HTTP
+  Main-Is: Main.hs
+  GHC-Options: -O2 -fwarn-incomplete-patterns -dynamic -threaded

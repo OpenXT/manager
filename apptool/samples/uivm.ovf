@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:vssd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData"
+    xmlns:rasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData"
+    xmlns:sasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_StorageAllocationSettingData"
+    xmlns:epasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_EthernetPortAllocationSettingData"
+    xmlns:ovf="http://schemas.dmtf.org/ovf/envelope/1"
+    xmlns:xci="http://www.citrix.com/xenclient/ovf/1"
+    xmlns="http://schemas.dmtf.org/ovf/envelope/1">
+
+    <!-- References to all external files -->
+    <References>
+        <File ovf:id="uivm.vhd" ovf:href="uivm.vhd"/>
+        <File ovf:id="uivm-gconf.vhd" ovf:href="uivm-gconf.vhd"/>
+	<File ovf:id="uivm-gconf-key" ovf:href="uivm-gconf,aes-xts-plain,256.key"/>
+    </References>
+    <!-- Describes meta-information about all virtual disks in the package  -->
+    <DiskSection>
+        <Info>List of the virtual disks used in the package</Info>
+        <Disk ovf:diskId="uivm" ovf:fileRef="uivm.vhd" ovf:capacity="0" ovf:format="vhd"/>
+        <Disk ovf:diskId="uivm-gconf" ovf:fileRef="uivm-gconf.vhd" ovf:capacity="0" ovf:format="vhd"/>
+        <Disk ovf:diskId="uivm-swap" ovf:capacity="256" ovf:capacityAllocationUnits="byte * 2^20" ovf:format="vhd"/>
+    </DiskSection>
+
+    <xci:ApplianceSection xci:applianceId="uivm" xci:version="1">
+        <ovf:Info>XenClient appliance section</ovf:Info>
+	<xci:Disk xci:ovfId="uivm-gconf">
+	  <xci:ImportEncryptionKey xci:fileRef="uivm-gconf-key"/>
+	</xci:Disk>
+
+	<xci:Disk xci:ovfId="uivm-swap" xci:filesystem="swap">
+	</xci:Disk>
+	
+	<xci:VirtualMachine xci:ovfId="uivm" xci:uuid="00000000-0000-0000-0000-000000000001">
+	  <xci:V4VFirewall>
+	    <xci:V4VRule>myself -> 0:80</xci:V4VRule>
+	    <xci:V4VRule>myself -> 0:8080</xci:V4VRule>
+	    <xci:V4VRule>myself -> 0:5555</xci:V4VRule>
+	    <xci:V4VRule>myself -> dom-type=ndvm:5555</xci:V4VRule>
+	    <xci:V4VRule>myself -> 0:2222</xci:V4VRule>
+	    <xci:V4VRule>0 -> myself:2222</xci:V4VRule>
+	  </xci:V4VFirewall>
+
+	  <xci:RpcFirewall>
+	    <xci:RpcRule>allow destination org.freedesktop.DBus interface org.freedesktop.DBus</xci:RpcRule>
+	    <xci:RpcRule>allow destination org.freedesktop.ConsoleKit interface org.freedesktop.ConsoleKit.Manager member GetSessionForUnixProcess</xci:RpcRule>
+	    <xci:RpcRule>allow destination org.freedesktop.Hal</xci:RpcRule>
+	    <xci:RpcRule>allow destination com.citrix.xenclient.xenmgr</xci:RpcRule>
+	    <xci:RpcRule>allow destination com.citrix.xenclient.input</xci:RpcRule>
+	    <xci:RpcRule>allow destination com.citrix.xenclient.usbdaemon</xci:RpcRule>
+	    <xci:RpcRule>allow destination com.citrix.xenclient.updatemgr</xci:RpcRule>
+	    <xci:RpcRule>allow destination com.citrix.xenclient.surfman interface com.citrix.xenclient.surfman member increase_brightness</xci:RpcRule>
+	    <xci:RpcRule>allow destination com.citrix.xenclient.surfman interface com.citrix.xenclient.surfman member decrease_brightness</xci:RpcRule>
+	    <xci:RpcRule>allow destination com.citrix.xenclient.surfman interface com.citrix.xenclient.surfman member display_image</xci:RpcRule>
+	    <xci:RpcRule>allow destination com.citrix.xenclient.networkdaemon</xci:RpcRule>
+	  </xci:RpcFirewall>
+
+	  <xci:PropertyOverride>
+	    <xci:Property xci:name="slot" xci:value="0"/>
+	    <xci:Property xci:name="hidden-in-switcher" xci:value="true"/>
+	    <xci:Property xci:name="start-on-boot" xci:value="true"/>
+	    <xci:Property xci:name="start-on-boot-priority" xci:value="9"/>
+	    <xci:Property xci:name="provides-graphics-fallback" xci:value="true"/>
+	    <xci:Property xci:name="shutdown-priority" xci:value="-5"/>
+	    <xci:Property xci:name="hidden-in-ui" xci:value="true"/>
+	    <xci:Property xci:name="policy-modify-vm-settings" xci:value="false"/>
+
+	    <xci:Property xci:name="hvm" xci:value="false"/>
+	    <xci:Property xci:name="kernel-extract" xci:value="/boot/vmlinuz"/>
+	    <xci:Property xci:name="cmd-line" xci:value="root=/dev/hda xencons=xvc0"/>
+	    <xci:Property xci:name="flask-label" xci:value="system_u:system_r:uivm_t"/>
+	    <xci:Property xci:name="qemu-dm-path" xci:value="/usr/sbin/svirt-interpose"/>
+	  </xci:PropertyOverride>
+
+	  <!-- remember to change to true after testing!! -->
+	  <xci:DBEntry xci:key="measured" xci:value="false"/>
+
+	</xci:VirtualMachine>
+    </xci:ApplianceSection>
+
+    <VirtualSystem ovf:id="uivm" ovf:transport="iso">
+        <Info>User interface virtual machine</Info>
+       <Name>uivm-new</Name>
+
+        <!-- Overall information about the product -->
+        <ProductSection>
+            <Info>Product information for the service</Info>
+            <Product>User interface virtual machine</Product>
+            <Version>1.0</Version>
+            <FullVersion>1.0.0</FullVersion>
+        </ProductSection>
+
+        <VirtualHardwareSection>
+            <Info>Virtual Hardware Requirements: 256MB, 1 CPU, 1 disk, 1 NIC</Info>
+            <Item>
+                <rasd:Description>Number of virtual CPUs</rasd:Description>
+                <rasd:ElementName>1 virtual CPU</rasd:ElementName>
+                <rasd:InstanceID>1</rasd:InstanceID>
+                <rasd:ResourceType>3</rasd:ResourceType>
+                <rasd:VirtualQuantity>1</rasd:VirtualQuantity>
+            </Item>
+            <Item>
+                <rasd:AllocationUnits>byte * 2^20</rasd:AllocationUnits>
+                <rasd:Description>Memory Size</rasd:Description>
+                <rasd:ElementName>256 MB of memory</rasd:ElementName>
+                <rasd:InstanceID>2</rasd:InstanceID>
+                <rasd:ResourceType>4</rasd:ResourceType>
+                <rasd:VirtualQuantity>256</rasd:VirtualQuantity>
+            </Item>
+
+            <StorageItem>
+                <sasd:ElementName>Harddisk 1</sasd:ElementName>
+                <sasd:HostResource>ovf:/disk/uivm</sasd:HostResource>
+                <sasd:InstanceID>3</sasd:InstanceID>
+                <sasd:Parent>4</sasd:Parent>
+                <sasd:ResourceType>17</sasd:ResourceType>
+            </StorageItem>
+
+            <StorageItem>
+                <sasd:ElementName>Harddisk 2</sasd:ElementName>
+                <sasd:HostResource>ovf:/disk/uivm-swap</sasd:HostResource>
+                <sasd:InstanceID>4</sasd:InstanceID>
+                <sasd:Parent>4</sasd:Parent>
+                <sasd:ResourceType>17</sasd:ResourceType>
+            </StorageItem>
+
+            <StorageItem>
+                <sasd:ElementName>Harddisk 3</sasd:ElementName>
+                <sasd:HostResource>ovf:/disk/uivm-gconf</sasd:HostResource>
+                <sasd:InstanceID>5</sasd:InstanceID>
+                <sasd:Parent>4</sasd:Parent>
+                <sasd:ResourceType>17</sasd:ResourceType>
+            </StorageItem>
+        </VirtualHardwareSection>
+    </VirtualSystem>
+</Envelope>

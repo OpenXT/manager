@@ -1,0 +1,45 @@
+{
+  "type": "svm",
+  "v4v-firewall-rules": {
+    "0": "myself -> 0:80",
+    "1": "myself -> 0:5556",
+    "2": "my-stubdom -> 0:5555",
+    "3": "my-stubdom -> 0:4001",
+    "4": "my-stubdom -> 0:4002",
+    "5": "my-stubdom -> 0:5000",
+    "6": "my-stubdom -> 0:5001",
+    "7": "my-stubdom -> 0:5559"
+  },
+  "os": "windows8",
+  "description": "Windows 8",
+  "ui-selectable": "true",
+  "stubdom": "true",
+  "restrict-display-depth": "true",
+  "config": {
+    "notify": "dbus",
+    "hvm": "true",
+    "pae": "true",
+    "acpi": "true",
+    "apic": "true",
+    "viridian": "true",
+    "hap": "true",
+    "nx": "true",
+    "v4v": "true",
+    "sound": "hda",
+    "memory": "1024",
+    "display": "none",
+    "boot": "cd",
+    "flask-label": "system_u:system_r:hvm_guest_t",
+    "disk": {
+      "0": {
+        "path": "\/storage\/isos\/xc-tools.iso",
+        "type": "file",
+        "mode": "r",
+        "device": "hdc",
+        "devtype": "cdrom"
+      }
+    },
+    "vcpus": "1",
+    "qemu-dm-path": "\/usr\/sbin\/svirt-interpose"
+  }
+}

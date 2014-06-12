@@ -1,0 +1,158 @@
+<xs:schema xmlns:xci="http://www.citrix.com/xenclient/ovf/1"
+	   xmlns:ovf="http://schemas.dmtf.org/ovf/envelope/1"
+	   xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	   xmlns:cim="http://schemas.dmtf.org/wbem/wscim/1/common" xmlns:vssd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData" xmlns:rasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData"  xmlns:epasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_EthernetPortAllocationSettingData" xmlns:sasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_StorageAllocationSettingData" xmlns:bootc="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_BootConfigSetting" xmlns:boots="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_BootSourceSetting" xmlns:xml="http://www.w3.org/XML/1998/namespace" xmlns:xenc11="http://www.w3.org/2009/xmlenc11#" xmlns:xenc="http://www.w3.org/2001/04/xmlenc#" xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+	   targetNamespace="http://www.citrix.com/xenclient/ovf/1" elementFormDefault="qualified" attributeFormDefault="qualified">
+	<xs:import namespace="http://schemas.dmtf.org/ovf/envelope/1" schemaLocation="dsp8023_2.0.0c.xsd"/>
+
+	<xs:element name="ApplianceSection" type="xci:Appliance_Type" substitutionGroup="ovf:Section"/>
+
+	<xs:complexType name="Appliance_Type">
+	  <xs:complexContent>
+	  <xs:extension base="ovf:Section_Type">
+	  <xs:sequence minOccurs="0" maxOccurs="unbounded">
+	    <xs:choice>
+	      <xs:element name="Disk" type="xci:Disk_Type"/>
+	      <xs:element name="Network" type="xci:Network_Type"/>
+	      <xs:element name="VirtualMachine" type="xci:VirtualMachine_Type"/>
+	    </xs:choice>
+	  </xs:sequence>
+	  <xs:attribute name="applianceId" type="xs:string" use="optional"/>
+	  <xs:attribute name="version" type="xs:unsignedInt" use="optional"/>
+	  </xs:extension>
+	  </xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="Disk_Type">
+	  <xs:choice minOccurs="0">
+	    <xs:element name="GenerateEncryptionKey">
+	      <xs:complexType>
+		<xs:attribute name="keySize" use="optional">
+		  <xs:simpleType>
+		    <xs:restriction base="xs:unsignedShort">
+		      <xs:enumeration value="256"/>
+		      <xs:enumeration value="512"/>
+		    </xs:restriction>
+		  </xs:simpleType>
+		</xs:attribute>
+	      </xs:complexType>
+	    </xs:element>
+
+	    <xs:element name="ImportEncryptionKey">
+	      <xs:complexType>
+		<xs:attribute name="fileRef" type="xs:string" use="required"/>
+	      </xs:complexType>
+	    </xs:element>
+
+	  </xs:choice>
+
+	  <xs:attribute name="ovfId" type="xs:string" use="required"/>
+	  <xs:attribute name="filesystem" use="optional">
+	    <xs:simpleType>
+	      <xs:restriction base="xs:string">
+		<xs:enumeration value="ext3"/>
+		<xs:enumeration value="ext4"/>
+		<xs:enumeration value="ntfs"/>
+		<xs:enumeration value="swap"/>
+	      </xs:restriction>
+	    </xs:simpleType>
+	  </xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="Network_Type">
+	  <xs:attribute name="name" type="xs:string" use="required"/>
+	  <xs:attribute name="clientNetworkId" type="xs:string" use="optional"/>
+	</xs:complexType>
+
+	<xs:complexType name="VirtualMachine_Type">
+	  <xs:sequence minOccurs="0" maxOccurs="unbounded">
+	    <xs:choice>
+	      <xs:element name="PropertyOverride" type="xci:PropertyOverride_Type"/>
+	      <xs:element name="V4VFirewall" type="xci:V4VFirewall_Type"/>
+	      <xs:element name="RpcFirewall" type="xci:RpcFirewall_Type"/>
+	      <xs:element name="PCIPassthrough" type="xci:PCIPassthrough_Type"/>
+	      <xs:element name="NetworkAdapter" type="xci:NetworkAdapter_Type"/>
+	      <xs:element name="StorageDevice" type="xci:StorageDevice_Type"/>
+	      <xs:element name="DBEntry" type="xci:DBEntry_Type"/>
+	      <xs:element name="DomStoreFile" type="xci:DomStoreFile_Type"/>
+	    </xs:choice>
+	  </xs:sequence>
+	  <xs:attribute name="ovfId" type="xs:string" use="required"/>
+	  <xs:attribute name="templateId" type="xs:string" use="optional"/>
+	  <xs:attribute name="uuid" type="xs:string" use="optional"/>
+	</xs:complexType>
+
+	<xs:complexType name="PropertyOverride_Type">
+	  <xs:sequence>
+	    <xs:element name="Property" minOccurs="0" maxOccurs="unbounded">
+	      <xs:complexType>
+		<xs:attribute name="name" type="xs:string" use="required"/>
+		<xs:attribute name="value" type="xs:string" use="required"/>
+	      </xs:complexType>
+	    </xs:element>
+	  </xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="V4VFirewall_Type">
+	  <xs:sequence>
+	    <xs:element name="V4VRule" minOccurs="0" maxOccurs="unbounded" type="xs:string"/>
+	  </xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="RpcFirewall_Type">
+	  <xs:sequence>
+	    <xs:element name="RpcRule" minOccurs="0" maxOccurs="unbounded" type="xs:string"/>
+	  </xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="PCIPassthrough_Type">
+	  <xs:sequence minOccurs="0" maxOccurs="unbounded">
+	    <xs:choice>
+	      <xs:element name="MatchBDF" type="xci:PCIMatchBDF_Type"/>
+	      <xs:element name="MatchID" type="xci:PCIMatchID_Type"/>
+	    </xs:choice>
+	  </xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="PCIMatchID_Type">
+	  <xs:attribute name="class" type="xs:string" use="optional"/>
+	  <xs:attribute name="vendor" type="xs:string" use="optional"/>
+	  <xs:attribute name="device" type="xs:string" use="optional"/>
+	</xs:complexType>
+
+	<xs:complexType name="PCIMatchBDF_Type">
+	  <xs:attribute name="bdf" type="xs:string" use="required"/>
+	</xs:complexType>
+
+	<xs:complexType name="NetworkAdapter_Type">
+	  <xs:sequence>
+	    <xs:element name="PropertyOverride" type="xci:PropertyOverride_Type" minOccurs="0" maxOccurs="1"/>
+	  </xs:sequence>
+	  <xs:attribute name="ovfInstanceId" type="xs:string" use="required"/>
+	</xs:complexType>
+
+	<xs:complexType name="StorageDevice_Type">
+	  <xs:sequence>
+	    <xs:element name="PropertyOverride" type="xci:PropertyOverride_Type" minOccurs="0" maxOccurs="1"/>
+	  </xs:sequence>
+	  <xs:attribute name="ovfInstanceId" type="xs:string" use="required"/>
+	</xs:complexType>
+
+	<xs:complexType name="DBEntry_Type">
+	  <xs:attribute name="section" use="optional">
+	    <xs:simpleType>
+	      <xs:restriction base="xs:string">
+		<xs:enumeration value="vm"/>
+		<xs:enumeration value="vm-domstore"/>
+	      </xs:restriction>
+	    </xs:simpleType>
+	  </xs:attribute>
+	  <xs:attribute name="key" type="xs:string" use="required"/>
+	  <xs:attribute name="value" type="xs:string" use="required"/>
+	</xs:complexType>
+
+	<xs:complexType name="DomStoreFile_Type">
+	  <xs:attribute name="fileRef" type="xs:string" use="required"/>
+	</xs:complexType>
+
+</xs:schema>

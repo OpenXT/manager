@@ -1,0 +1,25 @@
+Name:       upgrade-db
+Version:    1.0
+Cabal-Version:  >= 1.2
+Author:     Tomasz Wroblewski
+Stability:  experimental
+Build-Type: Simple
+
+Executable upgrade-db
+  Build-Depends:
+    base,
+    containers,
+    haskell98,
+    process,
+    unix,
+    text,
+    mtl,
+    network,
+    bytestring,
+    utf8-string,
+    filepath,
+    json,
+    directory,
+    pretty
+  Main-Is: Upgrade.hs
+  GHC-Options: -O2 -fwarn-incomplete-patterns -dynamic

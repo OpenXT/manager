@@ -1,0 +1,52 @@
+Name:       apptool
+Version:    1.0
+Cabal-Version:  >= 1.2
+Author:     Tomasz Wroblewski
+Stability:  experimental
+Build-Type: Simple
+Data-Files: schema/www.w3.org/2001/XMLSchema.dtd
+	    schema/www.w3.org/2001/datatypes.dtd
+	    schema/www.w3.org/TR/2002/REC-xmldsig-core-20020212/xmldsig-core-schema.xsd
+	    schema/www.w3.org/TR/2002/REC-xmlenc-core-20021210/xenc-schema.xsd
+	    schema/www.w3.org/TR/2012/WD-xmlenc-core1-20120105/xenc-schema-11.xsd
+	    schema/www.w3.org/2001/xml.xsd
+	    schema/schemas.dmtf.org/wbem/wscim/1/common.xsd
+	    schema/schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_BootSourceSetting.xsd
+	    schema/schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData.xsd
+	    schema/schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_StorageAllocationSettingData.xsd
+	    schema/schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData.xsd
+	    schema/schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_BootConfigSetting.xsd
+	    schema/schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_EthernetPortAllocationSettingData.xsd
+	    schema/dsp8023_2.0.0c.xsd
+	    schema/xciovf.xsd
+
+Executable apptool
+  Build-Depends:
+    base,
+    directory,
+    time,
+    containers,
+    process,
+    unix,
+    mtl,
+    transformers,
+    bytestring,
+    utf8-string,
+    filepath,
+    hsyslog,
+    hxt, 
+    text,
+    udbus,
+    udbus-intro,
+    parsec,
+    xch-rpc,
+    xchutils,
+    xchdb,
+    xenmgr-core
+
+  Main-Is: apptool.hs
+  GHC-Options: -O2 -Werror -fwarn-incomplete-patterns -threaded
+
+
+
+

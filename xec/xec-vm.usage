@@ -1,0 +1,28 @@
+xec-vm <vm_select> [<other>] ... ( <method> | get <property> | set <property> | getall );
+xec-vm (-h|--help);
+
+vm_select =
+     (-n|--name) <name>
+   | (-u|--uuid) <uuid>
+   | (-d|--domid) <domid>
+   | (-o|--path) <path>
+;
+
+other =
+       (-g|--get) <property>
+     | (-x|--set) <property> <value>
+     | (-k|--disk) <disk>
+     | (-c|--nic) <nic>
+     | (-i|--interface) <interface>
+;
+
+
+name  = ! xec-vm -q | tail -n +3 | cut -d "|" -f 2 | sed 's/^[ \t]*//' | sed 's/[ \t]*$//' | sed 's/ /\\ /g';
+uuid  = ! xec-vm -q | tail -n +3 | cut -d "|" -f 3 | sed 's/^[ \t]*//' | sed 's/[ \t]*$//';
+domid = ! xec-vm -q | tail -n +3 | cut -d "|" -f 1 | sed 's/^[ \t]*//' | sed 's/[ \t]*$//';
+disk  = ! CMD=`echo $COMP_LINE | sed "s/^xec-vm/xec-vm -q --list-disks/"` && sh -c "$CMD" | cut -d "/" -f 5;
+nic   = ! CMD=`echo $COMP_LINE | sed "s/^xec-vm/xec-vm -q --list-nics/"` && sh -c "$CMD" | cut -d "/" -f 5;
+path  = <val>;
+method    = ! CMD=`echo $COMP_LINE | sed "s/^xec-vm/xec-vm -q --list-methods/"` && sh -c "$CMD";
+property  = ! CMD=`echo $COMP_LINE | sed "s/^xec-vm/xec-vm -q --list-properties/"` && sh -c "$CMD";
+interface = ! CMD=`echo $COMP_LINE | sed "s/^xec-vm/xec-vm -q --list-interfaces/"` && sh -c "$CMD";

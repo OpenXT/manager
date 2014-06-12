@@ -1,0 +1,7 @@
+*.o
+*.hi
+xenmgr
+xenmgr.debug
+dist
+
+

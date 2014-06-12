@@ -1,0 +1,48 @@
+Name:       rpc-proxy
+Version:    1.0
+Cabal-Version:  >= 1.2
+Author:     Tomasz Wroblewski
+Stability:  experimental
+Build-Type: Simple
+
+Flag stubdom
+  Description:  build for stubdom usage
+  Default:      False
+
+Executable rpc-proxy
+  Build-Depends:
+    parsec >= 3.1,
+    base,
+    deepseq,
+    containers,
+    haskell98,
+    process,
+    unix,
+    text,
+    mtl,
+    network,
+    network-bytestring,
+    bytestring,
+    utf8-string,
+    filepath,
+    dbus-core,
+    hsyslog,
+    xch-rpc,
+    json,
+    monad-loops,
+    monad-control,
+    lifted-base,
+    xchutils,
+    xchv4v,
+    transformers,
+    transformers-base,
+    xchwebsocket,
+    xchxenstore,
+    xchdb
+  Main-Is: Main.hs
+  if flag(stubdom)
+    GHC-Options: -O2 -fwarn-incomplete-patterns -static -optl-static -optl-pthread
+  else
+    GHC-Options: -O2 -fwarn-incomplete-patterns -dynamic -threaded
+  Other-Modules: Tools.Serial
+  C-sources: cbits/serial.c

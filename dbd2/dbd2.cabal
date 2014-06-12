@@ -1,0 +1,40 @@
+Name:                dbd2
+Version:             0.1
+Synopsis:            Database daemon
+Description:         Database daemon
+Author:              Vincent Hanquez
+Maintainer:          vincent@snarc.org
+Category:            Documentation
+Build-Type:          Simple
+Cabal-Version:       >=1.6
+
+flag testing
+  Default:           False
+
+flag perm
+  Default:           False
+
+Executable dbd2
+  Main-Is:           Main.hs
+  Build-depends:     base >= 3 && < 5
+                   , bytestring
+                   , containers
+                   , text
+                   , json
+                   , hsyslog
+                   , mtl
+                   , unix
+                   , process
+                   , filepath
+                   , directory
+                   , xch-rpc
+                   , xchutils
+                   , xenstore
+  Buildable:         True
+  Ghc-options:       -Wall -fno-warn-missing-signatures
+  if flag(testing)
+    cpp-options:     -DTESTING
+  else
+    Ghc-options:     -O2 -dynamic -threaded
+  if flag(perm)
+    cpp-options:     -DPERM

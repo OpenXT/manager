@@ -1,0 +1,51 @@
+{
+  "type": "syncvm",
+  "slot": "-1",
+  "hidden": "true",
+  "hidden-in-ui": "true",
+  "start_on_boot": "true",
+  "measured": "true",
+  "v4v-firewall-rules": {
+    "0": "myself -> 0:2222",
+    "1": "0 -> myself:2222",
+    "2": "myself -> 0:5556",
+    "3": "myself -> 0:4878",
+    "4": "myself -> 0:4879"
+  },
+  "config": {
+    "notify": "dbus",
+    "hvm": "false",
+    "pae": "true",
+    "acpi": "true",
+    "apic": "true",
+    "hap": "false",
+    "nx": "true",
+    "v4v": "true",
+    "memory": "240",
+    "display": "none",
+    "cmdline": "root=\/dev\/xvda1 xencons=hvc0",
+    "kernel-extract": "\/boot\/vmlinuz",
+    "extra-xenvm": {
+      "0": "flask-label=system_u:system_r:syncvm_t"
+    },
+    "nic": {
+      "0": {
+        "id": "0",
+        "network": "/any/0"
+      }
+    },
+    "disk": {
+      "0": {
+        "path": "\/storage\/syncvm\/syncvm.vhd",
+        "type": "vhd",
+        "mode": "r",
+        "device": "xvda1",
+        "devtype": "disk",
+        "shared": "true"
+      }
+    },
+    "vcpus": "1",
+    "qemu-dm-path": ""
+  },
+  "domstore-read-access": "true"
+}

@@ -1,0 +1,33 @@
+name: xenmgr-core
+version: 0.1
+synopsis: Xenmgr core
+author: Tomasz Wroblewski
+build-type: Simple
+cabal-version: >=1.6
+category: Network, Desktop
+stability: experimental
+tested-with: GHC==6.12.1
+
+library
+  Build-Depends:
+    base,
+    mtl,
+    bytestring,
+    text,
+    containers,
+    json,
+    bytestring,
+    utf8-string,
+    parsec,
+    xchutils,
+    xchdb,
+    xch-rpc
+
+  GHC-Options: -O2 -Werror -fwarn-incomplete-patterns
+
+  exposed-modules:
+    Vm.Uuid
+    Vm.V4VFirewall
+    Vm.ProductProperty
+  other-modules:
+

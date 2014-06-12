@@ -1,0 +1,31 @@
+Name:       xenclient-api
+Synopsis:   Thin wrapper around the xenclient rpc calls to provide a stable API, in different versions.
+Version:    0.1
+Cabal-Version:  >= 1.2
+Author:     Matthias Görgens, Tomasz Wroblewski
+Stability:  experimental
+Build-Type: Simple
+License:    GPL
+
+Executable xenclient-api
+  Build-Depends:
+    base,
+    time,
+    deepseq,
+    containers,
+    haskell98,
+    process,
+    unix,
+    text,
+    mtl,
+    network,
+    bytestring,
+    utf8-string,
+    filepath,
+    json,
+    regex-posix,
+    hsyslog,
+    xchutils,
+    xch-rpc
+  Main-Is: Main.hs
+  GHC-Options: -O2 -fwarn-incomplete-patterns -dynamic -threaded

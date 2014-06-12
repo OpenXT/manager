@@ -1,0 +1,38 @@
+Name:       xenmgr
+Version:    1.0
+Cabal-Version:  >= 1.2
+Author:     Tomasz Wroblewski
+Stability:  experimental
+Build-Type: Simple
+
+Executable xenmgr
+  Build-Depends:
+    attoparsec,
+    parsec >= 3.1,
+    base,
+    directory,
+    time,
+    deepseq,
+    containers,
+    haskell98,
+    process,
+    unix,
+    text,
+    mtl,
+    network,
+    bytestring,
+    utf8-string,
+    filepath,
+    json,
+    regex-posix,
+    hsyslog,
+    zlib,
+    xch-rpc,
+    xchutils,
+    xchv4v,
+    xchxenstore,
+    xchdb,
+    xenmgr-core
+
+  Main-Is: Main.hs
+  GHC-Options: -O2 -Werror -fwarn-incomplete-patterns -threaded -dynamic

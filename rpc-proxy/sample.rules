@@ -1,0 +1,6 @@
+deny all
+allow domain 00000000-0000-0000-0000-000000000001 destination com.citrix.xenclient.xenmgr
+allow domain 00000000-0000-0000-0000-000000000001 destination com.citrix.xenclient.input
+allow domain 00000000-0000-0000-0000-000000000001 destination com.citrix.xenclient.bed
+
+allow destination com.citrix.xenclient.xenmgr interface com.citrix.xenclient.xenmgr.diag
