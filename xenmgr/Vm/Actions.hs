@@ -442,9 +442,9 @@ removeVm uuid =
        -- Away from database
        dbRm $ "/vm/" ++ show uuid
        dbRm $ "/dom-store/" ++ show uuid
-       
        -- Need to quit xenvm
        -- FIXME: cleanly stop monitoring events
+       removeDefaultEvents uuid	--cleanly...stop monitoring events
        Xenvm.quitXenvm uuid
        notifyVmDeleted uuid
   where

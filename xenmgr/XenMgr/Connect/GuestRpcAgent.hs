@@ -23,7 +23,9 @@ module XenMgr.Connect.GuestRpcAgent
     , hibernate
     , reboot
     , onAgentStarted
+    , onAgentStartedRemove
     , onAgentUninstalled
+    , onAgentUninstalledRemove
     , onXorgRunning
     ) where
 
@@ -72,6 +74,23 @@ hibernate uuid =
 reboot :: Uuid -> Rpc ()
 reboot uuid = comCitrixXenclientGuestRequestReboot (agentService uuid) "/"
 
+onAgentStartedRemove :: Uuid -> Rpc () -> Rpc ()
+onAgentStartedRemove uuid action =
+    let rule = matchSignal "com.citrix.xenclient.guest" "agent_started"
+    in
+      rpcOnSignalRemove rule process
+  where
+    process sender_name signal = do
+      do let sender = TL.unpack (strBusName sender_name)
+         connection_domid <- orgFreedesktopDBusGetConnectionDOMID "org.freedesktop.DBus" "/org/freedesktop/DBus" sender
+         expected_domid   <- getDomainID uuid
+         case expected_domid of
+           Just edomid
+               | edomid == connection_domid ->
+                   do debug $ printf "received agent_started signal from domain %d (uuid %s)" connection_domid (show uuid)
+                      action
+           _ -> return ()
+
 onAgentStarted :: Uuid -> Rpc () -> Rpc ()
 onAgentStarted uuid action =
     let rule = matchSignal "com.citrix.xenclient.guest" "agent_started"
@@ -86,6 +105,23 @@ onAgentStarted uuid action =
            Just edomid
                | edomid == connection_domid ->
                    do debug $ printf "received agent_started signal from domain %d (uuid %s)" connection_domid (show uuid)
+                      action
+           _ -> return ()
+
+onAgentUninstalledRemove :: Uuid -> Rpc () -> Rpc ()
+onAgentUninstalledRemove uuid action =
+    let rule = matchSignal "com.citrix.xenclient.guest" "agent_uninstalled"
+    in
+      rpcOnSignalRemove rule process
+  where
+    process sender_name signal = do
+      do let sender = TL.unpack (strBusName sender_name)
+         connection_domid <- orgFreedesktopDBusGetConnectionDOMID "org.freedesktop.DBus" "/org/freedesktop/DBus" sender
+         expected_domid   <- getDomainID uuid
+         case expected_domid of
+           Just edomid
+               | edomid == connection_domid ->
+                   do debug $ printf "received agent_uninstalled signal from domain %d (uuid %s)" connection_domid (show uuid)
                       action
            _ -> return ()
 
