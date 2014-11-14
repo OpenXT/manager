@@ -445,6 +445,7 @@ removeVm uuid =
        
        -- Need to quit xenvm
        -- FIXME: cleanly stop monitoring events
+       removeDefaultEvents uuid	--cleanly...stop monitoring events
        Xenvm.quitXenvm uuid
        notifyVmDeleted uuid
   where

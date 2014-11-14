@@ -38,6 +38,7 @@ module XenMgr.Connect.Xenvm
              , isXenvmUp
              , readConfig
              , onNotify
+             , onNotifyRemove
 
              -- VM activities
              , start, startPaused
@@ -375,6 +376,24 @@ rpcXenvm uuid method = rpcCallOnce . xenvmcall uuid method
 
 --
 type NotifyHandler = [String] -> Rpc ()
+
+onNotifyRemove :: Uuid -> String -> NotifyHandler -> Rpc ()
+onNotifyRemove uuid msgname action = 
+	let rule = matchSignal "xenvm.signal.notify" "notify"
+	in
+		rpcOnSignalRemove rule process
+  where
+    process _ signal =
+        let [uuidV, _, statusV] = signalArgs signal
+            uuid'  = let Just v = fromVariant $ uuidV in v
+            status = let Just v = fromVariant $ statusV in v
+            splits = split ':' status
+        in
+          when (uuid == uuid') $
+               case splits of
+                 (msg:args) | msg == msgname    -> action args
+                 _                              -> return ()
+	
 
 -- FIXME: centralise handling of events using one signal handler
 onNotify :: Uuid -> String -> NotifyHandler -> Rpc ()

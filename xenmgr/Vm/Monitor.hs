@@ -21,6 +21,7 @@ module Vm.Monitor
     , VmEvent(..), Handler, HandlerID
     , react
     , stopReacting
+    , removeDefaultEvents
     , submitVmEvent
     , evalVmEvent
     , newVmMonitor
@@ -156,6 +157,22 @@ insertDefaultEvents m = let uuid = vmm_uuid m in do
           _ -> return ()
     whenPowerState _ = return ()
 
+--Chain some calls to eventually invoke removeMatch
+removeDefaultEvents :: Uuid -> Rpc ()
+removeDefaultEvents uuid = do
+    Xenvm.onNotifyRemove uuid "rtc" whenRtc
+    Xenvm.onNotifyRemove uuid "vm" whenVm
+    Xenvm.onNotifyRemove uuid "power-state" whenPowerState
+
+    --Need to undo the onAgent stuff to remove match rules
+    RpcAgent.onAgentStartedRemove uuid (submit VmRpcAgentStart)
+    RpcAgent.onAgentUninstalledRemove uuid (submit VmRpcAgentStop)
+
+  where     --do nothing here on these handlers
+    submit _ = return ()
+    whenRtc _ = return ()
+    whenVm _ = return ()
+    whenPowerState _ = return ()
 
 -- add watches on vm creation (or if already running), prune watches on vm destroy
 insertWatchEvents :: VmMonitor -> [VmWatch] -> Rpc ()
