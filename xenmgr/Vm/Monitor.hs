@@ -125,7 +125,7 @@ newVmMonitor uuid =
       where
         status (Left ex) = warn $ "ERROR in evloop for " ++ show uuid ++ ": " ++ (show ex)
         status _ = return ()
-	
+
 submitVmEvent :: VmMonitor -> VmEvent -> Rpc ()
 submitVmEvent m e = liftIO $ (vmm_submit m) e
 
