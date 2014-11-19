@@ -43,7 +43,7 @@
     "v4v": "true",
     "memory": "176",
     "display": "none",
-    "cmdline": "root=\/dev\/xvda1 swiotlb=force xencons=hvc0",
+    "cmdline": "root=\/dev\/xvda1 iommu=soft xencons=hvc0",
     "kernel-extract": "\/boot\/vmlinuz",
     "flask-label": "system_u:system_r:ndvm_t",
     "disk": {
