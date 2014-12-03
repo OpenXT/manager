@@ -92,7 +92,7 @@ module Vm.Queries
                , getVmTrackDependencies
                , getVmSeamlessMouseLeft, getVmSeamlessMouseRight
                , getVmOs, getVmControlPlatformPowerState, getVmGreedyPcibackBind
-               , getVmFirewallRules, getVmOemAcpiFeatures, getVmUsbEnabled, getVmUsbControl, getVmStubdom, getVmCpuid, getVmCpuidResponses
+               , getVmFirewallRules, getVmOemAcpiFeatures, getVmUsbEnabled, getVmUsbAutoPassthrough, getVmUsbControl, getVmStubdom, getVmCpuid, getVmCpuidResponses
                , getVmRunPostCreate, getVmRunPreDelete, getVmRunOnStateChange, getVmRunOnAcpiStateChange
                , getVmRunPreBoot
                , getVmRunInsteadofStart
@@ -245,6 +245,7 @@ getVmConfig uuid resolve_backend_uuids =
        cpuidresps <- future $ getVmCpuidResponses uuid
        xcisig <- future $ getVmXciCpuidSignature uuid
        usb <- future $ getVmUsbEnabled uuid
+       auto_passthrough <- future $ getVmUsbAutoPassthrough uuid
        v <- future $ getHostXcVersion
        name <- future $ domain_name
        mem <- future $ getVmMemory uuid
@@ -281,6 +282,7 @@ getVmConfig uuid resolve_backend_uuids =
                      <*> oem_types
                      <*> v
                      <*> usb
+                     <*> auto_passthrough
                      <*> stubdom
                      <*> mem
                      <*> memmin
@@ -436,6 +438,9 @@ getVmOemAcpiFeatures uuid = readConfigPropertyDef uuid vmOemAcpiFeatures False
 
 getVmUsbEnabled :: Uuid -> Rpc Bool
 getVmUsbEnabled uuid = readConfigPropertyDef uuid vmUsbEnabled True
+
+getVmUsbAutoPassthrough :: Uuid -> Rpc Bool
+getVmUsbAutoPassthrough uuid = readConfigPropertyDef uuid vmUsbAutoPassthrough True
 
 getVmUsbControl :: Uuid -> Rpc Bool
 getVmUsbControl uuid = readConfigPropertyDef uuid vmUsbControl False
