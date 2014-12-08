@@ -84,7 +84,7 @@ module Vm.Actions
           , setVmProvidesGraphicsFallback, setVmShutdownPriority, setVmSeamlessId
           , setVmStartFromSuspendImage, setVmQemuDmPath, setVmQemuDmTimeout, setVmTrackDependencies
           , setVmSeamlessMouseLeft, setVmSeamlessMouseRight, setVmOs, setVmControlPlatformPowerState
-          , setVmOemAcpiFeatures, setVmUsbEnabled, setVmUsbControl, setVmStubdom, setVmCpuid
+          , setVmOemAcpiFeatures, setVmUsbEnabled, setVmUsbAutoPassthrough, setVmUsbControl, setVmStubdom, setVmCpuid
           , setVmGreedyPcibackBind
           , setVmRunPostCreate, setVmRunPreDelete, setVmRunOnStateChange, setVmRunOnAcpiStateChange
           , setVmRunPreBoot
@@ -1700,6 +1700,7 @@ setVmUsbControl uuid v =
        -- to reevaluate rules
        liftIO $ spawnShell' "killall -SIGHUP rpc-proxy"
        return ()
+setVmUsbAutoPassthrough uuid v = saveConfigProperty uuid vmUsbAutoPassthrough (v::Bool)
 setVmStubdom uuid v = saveConfigProperty uuid vmStubdom (v::Bool)
 setVmCpuid uuid v = saveConfigProperty uuid vmCpuid (v::String)
 setVmXciCpuidSignature uuid v = saveConfigProperty uuid vmXciCpuidSignature (v::Bool)

@@ -120,6 +120,7 @@ data VmConfig = VmConfig {
     , vmcfgSmbiosOemTypesPt :: [Int] -- list of vendor specific dmi tables to pass thru to guest
     , vmcfgXcVersion :: XcVersion
     , vmcfgUsbEnabled :: Bool
+    , vmcfgUsbAutoPassthrough :: Bool
     , vmcfgStubdom :: Bool
     , vmcfgMemoryMib :: Int
     , vmcfgMemoryMinMib :: Int

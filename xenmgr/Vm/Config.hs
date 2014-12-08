@@ -53,7 +53,7 @@ module Vm.Config (
                 , vmOs, vmControlPlatformPowerState
                 , vmFirewallRules
                 , vmSeamlessTraffic
-                , vmOemAcpiFeatures, vmUsbEnabled, vmUsbControl, vmStubdom, vmCpuid
+                , vmOemAcpiFeatures, vmUsbEnabled, vmUsbAutoPassthrough, vmUsbControl, vmStubdom, vmCpuid
                 , vmUsbGrabDevices
                 , vmGreedyPcibackBind
                 , vmRunPostCreate, vmRunPreDelete, vmRunOnStateChange, vmRunOnAcpiStateChange
@@ -363,6 +363,7 @@ vmControlPlatformPowerState = property "control-platform-power-state"
 vmSeamlessTraffic = property "seamless-traffic"
 vmOemAcpiFeatures = property "oem-acpi-features"
 vmUsbEnabled = property "usb-enabled"
+vmUsbAutoPassthrough = property "usb-auto-passthrough"
 vmUsbControl = property "usb-control"
 vmUsbGrabDevices = property "usb-grab-devices"
 vmStubdom = property "stubdom"
