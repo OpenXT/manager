@@ -172,7 +172,9 @@ implementation xm testingCtx =
   , comCitrixXenclientXenmgrConfigUiSetModifyAdvancedVmSettings = \v -> dbWrite "/xenmgr/uiModifyAdvancedVmSettings" v >> cc
   , comCitrixXenclientXenmgrConfigUiGetModifyServices = fromMaybe True <$> dbMaybeRead "/xenmgr/uiModifyServices"
   , comCitrixXenclientXenmgrConfigUiSetModifyServices = \v -> dbWrite "/xenmgr/uiModifyServices" v >> cc
-  
+  , comCitrixXenclientXenmgrConfigUiGetModifyUsbSettings = fromMaybe True <$> dbMaybeRead "/xenmgr/uiModifyUsbSettings"
+  , comCitrixXenclientXenmgrConfigUiSetModifyUsbSettings = \v -> dbWrite "/xenmgr/uiModifyUsbSettings" v >> cc
+    
   , comCitrixXenclientPolicyEnforce    = \uuid -> policiesEnforce (fromString uuid)
   , comCitrixXenclientPolicyRetrieve   = \uuid -> policiesRetrieve (fromString uuid)
   , comCitrixXenclientXenmgrDiagSave   = \mode -> diagSave mode
