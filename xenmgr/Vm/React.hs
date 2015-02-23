@@ -277,7 +277,7 @@ whenShutdown xm reason = do
     return ()
     where
       removeAlsa domid = liftIO $ do
-        let alsafile = "/tmp/alsa-vm-" ++ show domid ++ ".conf"
+        let alsafile = "/var/run/alsa-vm-" ++ show domid ++ ".conf"
         info $ "remove alsa file " ++ alsafile
         whenM (doesFileExist alsafile) (removeFile alsafile)
 
