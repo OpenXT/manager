@@ -13,7 +13,6 @@
   "description": "Linux (Debian, Ubuntu)",
   "os": "linux",
   "ui-selectable": "true",
-  "xci-cpuid-signature": "true",
   "stubdom": "true",
   "config": {
     "notify": "dbus",
