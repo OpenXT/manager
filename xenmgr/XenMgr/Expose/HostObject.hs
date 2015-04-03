@@ -398,7 +398,7 @@ listSoundCardControls cardID = liftIO controls where
     . catMaybes
     . map parseSSControl
     . lines
-    <$> readProcessOrDie "amixer" ["-c", cardID] ""
+    <$> readProcessOrDie "/usr/lib/xen/bin/audio_helper" ["-c", cardID] ""
   kv (name,dir,typ,value) =
     M.fromList [
         ("name", name)
@@ -408,11 +408,11 @@ listSoundCardControls cardID = liftIO controls where
       ]
 
 getSoundCardControl cardID name = liftIO $
-  get . parseSSControl <$> readProcessOrDie "amixer" ["-c", cardID, "sget", name] "" where
+  get . parseSSControl <$> readProcessOrDie "/usr/lib/xen/bin/audio_helper" ["-c", cardID, "sget", name] "" where
     get (Just (_,_,_,v)) = v
     get _ = ""
 
 setSoundCardControl cardID name value = liftIO $ do
   case value `matchG` "^([0-9]+%) (on|off)$" of
-    [lev, en] -> void $ readProcessOrDie "amixer" ["-c", cardID, "sset", name, lev, en] ""
-    _ ->  void $ readProcessOrDie "amixer" ["-c", cardID, "sset", name, value] ""
+    [lev, en] -> void $ readProcessOrDie "/usr/lib/xen/bin/audio_helper" ["-c", cardID, "sset", name, lev, en] ""
+    _ ->  void $ readProcessOrDie "/usr/lib/xen/bin/audio_helper" ["-c", cardID, "sset", name, value] ""
