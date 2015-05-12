@@ -122,7 +122,7 @@ parseLazy x =
 parseStrict :: BS.ByteString -> Either String PciDatabase
 parseStrict = parseOnly pciDatabase
 
-defaultLocation = "/usr/share/pci.ids.gz"
+defaultLocation = "/usr/share/pci.ids"
 
 decompressed :: FilePath -> IO BS.ByteString
 decompressed path =
@@ -136,11 +136,11 @@ decompressed path =
 loadFromCompressedFile :: FilePath -> IO (Either String PciDatabase)
 loadFromCompressedFile filePath = parseStrict <$> decompressed filePath
 
-loadFromDefaultFile :: IO (Either String PciDatabase)
-loadFromDefaultFile = loadFromCompressedFile defaultLocation
-
 loadFromFile :: FilePath -> IO (Either String PciDatabase)
 loadFromFile filePath = liftM parseStrict (BS.readFile filePath)
+
+loadFromDefaultFile :: IO (Either String PciDatabase)
+loadFromDefaultFile = loadFromFile defaultLocation
 
 data DeviceEntry
    = DeviceEntry { deId :: (VendorId, DeviceId)
