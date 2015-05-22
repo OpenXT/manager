@@ -191,6 +191,7 @@ import XenMgr.CdLock
 import {-# SOURCE #-} XenMgr.PowerManagement
 import Rpc.Autogen.XenmgrNotify
 import XenMgr.Expose.ObjectPaths
+import Vm.Pci
 
 data EventHook
    = EventScript FilePath
@@ -481,16 +482,44 @@ startVm uuid = do
     ran <- liftRpc $ runEventScript HardFail uuid getVmRunInsteadofStart [uuidStr uuid]
     when (not ran) $ startVmInternal uuid
 
+--Add a passthrough rule to vm config
+add_pt_rule_bdf uuid dev = modifyVmPciPtRules uuid $ pciAddRule (form_rule_bdf (show (devAddr dev)))
+
+form_rule_bdf = rule . fromMaybe (error "error parsing rule") . pciAndSlotFromStr where
+  rule (addr,sl) = PciPtRuleBDF addr sl
+
 -- Start a VM! (maybe, because stuff can happen not)
 startVmInternal :: Uuid -> XM ()
 startVmInternal uuid = do
     unlessM (dbExists $ "/vm/" ++ show uuid) $ error ("vm does not have a database entry: " ++ show uuid)
     info $ "starting VM " ++ show uuid
+    liftRpc $ maybePtGpuFuncs uuid
     config <- prepareAndCheckConfig uuid
     case config of
       Just c -> info ("done checks for VM " ++ show uuid) >> bootVm c
       Nothing-> return ()
   where
+
+  --Based on bdf get all functions on that device bus:device.function
+  --and pass them through to vm in case of bus level reset.
+    maybePtGpuFuncs uuid = do
+      ok <- isGpuPt uuid
+      if ok
+        then do
+          gfxbdf <- getVmGpu uuid
+          devices <- liftIO pciGetDevices
+          let devMatches = filter (bdFilter (take 7 gfxbdf)) devices in
+              foldl1 seq (map (add_pt_rule_bdf uuid) devMatches)
+        else return ()
+
+    --Filter function to match on domain:bus:device
+    bdFilter match d = isInfixOf match (show (devAddr d))
+
+    --Check if vm has a bdf in gpu
+    isGpuPt uuid = do
+        gpu <- getVmGpu uuid
+        return (gpu /= "" && gpu /= "hdx")
+
     prepareAndCheckConfig uuid = do
       ok <- stage1 -- early tests / dependency startup
       if (not ok)
