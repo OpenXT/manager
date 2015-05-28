@@ -508,12 +508,12 @@ startVmInternal uuid = do
         then do
           gfxbdf <- getVmGpu uuid
           devices <- liftIO pciGetDevices
-          let devMatches = filter (bdFilter (take 7 gfxbdf)) devices in
-              foldl1 seq (map (add_pt_rule_bdf uuid) devMatches)
+          let devMatches = filter (bdFilter (take 7 gfxbdf) gfxbdf) devices in
+              mapM_ (add_pt_rule_bdf uuid) devMatches
         else return ()
 
-    --Filter function to match on domain:bus:device
-    bdFilter match d = isInfixOf match (show (devAddr d))
+    --Filter function to match on domain:bus and also filter out the video function
+    bdFilter match bdf d = (isInfixOf match (show (devAddr d))) && (bdf /= (show (devAddr d))) 
 
     --Check if vm has a bdf in gpu
     isGpuPt uuid = do
