@@ -569,14 +569,23 @@ data HostGpu =
              , gpuName :: String } deriving (Eq,Show)
 
 getSurfmanGpu :: Rpc (Maybe HostGpu)
-getSurfmanGpu =
-    do vgpu <- querySurfmanVgpuMode
-       case ( fmap surfman_device vgpu ) of
-         Just (Just d) -> return (Just d)
-         _ -> return Nothing
+getSurfmanGpu = do
+    devices  <- liftIO pciGetDevices
+    devMatch <- filterM boot_vga_filter devices
+    case devMatch of
+        [] -> return Nothing
+        _  -> return $ Just $ HostGpu "hdx" (show (devName (head devMatch)))
+
     where
-    surfman_device vgpu | vgpuMaxVGpus vgpu > 0 = Just $ HostGpu "hdx" (vgpuName vgpu)
-                        | otherwise             = Nothing
+        boot_vga_filter d = do
+            let boot_vga_file = devSysfsPath d </> "boot_vga"
+            boot_vga_exists <- liftIO $ doesFileExist boot_vga_file
+            if boot_vga_exists 
+                then do contents <- chomp <$> (liftIO $ readFile boot_vga_file)
+                        case contents of
+                            "1" -> return True
+                            _   -> return False
+                else return False
 
 hostGpus :: MVar (Maybe [HostGpu])
 {-# NOINLINE hostGpus #-}
