@@ -53,7 +53,8 @@ module Vm.Config (
                 , vmOs, vmControlPlatformPowerState
                 , vmFirewallRules
                 , vmSeamlessTraffic
-                , vmOemAcpiFeatures, vmUsbEnabled, vmUsbAutoPassthrough, vmUsbControl, vmStubdom, vmCpuid
+                , vmOemAcpiFeatures, vmUsbEnabled, vmUsbAutoPassthrough, vmUsbControl, vmCpuid
+                , vmStubdom, vmStubdomMemory, vmStubdomCmdline
                 , vmUsbGrabDevices
                 , vmGreedyPcibackBind
                 , vmRunPostCreate, vmRunPreDelete, vmRunOnStateChange, vmRunOnAcpiStateChange
@@ -445,6 +446,8 @@ vmTimerMode = property "config.timer-mode"
 vmTimerModeDefault = (1 :: Int)
 vmNestedHvm = property "config.nestedhvm"
 vmSerial = property "config.serial"
+vmStubdomMemory = property "config.stubdom-memory"
+vmStubdomCmdline = property "config.stubdom-cmdline"
 
 -- Composite ones and lists
 vmExtraHvms    = property "config.extra-hvm"
@@ -806,6 +809,8 @@ miscSpecs cfg = do
           , ("startup"         , vmStartup)
           , ("flask-label"     , vmFlaskLabel)
           , ("serial"          , vmSerial)
+          , ("stubdom-cmdline" , vmStubdomCmdline)
+          , ("stubdom-memory"  , vmStubdomMemory)
           ]
 
       biosStrs = [ "bios-string=xenvendor-manufacturer=Citrix"

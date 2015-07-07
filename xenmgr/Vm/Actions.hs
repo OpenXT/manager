@@ -84,7 +84,8 @@ module Vm.Actions
           , setVmProvidesGraphicsFallback, setVmShutdownPriority, setVmSeamlessId
           , setVmStartFromSuspendImage, setVmQemuDmPath, setVmQemuDmTimeout, setVmTrackDependencies
           , setVmSeamlessMouseLeft, setVmSeamlessMouseRight, setVmOs, setVmControlPlatformPowerState
-          , setVmOemAcpiFeatures, setVmUsbEnabled, setVmUsbAutoPassthrough, setVmUsbControl, setVmStubdom, setVmCpuid
+          , setVmOemAcpiFeatures, setVmUsbEnabled, setVmUsbAutoPassthrough, setVmUsbControl, setVmCpuid
+          , setVmStubdom, setVmStubdomMemory, setVmStubdomCmdline
           , setVmGreedyPcibackBind
           , setVmRunPostCreate, setVmRunPreDelete, setVmRunOnStateChange, setVmRunOnAcpiStateChange
           , setVmRunPreBoot
@@ -811,6 +812,8 @@ bootVm config
 
           stubdom <- getVmStubdom uuid
           when stubdom $ updateStubDomainID uuid
+          stubdom_memory <- getVmStubdomMemory uuid
+          stubdom_cmdline <- getVmStubdomCmdline uuid
 
           applyVmFirewallRules uuid
           -- notify that v4v rules have been set up, so xenvm can unpause stubdom
@@ -1731,6 +1734,8 @@ setVmUsbControl uuid v =
        return ()
 setVmUsbAutoPassthrough uuid v = saveConfigProperty uuid vmUsbAutoPassthrough (v::Bool)
 setVmStubdom uuid v = saveConfigProperty uuid vmStubdom (v::Bool)
+setVmStubdomMemory uuid v = saveConfigProperty uuid vmStubdomMemory (v::Int)
+setVmStubdomCmdline uuid v = saveConfigProperty uuid vmStubdomCmdline (v::String)
 setVmCpuid uuid v = saveConfigProperty uuid vmCpuid (v::String)
 setVmXciCpuidSignature uuid v = saveConfigProperty uuid vmXciCpuidSignature (v::Bool)
 setVmGreedyPcibackBind uuid v = saveConfigProperty uuid vmGreedyPcibackBind (v::Bool)

@@ -92,7 +92,8 @@ module Vm.Queries
                , getVmTrackDependencies
                , getVmSeamlessMouseLeft, getVmSeamlessMouseRight
                , getVmOs, getVmControlPlatformPowerState, getVmGreedyPcibackBind
-               , getVmFirewallRules, getVmOemAcpiFeatures, getVmUsbEnabled, getVmUsbAutoPassthrough, getVmUsbControl, getVmStubdom, getVmCpuid, getVmCpuidResponses
+               , getVmFirewallRules, getVmOemAcpiFeatures, getVmUsbEnabled, getVmUsbAutoPassthrough, getVmUsbControl, getVmCpuid, getVmCpuidResponses
+               , getVmStubdom, getVmStubdomMemory, getVmStubdomCmdline
                , getVmRunPostCreate, getVmRunPreDelete, getVmRunOnStateChange, getVmRunOnAcpiStateChange
                , getVmRunPreBoot
                , getVmRunInsteadofStart
@@ -241,6 +242,8 @@ getVmConfig uuid resolve_backend_uuids =
        seamless <- future $ getVmSeamlessTraffic uuid
        oem_types <- future $ getVmSmbiosOemTypesPt uuid
        stubdom <- future $ getVmStubdom uuid
+       stubdom_memory <- future $ getVmStubdomMemory uuid
+       stubdom_cmdline <- future $ Just <$> getVmStubdomCmdline uuid
        os <- future $ getVmOs uuid
        cpuidresps <- future $ getVmCpuidResponses uuid
        xcisig <- future $ getVmXciCpuidSignature uuid
@@ -284,6 +287,8 @@ getVmConfig uuid resolve_backend_uuids =
                      <*> usb
                      <*> auto_passthrough
                      <*> stubdom
+                     <*> stubdom_memory
+                     <*> stubdom_cmdline
                      <*> mem
                      <*> memmin
                      <*> memmax
@@ -447,6 +452,12 @@ getVmUsbControl uuid = readConfigPropertyDef uuid vmUsbControl False
 
 getVmStubdom :: Uuid -> Rpc Bool
 getVmStubdom uuid = readConfigPropertyDef uuid vmStubdom False
+
+getVmStubdomMemory :: Uuid -> Rpc Int
+getVmStubdomMemory uuid = readConfigPropertyDef uuid vmStubdomMemory 128
+
+getVmStubdomCmdline :: Uuid -> Rpc String
+getVmStubdomCmdline uuid = readConfigPropertyDef uuid vmStubdomCmdline ""
 
 getVmCpuid :: Uuid -> Rpc String
 getVmCpuid uuid = readConfigPropertyDef uuid vmCpuid ""
