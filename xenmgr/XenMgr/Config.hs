@@ -57,6 +57,7 @@ module XenMgr.Config
                  , appGetSwitcherSelfSwitchEnabled, appSetSwitcherSelfSwitchEnabled
                  , appGetSwitcherKeyboardFollowsMouse, appSetSwitcherKeyboardFollowsMouse
                  , appGetSwitcherResistance, appSetSwitcherResistance
+                 , appGetSwitcherStatusReportEnabled, appSetSwitcherStatusReportEnabled
                  , appGetDrmGraphics, appSetDrmGraphics
                  , appGetSupportedLanguages
                  , appGetLanguage, appSetLanguage
@@ -290,6 +291,10 @@ appGetSwitcherResistance = dbReadWithDefault 10 "/switcher/resistance"
 
 appSetSwitcherResistance :: Int -> Rpc ()
 appSetSwitcherResistance v = dbWrite "/switcher/resistance" v
+
+appGetSwitcherStatusReportEnabled :: Rpc Bool
+appGetSwitcherStatusReportEnabled = dbReadWithDefault True "/switcher/status-report-enabled"
+appSetSwitcherStatusReportEnabled v = dbWrite "/switcher/status-report-enabled" v
 
 appGetSupportedLanguages :: Rpc [String]
 appGetSupportedLanguages = parse <$> liftM (M.lookup "supported-languages") (liftIO readCaps) where

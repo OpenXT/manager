@@ -145,6 +145,8 @@ implementation xm testingCtx =
   , comCitrixXenclientXenmgrConfigUiSetSwitcherKeyboardFollowsMouse = appSetSwitcherKeyboardFollowsMouse
   , comCitrixXenclientXenmgrConfigUiGetSwitcherResistance = fromIntegral <$> appGetSwitcherResistance
   , comCitrixXenclientXenmgrConfigUiSetSwitcherResistance = appSetSwitcherResistance . fromIntegral
+  , comCitrixXenclientXenmgrConfigUiGetSwitcherStatusReportEnabled = appGetSwitcherStatusReportEnabled
+  , comCitrixXenclientXenmgrConfigUiSetSwitcherStatusReportEnabled = appSetSwitcherStatusReportEnabled
 
   , comCitrixXenclientXenmgrConfigUiGetSupportedLanguages = appGetSupportedLanguages
   , comCitrixXenclientXenmgrConfigUiGetLanguage = appGetLanguage
