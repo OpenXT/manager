@@ -19,3 +19,9 @@ xenmgr/xenmgr
 .ocamldep.make
 *.exe
 *.stackdump
+
+xenmgr/ghc-cc
+xenmgr/ghc-ld
+xenmgr/ld
+xenmgr/local-packages.db
+
