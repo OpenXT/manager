@@ -48,7 +48,8 @@
       "23": "allow destination com.citrix.xenclient.surfman interface com.citrix.xenclient.surfman member decrease_brightness",
       "24": "allow destination com.citrix.xenclient.surfman interface com.citrix.xenclient.surfman member display_image",
       "25": "allow destination com.citrix.xenclient.networkdaemon",
-      "26": "deny destination com.citrix.xenclient.xenmgr interface com.citrix.xenclient.xenmgr.config member Set"
+      "26": "deny destination com.citrix.xenclient.xenmgr interface com.citrix.xenclient.xenmgr.config member Set",
+      "27": "allow destination com.citrix.xenclient.xcpmd interface com.citrix.xenclient.xcpmd"
   },
   "policies": {
     "audio-access": "false",
