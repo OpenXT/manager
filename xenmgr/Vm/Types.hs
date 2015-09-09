@@ -122,6 +122,8 @@ data VmConfig = VmConfig {
     , vmcfgUsbEnabled :: Bool
     , vmcfgUsbAutoPassthrough :: Bool
     , vmcfgStubdom :: Bool
+    , vmcfgStubdomMemory :: Int
+    , vmcfgStubdomCmdline :: Maybe String
     , vmcfgMemoryMib :: Int
     , vmcfgMemoryMinMib :: Int
     , vmcfgMemoryStaticMaxMib :: Int
