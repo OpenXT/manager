@@ -11,7 +11,6 @@
 *.hi
 *.p_o
 *.p_hi
-storehouse/dist/*
 libghc-rpc/dist/*
 META
 *~
