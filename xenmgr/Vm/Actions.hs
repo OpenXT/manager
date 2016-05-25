@@ -916,12 +916,18 @@ disconnectFrontVifs back_uuid =
 rebootVm :: Uuid -> Rpc ()
 rebootVm uuid = do
     info $ "rebooting VM " ++ show uuid
+    acpi <- getVmAcpiState uuid
     -- Write XENVM configuration file
     writeXenvmConfig =<< getVmConfig uuid True
 
     -- Ask xenvm kindly to reload it
     Xenvm.readConfig uuid
 
+    when (acpi == 3) $ do
+      info $ "resuming " ++ show uuid ++ " from S3 first.."
+      resumeS3AndWaitS0 uuid
+      info $ "resuming " ++ show uuid ++ " from S3 DONE."
+      liftIO $ threadDelay 5000000
     -- Request start from XENVM
     use_agent <- RpcAgent.guestAgentRunning uuid
     if use_agent
@@ -938,6 +944,7 @@ shutdownVm uuid = do
       info $ "resuming " ++ show uuid ++ " from S3 first.."
       resumeS3AndWaitS0 uuid
       info $ "resuming " ++ show uuid ++ " from S3 DONE."
+      liftIO $ threadDelay 5000000
     if use_agent
        then RpcAgent.shutdown uuid
        else Xenvm.shutdown uuid
