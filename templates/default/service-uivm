@@ -18,7 +18,7 @@
     "2": "myself -> 0:5555",
     "3": "myself -> dom-type=ndvm:5555",
     "4": "myself -> 0:2222",
-    "5": "0 -> myself:2222",
+    "5": "0:12222 -> myself:2222",
     "6": "myself -> 0:4878"
   },
   "rpc-firewall-rules": {

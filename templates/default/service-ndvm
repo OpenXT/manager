@@ -18,10 +18,10 @@
   "icbinn-path": "\/config\/certs\/Network",
   "boot-sentinel": "booted",
   "v4v-firewall-rules": {
-    "0": "myself -> 0:5555",
-    "1": "0 -> myself:2222",
-    "2": "myself -> 0:2222",
-    "3": "myself:5555 -> 0",
+    "0": "myself -> 0:2222",
+    "1": "0:12222 -> myself:2222",
+    "2": "myself -> 0:5555",
+    "3": "0:15555 -> myself:5555",
     "4": "myself -> 0:4878"
   },
   "rpc-firewall-rules": {
