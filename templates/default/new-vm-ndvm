@@ -14,11 +14,10 @@
   "image_path": "plugins/serviceimages/citrix.png",
   "boot-sentinel": "booted",
   "v4v-firewall-rules": {
-    "0": "myself -> 0:2222",
-    "1": "0:12222 -> myself:2222",
-    "2": "myself -> 0:5555",
-    "3": "0:15555 -> myself:5555",
-    "4": "myself -> 0:4878"
+    "0": "0:12222 -> myself:2222",
+    "1": "myself -> 0:5555",
+    "2": "0:15555 -> myself:5555",
+    "3": "myself -> 0:4878"
   },
   "rpc-firewall-rules": {
       "0": "allow destination org.freedesktop.DBus interface org.freedesktop.DBus",
@@ -41,7 +40,7 @@
     "apic": "true",
     "nx": "true",
     "v4v": "true",
-    "memory": "176",
+    "memory": "192",
     "display": "none",
     "cmdline": "root=\/dev\/xvda1 iommu=soft xencons=hvc0",
     "kernel-extract": "\/boot\/vmlinuz",

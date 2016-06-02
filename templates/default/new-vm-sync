@@ -21,7 +21,7 @@
     "hap": "false",
     "nx": "true",
     "v4v": "true",
-    "memory": "240",
+    "memory": "256",
     "display": "none",
     "cmdline": "root=\/dev\/xvda1 xencons=hvc0",
     "kernel-extract": "\/boot\/vmlinuz",
