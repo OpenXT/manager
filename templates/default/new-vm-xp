@@ -3,12 +3,10 @@
   "v4v-firewall-rules": {
     "0": "myself -> 0:80",
     "1": "myself -> 0:5556",
-    "2": "my-stubdom -> 0:5555",
-    "3": "my-stubdom -> 0:4001",
-    "4": "my-stubdom -> 0:4002",
-    "5": "my-stubdom -> 0:5000",
-    "6": "my-stubdom -> 0:5001",
-    "7": "my-stubdom -> 0:5559"
+    "2": "my-stubdom -> 0:4001",
+    "3": "my-stubdom -> 0:4002",
+    "4": "my-stubdom -> 0:5000",
+    "5": "my-stubdom -> 0:5001"
   },
   "os": "windows",
   "description": "Windows XP",
@@ -29,7 +27,7 @@
     "display": "none",
     "boot": "cd",
     "flask-label": "system_u:system_r:hvm_guest_t",
-    "stubdom-memory": "64",
+    "stubdom-memory": "80",
     "stubdom-cmdline": "init=/init xen_blkfront.max=8",
     "disk": {
       "0": {
