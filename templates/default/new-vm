@@ -1,12 +1,10 @@
 {
   "type": "svm",
   "v4v-firewall-rules": {
-    "0": "myself -> 0:80",
-    "1": "myself -> 0:5556",
-    "2": "my-stubdom -> 0:4001",
-    "3": "my-stubdom -> 0:4002",
-    "4": "my-stubdom -> 0:5000",
-    "5": "my-stubdom -> 0:5001"
+    "0": "my-stubdom -> 0:4001",
+    "1": "my-stubdom -> 0:4002",
+    "2": "my-stubdom -> 0:5000",
+    "3": "my-stubdom -> 0:5001"
   },
   "os": "windows",
   "description": "Windows 7",
