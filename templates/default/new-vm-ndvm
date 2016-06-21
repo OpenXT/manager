@@ -43,7 +43,7 @@
     "memory": "192",
     "display": "none",
     "cmdline": "root=\/dev\/xvda1 iommu=soft xencons=hvc0",
-    "kernel-extract": "\/boot\/vmlinuz",
+    "kernel-extract": "\/boot\/bzImage",
     "flask-label": "system_u:system_r:ndvm_t",
     "disk": {
       "0": {

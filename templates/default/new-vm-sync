@@ -24,7 +24,7 @@
     "memory": "256",
     "display": "none",
     "cmdline": "root=\/dev\/xvda1 xencons=hvc0",
-    "kernel-extract": "\/boot\/vmlinuz",
+    "kernel-extract": "\/boot\/bzImage",
     "extra-xenvm": {
       "0": "flask-label=system_u:system_r:syncvm_t"
     },
