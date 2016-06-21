@@ -279,9 +279,6 @@ detectVmsConfigProblems = do
 monitorVms :: XM ()
 monitorVms = mapM_ monitorAndReactVm =<< liftRpc getVms
 
-completeBootScript :: String
-completeBootScript = "/usr/share/xenclient/complete-boot.sh"
-
 data Flag = NoDaemonize
           | NoAutostart
           | WritePid (Maybe String)
