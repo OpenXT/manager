@@ -400,9 +400,9 @@ isAMTCapable =
 
 getHvmInfo :: IO HvmInfo
 getHvmInfo = do
-    text <- T.pack <$> spawnShell "hvm-info"
-    let hvm = T.count "hvm is enabled" text > 0
-        directio = T.count "hvm_directio is enabled" text > 0
+    text <- T.pack <$> spawnShell "xenops physinfo"
+    let hvm = T.count "hvm" text > 0
+        directio = T.count "directio" text > 0
     return $ HvmInfo { hvmEnabled = hvm
                      , hvmDirectIOEnabled = directio }
 
