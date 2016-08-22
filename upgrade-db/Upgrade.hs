@@ -40,7 +40,7 @@ import qualified Data.Text as T
 
 -- MODIFY THIS WHEN FORMAT CHANGES
 latestVersion :: Int
-latestVersion = 30
+latestVersion = 31
 ----------------------------------
 
 dbdRunning :: IO Bool
