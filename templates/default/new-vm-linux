@@ -25,8 +25,6 @@
     "display": "none",
     "boot": "cd",
     "flask-label": "system_u:system_r:hvm_guest_t",
-    "stubdom-memory": "80",
-    "stubdom-cmdline": "init=/init xen_blkfront.max=8",
     "disk": {
       "0": {
         "path": "\/storage\/isos\/xc-tools.iso",
