@@ -318,7 +318,7 @@ downloadAndCheckUpdateMetaAny how infoUrl = do
   case applicable of
     UpToDate -> return ()
     CannotUpgrade -> throwError $ localE UpdateNotApplicable
-    CanUpgrade -> downloadFiles
+    CanUpgrade -> return ()
 
 downloadFiles :: Update ()
 downloadFiles = do
