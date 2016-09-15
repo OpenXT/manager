@@ -739,7 +739,7 @@ miscSpecs cfg = do
            t ++ v ++ cdromParams
         ++ ["memory="++show (vmcfgMemoryMib cfg) ]
         ++ ["memory-max="++show (vmcfgMemoryStaticMaxMib cfg) ]
-        ++ smbios_pt ++ snd ++ audioRec ++ coresPSpms ++ biosStrs
+        ++ smbios_pt ++ snd ++ audioRec ++ coresPSpms
         ++ stubdom_ ++ cpuidResponses cfg ++ usb ++ platform ++ other               
         ++ hpet_
         ++ timer_mode_
@@ -813,30 +813,15 @@ miscSpecs cfg = do
           , ("stubdom-memory"  , vmStubdomMemory)
           ]
 
-      biosStrs = [ "bios-string=xenvendor-manufacturer=Citrix"
-                 , "bios-string=xenvendor-product=XenClient " ++ version
-                 , "bios-string=xenvendor-seamless-hint=" ++ if vmcfgSeamlessSupport cfg then "1" else "0"
-                 ] where
-                XcVersion version = vmcfgXcVersion cfg
-
       otherXenvmParams = concat <$> sequence
                          [ reverse . catMaybes <$> mapM g passToXenvmProperties
                          , extra_xenvm
-                         , smbios_sysinfo
                          ]
         where g (name,prop) = fmap (\v -> name ++ "=" ++ v) <$> readConfigProperty uuid prop
               -- additional parameters passed through config/extra-xenvm/... key
               extra_xenvm :: Rpc [Param]
               extra_xenvm = readConfigPropertyDef uuid vmExtraXenvm []
 
-              -- smbios host stuff
-              smbios_sysinfo :: Rpc [Param]
-              smbios_sysinfo = go =<< readConfigPropertyDef uuid vmAcpiPt False where
-                go False = return []
-                go _ = liftIO $ sequence [
-                    ("bios-string=oem-installation-manufacturer=" ++) <$> getHostSystemManufacturer
-                  ]
-                  
                   
 cryptoSpec :: Uuid -> [FilePath] -> Disk -> String
 cryptoSpec uuid crypto_dirs disk
