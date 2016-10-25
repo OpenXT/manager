@@ -57,11 +57,24 @@ mount dev dir off loop ro = void $ readProcessOrDie "mount" ["-o", opts, dev, di
 umount :: FilePath -> IO ()
 umount dir = void $ readProcessOrDie "umount" [dir] ""
 
-tapCreate ty extraEnv ro path = chomp <$> readProcessOrDieWithEnv extraEnv "tap-ctl" ( ["create"] ++ (if ro then ["-R"] else []) ++ ["-a", ty++":"++path] ) ""
+--Updated syntax for new tap-ctl style
+tapCreate ty extraEnv ro path = chomp <$> readProcessOrDieWithEnv extraEnv "tap-ctl" ( ["create"] ++ ["-a", ty++":"++path] ) ""
 tapCreateVhd = tapCreate "vhd"
 tapCreateVdi = tapCreate "vdi"
 tapCreateAio = tapCreate "aio"
-tapDestroy dev = void $ readProcessOrDie "tap-ctl" ["destroy","-d",dev] ""
+
+--tapDestroy syntax changed as well, requires more information than just the tap device
+--So, we provide the pid and minor number of the tapped instance.
+tapDestroy :: String -> IO ()
+tapDestroy path =
+    do
+        tapInfo <- readProcess "tap-ctl" ["list", "-f", path] ""
+        destroyTap (words tapInfo)
+    where
+        destroyTap info =
+          case info of
+            [pid, minor, _, typ, p] -> void $ readProcessOrDie "tap-ctl" ["destroy","-p",pid,"-m",minor] ""
+            _ -> return ()
 
 withTempDirectory :: FilePath -> (FilePath -> IO a) -> IO a
 withTempDirectory root_path action =

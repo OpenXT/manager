@@ -53,7 +53,7 @@ import Vm.State
 import Vm.ProductProperty
 
 import qualified Vm.V4VFirewall as Firewall
-import qualified XenMgr.Connect.Xenvm as Xenvm
+import qualified XenMgr.Connect.Xl as Xl
 import XenMgr.Errors
 import qualified XenMgr.Expose.VmDiskObject as VmDiskObj
 import qualified XenMgr.Expose.VmNicObject as VmNicObj
@@ -105,13 +105,13 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmStart              = runXM xm (startVm uuid) >> return ()
   , comCitrixXenclientXenmgrVmStartInternal      = runXM xm (startVmInternal uuid) >> return ()
   , comCitrixXenclientXenmgrVmReboot             = rebootVm uuid
-  , comCitrixXenclientXenmgrVmShutdown           = runvm shutdownVmIfSafe
-  , comCitrixXenclientXenmgrVmDestroy            = runvm forceShutdownVmIfSafe
+  , comCitrixXenclientXenmgrVmShutdown           = runvm invokeShutdownVm
+  , comCitrixXenclientXenmgrVmDestroy            = runvm invokeForceShutdownVm
   , comCitrixXenclientXenmgrVmSleep              = sleepVm uuid
   , comCitrixXenclientXenmgrVmHibernate          = hibernateVm uuid
-  , comCitrixXenclientXenmgrVmResume             = resumeFromSleep uuid >> return ()
-  , comCitrixXenclientXenmgrVmSuspendToFile      = \f -> suspendToFile uuid f
-  , comCitrixXenclientXenmgrVmResumeFromFile     = \f -> resumeFromFile uuid f False False
+  , comCitrixXenclientXenmgrVmResume             = liftIO $ Xl.resumeFromSleep uuid >> return ()
+  , comCitrixXenclientXenmgrVmSuspendToFile      = \f -> liftIO $ suspendToFile uuid f
+  , comCitrixXenclientXenmgrVmResumeFromFile     = \f -> liftIO $ resumeFromFile uuid f False False
   , comCitrixXenclientXenmgrVmPause              = pauseVm uuid
   , comCitrixXenclientXenmgrVmUnpause            = unpauseVm uuid
   , comCitrixXenclientXenmgrVmReadIcon           = getVmIconBytes uuid
@@ -591,10 +591,10 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmSetProvidesDefaultNetworkBackend = restrict' $ setVmProvidesDefaultNetworkBackend uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetProvidesDefaultNetworkBackend = setVmProvidesDefaultNetworkBackend uuid
 
-  , comCitrixXenclientXenmgrVmGetVkbd = getVmVkbd uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedGetVkbd = getVmVkbd uuid
-  , comCitrixXenclientXenmgrVmSetVkbd = restrict' $ setVmVkbd uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetVkbd = setVmVkbd uuid
+  , comCitrixXenclientXenmgrVmGetVkbd = getVmVkb uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetVkbd = getVmVkb uuid
+  , comCitrixXenclientXenmgrVmSetVkbd = restrict' $ setVmVkb uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetVkbd = setVmVkb uuid
 
   , comCitrixXenclientXenmgrVmGetVfb = getVmVfb uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetVfb = getVmVfb uuid
@@ -636,10 +636,10 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmSetHpet = restrict' $ setVmHpet uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetHpet = setVmHpet uuid
 
-  , comCitrixXenclientXenmgrVmGetTimerMode = fromIntegral <$> getVmTimerMode uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedGetTimerMode = fromIntegral <$> getVmTimerMode uuid
-  , comCitrixXenclientXenmgrVmSetTimerMode = (restrict' $ setVmTimerMode uuid) . fromIntegral
-  , comCitrixXenclientXenmgrVmUnrestrictedSetTimerMode = (setVmTimerMode uuid) . fromIntegral
+  , comCitrixXenclientXenmgrVmGetTimerMode = getVmTimerMode uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetTimerMode = getVmTimerMode uuid
+  , comCitrixXenclientXenmgrVmSetTimerMode = (restrict' $ setVmTimerMode uuid)
+  , comCitrixXenclientXenmgrVmUnrestrictedSetTimerMode = (setVmTimerMode uuid)
 
   , comCitrixXenclientXenmgrVmGetNestedhvm = getVmNestedHvm uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetNestedhvm = getVmNestedHvm uuid

@@ -110,7 +110,7 @@ module Vm.Queries
                , getVmDownloadProgress
                , getVmReady
                , getVmProvidesDefaultNetworkBackend
-               , getVmVkbd
+               , getVmVkb
                , getVmVfb
                , getVmV4V
                , getVmRestrictDisplayDepth
@@ -161,12 +161,12 @@ import System.Posix.Files (fileSize, getFileStatus)
 import Tools.XenStore
 
 import XenMgr.Rpc
-import XenMgr.Connect.Xenvm (isRunning)
 import XenMgr.Connect.NetworkDaemon
 import XenMgr.Config
 import XenMgr.Errors
 import XenMgr.Host
-import qualified XenMgr.Connect.Xenvm as Xenvm
+import XenMgr.Connect.Xl (isRunning)
+import qualified XenMgr.Connect.Xl as Xl
 import Rpc.Autogen.SurfmanClient
 
 import Data.Bits
@@ -561,9 +561,9 @@ getVmAcpiState uuid = do
                         else (
                           if not running
                              then return 5
-                             else Xenvm.acpiState uuid
+                             else liftIO $ Xl.acpiState uuid
                              )
-    deriveFrom <$> Xenvm.state uuid
+    deriveFrom <$> (liftIO $ Xl.state uuid)
                <*> return ll_acpi_state
                <*> readConfigPropertyDef uuid vmHibernated False
   where
@@ -665,6 +665,7 @@ getVmPrivateSpaceUsedMiB uuid =
         VirtualHardDisk -> fileSz (diskPath d)
         ExternalVdi -> fileSz (diskPath d)
         Aio -> fileSz (diskPath d)
+        Raw -> fileSz (diskPath d)
         PhysicalDevice -> return 0 -- TODO
     fileSz  f = either (const 0) id <$> liftIO (E.try $ fileSz' f :: IO (Either E.SomeException Int))
     fileSz' f = fromIntegral . mib . fileSize <$> getFileStatus f
@@ -739,7 +740,7 @@ whenManagedVm uuid f = whenM ( isManagedVm uuid ) f
 countRunningVm :: VmType -> Rpc Int
 countRunningVm typ = length <$> (filterM running =<< getVmsByType typ)
     where
-      running uuid = Xenvm.isRunning uuid
+      running uuid = Xl.isRunning uuid
 
 getVmIconBytes :: Uuid -> Rpc B.ByteString
 getVmIconBytes uuid =
@@ -1011,7 +1012,7 @@ getVmIcbinnPath uuid = readConfigPropertyDef uuid vmIcbinnPath ""
 getVmOvfTransportIso uuid = readConfigPropertyDef uuid vmOvfTransportIso False
 getVmDownloadProgress uuid = fromMaybe (0::Int) <$> dbRead ("/vm/"++show uuid++"/download-progress")
 getVmReady uuid = readConfigPropertyDef uuid vmReady True
-getVmVkbd uuid = readConfigPropertyDef uuid vmVkbd False
+getVmVkb uuid = readConfigPropertyDef uuid vmVkb False
 getVmVfb uuid = readConfigPropertyDef uuid vmVfb False
 getVmV4V uuid = readConfigPropertyDef uuid vmV4v False
 getVmRestrictDisplayDepth uuid = readConfigPropertyDef uuid vmRestrictDisplayDepth False

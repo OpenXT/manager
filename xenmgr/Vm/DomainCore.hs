@@ -30,12 +30,13 @@ module Vm.DomainCore
 
 import Data.String
 import Data.Maybe
+import Data.Int
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Text.Printf
 import Vm.Types
-import qualified XenMgr.Connect.Xenvm as Xenvm
+import qualified XenMgr.Connect.Xl as Xl
 import Tools.XenStore
 import XenMgr.Db
 import XenMgr.Rpc
@@ -58,7 +59,11 @@ getDomainID uuid
         in_db <- dbExists $ "/vm/" ++ show uuid
         if not in_db
            then return Nothing
-           else Xenvm.domainID uuid
+           else liftIO $ do
+             domid <- Xl.getDomainId uuid
+             case domid of
+               "" -> return Nothing
+               _  -> return (Just (read domid :: Int32))
 
 whenDomainID :: (MonadRpc e m) => a -> Uuid -> (DomainID -> m a) -> m a
 whenDomainID def uuid f

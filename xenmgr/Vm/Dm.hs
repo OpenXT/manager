@@ -32,7 +32,7 @@ import Vm.DomainCore
 import Vm.DmTypes
 import Vm.Uuid
 
-import qualified XenMgr.Connect.Xenvm as Xenvm
+import qualified XenMgr.Connect.Xl as Xl
 import XenMgr.Rpc
 
 import Tools.XenStore
@@ -144,4 +144,4 @@ moveBackend t frontdomid id backdomid = do
       moveNIC dev =
           do info $ printf "moving NIC (%s) backend to domid=%d" (show dev) backdomid
              uuid <- fromMaybe (error "failed to get domain UUID") <$> getDomainUuid frontdomid
-             Xenvm.setNicBackendDom uuid id backdomid
+             liftIO $ Xl.setNicBackendDom uuid id backdomid

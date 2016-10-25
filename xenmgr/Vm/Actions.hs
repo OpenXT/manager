@@ -30,9 +30,9 @@ module Vm.Actions
           , resumeFromSleep
           , hibernateVm
           , shutdownVm
-          , shutdownVmIfSafe
+          , invokeShutdownVm
           , forceShutdownVm
-          , forceShutdownVmIfSafe
+          , invokeForceShutdownVm
           , pauseVm
           , unpauseVm
           , switchVm
@@ -103,7 +103,7 @@ module Vm.Actions
           , setVmDownloadProgress
           , setVmReady
           , setVmProvidesDefaultNetworkBackend
-          , setVmVkbd
+          , setVmVkb
           , setVmVfb
           , setVmV4V
           , setVmRestrictDisplayDepth
@@ -124,6 +124,7 @@ import Data.List
 import Data.Maybe
 import Data.Bits
 import Data.String
+import Data.Int
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import qualified Data.Set as Set
@@ -176,10 +177,10 @@ import {-# SOURCE #-} Vm.React
 import qualified Vm.V4VFirewall as Firewall
 import Vm.Balloon
 import XenMgr.Rpc
-import qualified XenMgr.Connect.Xenvm as Xenvm
+import qualified XenMgr.Connect.Xl as Xl
 import qualified XenMgr.Connect.GuestRpcAgent as RpcAgent
+import XenMgr.Connect.Xl ( resumeFromSleep, resumeFromFile, suspendToFile )
 import XenMgr.Connect.NetworkDaemon
-import XenMgr.Connect.Xenvm ( resumeFromSleep, resumeFromFile, suspendToFile )
 import XenMgr.Connect.InputDaemon
 import XenMgr.Config
 import XenMgr.Errors
@@ -237,7 +238,7 @@ startServiceVm uuid = xmContext >>= \xm -> liftRpc $
                   info $ "service vm " ++ show uuid ++ " requested a memory image snapshot"
                   -- take a vm snapshot
                   info $ "taking memory image snapshot for service vm " ++ show uuid
-                  suspendToFile uuid file
+                  liftIO $ Xl.suspendToFile uuid file
                   info $ "DONE taking memory image snapshot for service vm " ++ show uuid
                   liftIO $ xsWrite (vmSuspendImageStatePath uuid) "snapshot-done"
                   -- double start, TODO: maybe wont be necessary
@@ -448,7 +449,6 @@ removeVm uuid =
        -- Need to quit xenvm
        -- FIXME: cleanly stop monitoring events
        removeDefaultEvents uuid	--cleanly...stop monitoring events
-       Xenvm.quitXenvm uuid
        notifyVmDeleted uuid
   where
     removeVhds  = Data.Foldable.mapM_ (removeDiskFiles uuid) =<< getDisks uuid
@@ -707,8 +707,7 @@ startupCheckSyncXTComfortable uuid
 
 withPreCreationState :: Uuid -> XM a -> XM a
 withPreCreationState uuid f =
-  do s <- getVmInternalState uuid
-     when (s /= PreCreate) $ xmRunVm uuid $ vmEvalEvent (VmStateChange PreCreate)
+  do
      f `catchError` (\e -> do
                                s <- getVmInternalState uuid
                                -- have to mop up here if something went wrong in pre-create state
@@ -716,48 +715,67 @@ withPreCreationState uuid f =
                                when (s == PreCreate) $ do
                                  xmRunVm uuid $ vmEvalEvent (VmStateChange Shutdown)
                                throwError e)
-     
+
+--Write the xenstore nodes for the backend and the frontend for the v4v device
+--set states to Unknown and Initializing respectively, like xenvm used to do
+xsp domid = "/local/domain/" ++ show domid
+xsp_dom0  = "/local/domain/0"
+v4vBack domid = "/backend/v4v/" ++ show domid ++ "/0"
+vfbBack domid = "/backend/vfb/" ++ show domid ++ "/0"
+
+setupV4VDevice uuid =
+  whenDomainID_ uuid $ \domid -> liftIO $ do
+    xsWrite (xsp domid ++ "/device/v4v/0/backend") ("/local/domain/0/backend/v4v/" ++ show domid ++ "/0")
+    xsWrite (xsp domid ++ "/device/v4v/0/backend-id") "0"
+    xsWrite (xsp domid ++ "/device/v4v/0/state") "1"
+
+    xsWrite (xsp_dom0 ++ (v4vBack domid) ++ "/frontend") (xsp domid ++ "/device/v4v/0")
+    xsWrite (xsp_dom0 ++ (v4vBack domid) ++ "/frontend-id") $ show domid
+    xsWrite (xsp_dom0 ++ (v4vBack domid) ++ "/state") "0"
+
+--Watch acpi state when booting a VM, used to be handled in xenvm
+monitorAcpi :: Uuid -> VmMonitor -> AcpiState -> IO ()
+monitorAcpi uuid m state = do
+    acpi_state <- Xl.acpiState uuid
+    if state == 5
+      then do return ()
+      else do
+        if state /= acpi_state
+          then do vmStateSubmit m
+                  threadDelay (10^6)
+                  monitorAcpi uuid m acpi_state
+          else do threadDelay (10^6)
+                  monitorAcpi uuid m acpi_state
+
 bootVm :: VmConfig -> XM ()
 bootVm config
-  = do -- fire xenvm up if necessary, send configuration to xenvm
+  = do
        monitor <- vm_monitor <$> xmRunVm uuid vmContext
-       liftRpc $ do
-         whenM (not <$> ensureXenvm monitor config) $ do -- starts xenvm + writes config if not up
-           -- xenvm was already up, need to send it new config
-           updateXVConfig config
+       liftRpc $ updateXVConfig config
 
-       withPreCreationState uuid create
+       withPreCreationState uuid (create monitor)
     where
       uuid = vmcfgUuid config
       updateXVConfig :: VmConfig -> Rpc ()
-      updateXVConfig c = writeXenvmConfig c >> Xenvm.readConfig uuid
-      create = do
+      updateXVConfig c = writeXlConfig c
+      create monitor = do
        -- create environment iso
        whenM (getVmOvfTransportIso uuid) . liftIO $ do
          createDirectoryIfMissing True envIsoDir
          generateEnvIso uuid (envIsoPath uuid)
          info $ "generated ovf environment ISO " ++ (envIsoPath uuid) ++ " for VM " ++ show uuid
        -- try some ballooning if we lack memory
-       bootstrap <- xmWithBalloonLock $ do
-         liftRpc $ do
-           balanced <-
-             do ok <- balanceToBoot uuid
-                if ok
-                   then return True
-                   else do
-                     -- another attempt with minimal memory
-                     -- TODO: this should work out maximum amount of memory we can use instead of trying with
-                     -- with minimum
-                     let config' = config { vmcfgMemoryMib = vmcfgMemoryMinMib config }
-                     updateXVConfig config'
-                     balanceToBoot uuid
-           when (not balanced) $ failNotEnoughMemory
+       -- fork and monitor Acpi state
+       bootstrap <- do
 
-           -- Clear the hibernated property
-           saveConfigProperty uuid vmHibernated False
+         -- Clear the hibernated property
+         saveConfigProperty uuid vmHibernated False
 
          -- run custom pre boot action
          liftRpc $ runEventScript HardFail uuid getVmRunPreBoot [uuidStr uuid]
+         -- bind any passthrough devices to pciback if possible
+         liftRpc $ bindVmPcis uuid
+
          -- fork xenvm vm startup in the background
          bootstrap <- future $ liftRpc $ do
            suspend_file <- getVmStartFromSuspendImage uuid
@@ -766,17 +784,17 @@ bootVm config
                   then return False
                   else liftIO (doesFileExist suspend_file)
            if not exists
-                then do Xenvm.startPaused uuid
+                then do liftIO $ Xl.start uuid --we start paused by default
                 else do liftIO $ xsWrite (vmSuspendImageStatePath uuid) "resume"
-                        resumeFromFile uuid suspend_file False True
+                        liftIO $ Xl.resumeFromFile uuid suspend_file False True
          return bootstrap
        -- fork vm creation phase handling in the background
        phases <- future handleCreationPhases
        -- ensure bootstrap and phase handling synchronously terminates before returning (and errors get propagated)
        force bootstrap
        force phases
+       liftIO . void $ forkIO $ monitorAcpi uuid monitor 0
 
-      xsp domid = "/local/domain/" ++ show domid
       writable domid path = do
         xsWrite path ""
         xsSetPermissions path [ Permission 0 []
@@ -794,31 +812,62 @@ bootVm config
           liftIO $
             mapM_ updateCdDeviceMediaStatusKey =<< liftIO getHostBSGDevices
 
+      setupBiosStrings uuid =
+          whenDomainID_ uuid $ \domid -> do
+            liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-manufacturer") "OpenXT"
+            liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-product") "OpenXT 5.0.0"
+            liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-seamless-hint") "0"
+
+      --Changes to surfman/inputserver moved these calls into xenvm. With xenvm removal, it's easier to call
+      --them from Xenmgr.
+      surfmanDbusCalls uuid =
+          whenDomainID_ uuid $ \domid -> do
+            rpcCallOnce (Xl.xlSurfmanDbus uuid "set_pv_display" [toVariant $ (read (show domid) :: Int32), toVariant $ ""])
+            rpcCallOnce (Xl.xlSurfmanDbus uuid "set_visible" [toVariant $ (read (show domid) :: Int32), toVariant $ (0 :: Int32), toVariant $ False])
+            return ()
+
+      inputDbusCalls uuid =
+          whenDomainID_ uuid $ \domid -> do
+            rpcCallOnce (Xl.xlInputDbus uuid "attach_vkbd" [toVariant $ (read (show domid):: Int32) ])
+            return ()
+
       handleCreationPhases :: XM ()
       handleCreationPhases = do
         waitForVmInternalState uuid CreatingDevices 30
-         
+
+        --Move these tasks up earlier in the guest boot process. Prevents the need
+        --for XL to implement a handshake with xenmgr for v4v firewall rules. Also speeds up
+        --the boot process
+        liftRpc $ do
+          exportVmSwitcherInfo uuid
+          stubdom <- getVmStubdom uuid
+          when stubdom $ updateStubDomainID uuid
+          stubdom_memory <- getVmStubdomMemory uuid
+          stubdom_cmdline <- getVmStubdomCmdline uuid
+          applyVmFirewallRules uuid
+
+        waitForVmInternalState uuid Created 30
         -- BEFORE DEVICE MODEL
         info $ "pre-dm setup for " ++ show uuid
         liftRpc $ do 
           twiddlePermissions uuid
-          exportVmSwitcherInfo uuid
           setupCDDrives uuid
+          --No longer passing v4v in the config, keep in db.
+          v4v_enabled <- getVmV4V uuid
+          when v4v_enabled $ setupV4VDevice uuid
+
+          setupBiosStrings uuid
           -- some little network plumbing
           gives_network <- getVmProvidesNetworkBackend uuid
           when gives_network $ whenDomainID_ uuid $ \domid -> do
             liftIO $ xsWrite backendNode (show domid)
             liftIO $ xsChmod backendNode "r0"
 
-          stubdom <- getVmStubdom uuid
-          when stubdom $ updateStubDomainID uuid
-          stubdom_memory <- getVmStubdomMemory uuid
-          stubdom_cmdline <- getVmStubdomCmdline uuid
+          vfb_enabled <- getVmVfb uuid
+          when vfb_enabled $ surfmanDbusCalls uuid
 
-          applyVmFirewallRules uuid
-          -- notify that v4v rules have been set up, so xenvm can unpause stubdom
-          whenDomainID_ uuid $ \domid -> liftIO $
-            xsWrite (domainXSPath domid ++ "/v4v-firewall-ready") "1"
+          vkb_enabled <- getVmVkb uuid
+          when vkb_enabled $ inputDbusCalls uuid
           info $ "done pre-dm setup for " ++ show uuid
          
         waitForVmInternalState uuid Created 60
@@ -831,7 +880,7 @@ bootVm config
           -- assign sticky cd drives
           mapM_ (\d -> assignCdDevice d uuid) =<< getVmStickyCdDevices uuid
           info $ "unpause " ++ show uuid
-          Xenvm.unpause uuid
+          liftIO $ Xl.unpause uuid
         -- wait for bootup services to complete if using sentinel
         maybe (return()) (\p -> liftIO 
                             . void 
@@ -909,24 +958,19 @@ disconnectFrontVifs back_uuid =
       disconnect (front_uuid, dev) = do
           let nid@(XbDeviceID nic_id) = dmfID dev
           info $ "disconnecting nic uuid=" ++ show front_uuid ++ " id=" ++ show nic_id
-          Xenvm.connectVif front_uuid nid False
+          liftIO $ Xl.connectVif front_uuid nid False
 
 
 -- Reboot a VM
 rebootVm :: Uuid -> Rpc ()
 rebootVm uuid = do
     info $ "rebooting VM " ++ show uuid
-    -- Write XENVM configuration file
-    writeXenvmConfig =<< getVmConfig uuid True
-
-    -- Ask xenvm kindly to reload it
-    Xenvm.readConfig uuid
-
-    -- Request start from XENVM
-    use_agent <- RpcAgent.guestAgentRunning uuid
-    if use_agent
-       then RpcAgent.reboot uuid
-       else Xenvm.reboot uuid
+    -- Write XL configuration file
+    writeXlConfig =<< getVmConfig uuid True
+    --Let xl take care of bringing down the domain and updating our state
+    --When xenmgr sees the 'Rebooted' state, it fires off a startVm call,
+    --which performs all the normal guest boot tasks, while xl brings up the domain.
+    liftIO $ Xl.reboot uuid
 
 shutdownVm :: Uuid -> Rpc ()
 shutdownVm uuid = do
@@ -940,35 +984,28 @@ shutdownVm uuid = do
       info $ "resuming " ++ show uuid ++ " from S3 DONE."
     if use_agent
        then RpcAgent.shutdown uuid
-       else Xenvm.shutdown uuid
-
-canIssueVmShutdown :: Vm Bool
-canIssueVmShutdown = liftRpc . Xenvm.isXenvmUp =<< vmUuid
-
-shutdownVmIfSafe :: Vm ()
-shutdownVmIfSafe = safe =<< canIssueVmShutdown where
-    safe False = vmUuid >>= \uuid -> warn $ "ignoring request to shutdown VM " ++ show uuid
-    safe _     = liftRpc . shutdownVm =<< vmUuid
+       else liftIO $ Xl.shutdown uuid
 
 forceShutdownVm :: Uuid -> Rpc ()
 forceShutdownVm uuid = do
     info $ "forcibly shutting down VM " ++ show uuid
-    Xenvm.destroy uuid
+    liftIO $ Xl.destroy uuid
 
-forceShutdownVmIfSafe :: Vm ()
-forceShutdownVmIfSafe = safe =<< canIssueVmShutdown where
-    safe False = vmUuid >>= \uuid -> warn $ "ignoring request to forcibly shutdown VM " ++ show uuid
-    safe _     = liftRpc . forceShutdownVm =<< vmUuid
+invokeShutdownVm :: Vm ()
+invokeShutdownVm = liftRpc . shutdownVm =<< vmUuid
+
+invokeForceShutdownVm :: Vm ()
+invokeForceShutdownVm = liftRpc . forceShutdownVm =<< vmUuid
 
 pauseVm :: Uuid -> Rpc ()
 pauseVm uuid = do
   info $ "pausing VM " ++ show uuid
-  Xenvm.pause uuid
+  liftIO $ Xl.pause uuid
 
 unpauseVm :: Uuid -> Rpc ()
 unpauseVm uuid = do
   info $ "unpausing VM " ++ show uuid
-  Xenvm.unpause uuid
+  liftIO $ Xl.unpause uuid
 
 assertPvAddons :: Uuid -> Rpc ()
 assertPvAddons uuid = getVmPvAddons uuid >>= \addons -> when (not addons) failActionRequiresPvAddons
@@ -983,7 +1020,7 @@ sleepVm uuid = do
               if use_agent
                  then RpcAgent.sleep uuid
                  else do assertPvAddons uuid
-                         Xenvm.sleep uuid
+                         liftIO $ Xl.sleep uuid
 
 hibernateVm :: Uuid -> Rpc ()
 hibernateVm uuid = do
@@ -997,17 +1034,16 @@ hibernateVm uuid = do
       when (acpi == 3) $ resumeS3AndWaitS0 uuid
       if use_agent
          then RpcAgent.hibernate uuid
-         else Xenvm.hibernate uuid
+         else liftIO $ Xl.hibernate uuid
       saveConfigProperty uuid vmHibernated True
 
 resumeS3AndWaitS0 :: Uuid -> Rpc ()
 resumeS3AndWaitS0 uuid = do
   acpi <- getVmAcpiState uuid
   when (acpi == 3) $ do
-    Xenvm.resumeFromSleep uuid
-    done <- Xenvm.waitForAcpiState uuid 0 (Just 30)
+    liftIO $ Xl.resumeFromSleep uuid
+    done <- liftIO $ Xl.waitForAcpiState uuid 0 (Just 30)
     when (not done) $ warn $ "timeout waiting for S0 for " ++ show uuid
-
 
 -- Execute action in parallel for each of given VM, returns results of actions. If any action
 -- fails, we report an error through exception
@@ -1359,8 +1395,8 @@ mountVmDisk uuid diskID readonly path =
                  xsWrite (xspath ++ "/path") path
                  return ()
           where
-            removedev dev = do
-              tapDestroy dev
+            removedev path = do
+              tapDestroy path
               xsRm xspath
             xspath = "/xenmgr/mount/" ++ show uuid ++ "/" ++ show diskID
 
@@ -1381,7 +1417,7 @@ unmountVmDisk uuid diskID =
                Nothing -> error $ "device not mounted " ++ show dev
                Just mountpath -> do
                  readProcessOrDie "umount" [mountpath] ""
-                 tapDestroy dev
+                 tapDestroy vhdpath
                  xsRm xspath
                  return ()
           where
@@ -1540,8 +1576,9 @@ changeVmNicNetwork uuid nicid network = do
           -- notify xenvm TODO: maybe won't be necessary sometime?
           -- notify network daemon
           -- resynchronise vif state
-          Xenvm.connectVif uuid nicid False
-          Xenvm.changeNicNetwork uuid nicid network
+          info $ "====In ChangeVmNicNetwork====="
+          liftIO $ Xl.connectVif uuid nicid False
+          liftIO $ Xl.changeNicNetwork uuid nicid network
           whenDomainID_ uuid $ \domid -> joinNetwork network domid nicid
 -- Property accessors
 ---------------------
@@ -1591,7 +1628,7 @@ setVmCd uuid str =
                      | otherwise          = do isos <- appIsoPath
                                                let path = isos ++ "/" ++ name
                                                -- hot swap cd
-                                               whenVmRunning uuid (Xenvm.changeCd uuid path)
+                                               whenVmRunning uuid (liftIO $ Xl.changeCd uuid path)
                                                return $ disk { diskPath = path }
     name | str == ""   = "null.iso"
          | otherwise   = str
@@ -1766,7 +1803,7 @@ setVmDownloadProgress uuid v = do
   dbWrite ("/vm/"++show uuid++"/download-progress") (v::Int)
   notifyVmTransferChanged uuid  
 setVmReady uuid v = saveConfigProperty uuid vmReady (v::Bool)
-setVmVkbd uuid v = saveConfigProperty uuid vmVkbd (v::Bool)
+setVmVkb uuid v = saveConfigProperty uuid vmVkb (v::Bool)
 setVmVfb uuid v = saveConfigProperty uuid vmVfb (v::Bool)
 setVmV4V uuid v = saveConfigProperty uuid vmV4v (v::Bool)
 setVmRestrictDisplayDepth uuid v = saveConfigProperty uuid vmRestrictDisplayDepth (v::Bool)
@@ -1774,7 +1811,7 @@ setVmRestrictDisplayRes uuid v = saveConfigProperty uuid vmRestrictDisplayRes (v
 setVmPreserveOnReboot uuid v = saveConfigProperty uuid vmPreserveOnReboot (v::Bool)
 setVmBootSentinel uuid v = saveOrRmConfigProperty uuid vmBootSentinel (v::Maybe String)
 setVmHpet uuid v = saveConfigProperty uuid vmHpet (v::Bool)
-setVmTimerMode uuid v = saveConfigProperty uuid vmTimerMode (v::Int)
+setVmTimerMode uuid v = saveConfigProperty uuid vmTimerMode (v::String)
 setVmNestedHvm uuid v = saveConfigProperty uuid vmNestedHvm (v::Bool)
 setVmSerial uuid v = saveConfigProperty uuid vmSerial (v::String)
 
