@@ -33,8 +33,8 @@ module Vm.Config (
                 , getConfigPropertyName
 
                   -- Xenvm config out of database config
-                , getXenvmConfig
-                , stringifyXenvmConfig
+                , getXlConfig
+                , stringifyXlConfig
 
                   -- list of interesting config properties
                 , vmUuidP, vmName, vmDescription, vmType, vmSlot, vmImagePath, vmPvAddons, vmPvAddonsVersion
@@ -65,7 +65,7 @@ module Vm.Config (
                 , vmXciCpuidSignature
                 , vmS3Mode
                 , vmS4Mode
-                , vmVsnd, vmVkbd, vmVfb, vmV4v
+                , vmVsnd, vmVkb, vmVfb, vmV4v
                 , vmRealm
                 , vmSyncUuid
                 , vmIcbinnPath
@@ -156,7 +156,8 @@ instance EnumMarshall DiskType where
                       , (QemuCopyOnWrite, "qcow")
                       , (ExternalVdi    , "vdi" )
                       , (Aio            , "aio" )
-                      , (VirtualHardDisk, "vhd" ) ]
+                      , (VirtualHardDisk, "vhd" )
+                      , (Raw            , "raw" ) ]
 
 instance EnumMarshall DiskSnapshotMode where
     enumMarshallMap = [ (SnapshotTemporary         , "temporary"           )
@@ -437,13 +438,13 @@ vmCoresPerSocket = property "config.cores-per-socket"
 vmQemuDmPath = property "config.qemu-dm-path"
 vmQemuDmTimeout = property "config.qemu-dm-timeout"
 vmVsnd = property "config.vsnd"
-vmVkbd = property "config.vkbd"
+vmVkb = property "config.vkb"
 vmVfb = property "config.vfb"
 vmV4v = property "config.v4v"
 vmHpet = property "config.hpet"
 vmHpetDefault = True
 vmTimerMode = property "config.timer-mode"
-vmTimerModeDefault = (1 :: Int)
+vmTimerModeDefault = "no_delay_for_missed_ticks"
 vmNestedHvm = property "config.nestedhvm"
 vmSerial = property "config.serial"
 vmStubdomMemory = property "config.stubdom-memory"
@@ -510,11 +511,11 @@ diagnose cfg
     | otherwise = [ ]
 
 ------------------------------------------
--- Create a config file for running XENVM
+-- Create a config file for running Xl
 ------------------------------------------
 
--- Xenvm config is a simple list of strings in the format of key=value
-newtype XenvmConfig = XenvmConfig [ Param ]
+-- Xl config is a simple list of strings in the format of key=value
+newtype XlConfig = XlConfig [ Param ]
 
 type Param    = String
 type UserID   = String
@@ -528,35 +529,42 @@ amtPtActive uuid = do
   -- Amt PT is active if a) system amt pt is activated b) vm amt pt is activated
   (&&) <$> haveSystemAmtPt <*> readConfigPropertyDef uuid vmAmtPt False
 
-stringifyXenvmConfig :: XenvmConfig -> String
-stringifyXenvmConfig (XenvmConfig params) = unlines params
+stringifyXlConfig :: XlConfig -> String
+stringifyXlConfig (XlConfig params) = unlines params
 
--- Gets a xenvm config, given domain ID of networking domain.
-getXenvmConfig :: VmConfig -> Rpc XenvmConfig
-getXenvmConfig cfg =
-    fmap (XenvmConfig . concat) . mapM (force <=< future) $
+-- Gets a xl config, given domain ID of networking domain.
+getXlConfig :: VmConfig -> Rpc XlConfig
+getXlConfig cfg =
+    fmap (XlConfig . concat) . mapM (force <=< future) $
     [prelude, diskSpecs cfg, nicSpecs cfg, pciSpecs cfg
-    , map ("extra-hvm="++) <$> extraHvmSpecs uuid
+    , extraHvmSpecs uuid
     , miscSpecs cfg]
   where
     uuid = vmcfgUuid cfg
     -- First section of xenvm config file
     prelude = do Just uuid <- readConfigProperty uuid vmUuidP :: Rpc (Maybe Uuid)
-                 let kernel = maybe [] (\path -> ["kernel="++path]) (vmcfgKernelPath cfg)
-                 let name = maybeToList $ ("name="++) <$> (vmcfgName cfg)
-                 return $ [ "uuid=" ++ (show uuid)
-                          , "power-management=2"
-                          , "startup=poweroff"
-                          , "extra-local-watch=power-state"
-                          , "on_restart=preserve"
-                          , "qemu-dm-path=" ++ (vmcfgQemuDmPath cfg)
-                          , "qemu-dm-timeout=" ++ show (vmcfgQemuDmTimeout cfg)
-                          , "xci-cpuid-signature=" ++ (if vmcfgXciCpuidSignature cfg then "true" else "false")
-                          ] ++ oem_acpi
-                            ++ name
+                 hvm <- readConfigPropertyDef uuid vmHvm False
+                 name <- readConfigPropertyDef uuid vmName ""
+                 let kernel = maybe [] (\path -> ["kernel='"++path++"'"]) (vmcfgKernelPath cfg)
+                 let nameStr = if name == "" then [] else [("name='"++ name ++ "'")]
+                 let buildType = case hvm of
+                                   True  -> "hvm"
+                                   False -> "generic"
+                 let builder = ["builder='" ++ buildType ++ "'"]
+                 let dm_args = case hvm of
+                                 True  -> ["device_model_version='qemu-xen'"]
+                                 False -> []
+
+                 return $ [ "uuid='" ++ (show uuid) ++ "'"
+                          , "vnc=0"
+                          , "vga='stdvga'"
+                          , "crypto_key_dir='" ++ (vmcfgCryptoKeyDirs cfg) ++ "'"
+                          , "xci_cpuid_signature=" ++ (if vmcfgXciCpuidSignature cfg then "1" else "0")
+                          ]
+                            ++ nameStr
                             ++ kernel
-    oem_acpi | vmcfgOemAcpiFeatures cfg = [ "oem-features=1" ]
-             | otherwise = [ ]
+                            ++ builder
+                            ++ dm_args
 
 -- Next section: information about disk drives
 allDisks = vmcfgDisks
@@ -568,19 +576,28 @@ isDiskValid disk =
       VirtualHardDisk -> liftIO . doesFileExist $ diskPath disk
       _               -> return True
 
+--build an xl config style disk list
 diskSpecs :: VmConfig -> Rpc [DiskSpec]
-diskSpecs cfg = mapM (diskSpec uuid crypto_dirs) =<< disks where
-  disks       = filter diskEnabled <$> validDisks cfg
-  crypto_dirs = vmcfgCryptoKeyDirs cfg
-  uuid        = vmcfgUuid cfg
+diskSpecs cfg = do
+  disklist <- dSpec
+  return $ ["disk=[" ++ (concat (intersperse "," disklist)) ++ "]"]
 
-diskSpec :: Uuid -> [FilePath] -> Disk -> Rpc DiskSpec
-diskSpec uuid crypto_dirs d  = do
-  let crypto = cryptoSpec uuid crypto_dirs d
-  return $ "disk=" ++ printf "%s:%s:%s:%s:%s:%s:%s"
-             (diskPath d) (enumMarshall $ diskType d) (diskDevice d) (enumMarshall $ diskMode d)
-             (enumMarshall $ diskDeviceType d) snapshot crypto
-      where snapshot = maybe "" enumMarshall (diskSnapshotMode d)
+  where
+    dSpec       = mapM (diskSpec uuid) =<< disks
+    disks       = filter diskEnabled <$> validDisks cfg
+    uuid        = vmcfgUuid cfg
+
+diskSpec :: Uuid -> Disk -> Rpc DiskSpec
+diskSpec uuid d  = do
+  stubdom <- readConfigPropertyDef uuid vmStubdom False
+  return $ printf "'%s,%s,%s,%s,%s,%s'"
+             (diskPath d) (fileToRaw (enumMarshall $ diskType d)) (cdType stubdom d) (diskDevice d) (enumMarshall $ diskMode d) (if ((enumMarshall $ diskDeviceType d) == "cdrom") then (enumMarshall $ diskDeviceType d) else "")
+  where
+    cdType stubdom d =
+      case (enumMarshall $ diskDeviceType d) of
+          "cdrom" -> if stubdom then "backendtype=tap" else "backendtype=phy"
+          _       -> "backendtype=tap"
+    fileToRaw typ = if typ == "file" then "raw" else typ
 
 -- Next section: information about Network Interfaces
 nicSpecs :: VmConfig -> Rpc [NicSpec]
@@ -588,7 +605,7 @@ nicSpecs cfg =
     do amt <- amtPtActive (vmcfgUuid cfg)
        maybeHostmac <- liftIO eth0Mac
        -- Get the configuration file entries ...
-       (fmap.map) (\nic -> "vif=" ++ nicSpec cfg amt maybeHostmac nic (net_domid nic)) .
+       (fmap.map) (\nic -> "vif=['" ++ (nicSpec cfg amt maybeHostmac nic (net_domid nic)) ++ "']") .
          -- ... for all the nics which are defined & enabled & pass the policy check
          filterM policyCheck . filter nicdefEnable $ vmcfgNics cfg
 
@@ -608,8 +625,7 @@ nicSpecs cfg =
 
 nicSpec :: VmConfig -> Bool -> Maybe Mac -> NicDef -> DomainID -> String
 nicSpec cfg amt eth0Mac nic networkDomID =
-    let entries = [ "id="     ++ show (nicdefId nic)
-                  ] ++ network ++ bridge ++ backend ++ wireless ++ vmMac
+    let entries = [] ++ bridge ++ backend ++ wireless ++ vmMac ++ nicType
     in
       concat $ intersperse "," entries
     where
@@ -618,13 +634,11 @@ nicSpec cfg amt eth0Mac nic networkDomID =
           = case filter (\net -> niHandle net == nicdefNetwork nic) (vmcfgNetworks cfg) of
                 (ni:_) -> Just ni
                 _      -> Nothing
-      -- path to network daemon 'network' object
-      network   = ["network=" ++ (TL.unpack $ strObjectPath $ networkObjectPath $ nicdefNetwork nic)]
       -- bridge name, only necessary for emulated net interfaces as qemu manages them
-      bridge    = maybe [] (\bn -> ["bridge=" ++ bn]) bridgename
+      bridge    = ["bridge=" ++ (TL.unpack $ strObjectPath $ networkObjectPath$ nicdefNetwork nic)]
       bridgename= niBridgeName `fmap` netinfo
       -- force backend domid for NIC if specified
-      backend   = ["backend-domid=" ++ show networkDomID]
+      backend   = ["backend=" ++ show networkDomID]
 
       -- HACK: don't put device as wireless for linuxes, as we have no pv driver for that
       wireless  | nicdefWirelessDriver nic
@@ -639,6 +653,7 @@ nicSpec cfg amt eth0Mac nic networkDomID =
                 | Just mac <- eth0Mac, amt == True  = ["mac=" ++ unswizzleMac mac]
       -- Otherwise we do not touch the VM mac and let xenvm choose
                 | otherwise                         = [ ]
+      nicType   = if (vmcfgStubdom cfg) then ["type=ioemu"] else ["type=vif"]
 
 unswizzleMac :: Mac -> Mac
 unswizzleMac mac = let bytes = macToBytes mac
@@ -652,18 +667,7 @@ pciSpecs cfg = do
     let devices = vmcfgPciPtDevices cfg
         uuid    = vmcfgUuid cfg
 
-    display_str <- readConfigProperty uuid vmDisplay
-    let display = case display_str of
-                    Just ('v':'n':'c':_) -> VNC
-                    _                    -> Other
-
-    xengfx <- liftIO $ ifM (doesFileExist "/config/xengfx") (return "extra-hvm=xengfx=") (return "extra-hvm=std-vga=")
-
-    return $
-         -- and get specs from them
-         map (\dev -> "pci=0,bind," ++ stringAddr dev ++ fslot dev ++ msi dev) devices
-          -- plus some vga info depending on vm type
-          ++ vgaopts xengfx (vmcfgGraphics cfg) (vmcfgVgpuMode cfg) display
+    return $ ["pci=[" ++ (concat (intersperse "," (map (\dev -> "'" ++ stringAddr dev ++ "'") devices))) ++ "]"]
  where
    stringAddr (PciPtDev d _ _ _) =
            printf "%04x:%02x:%02x.%x"
@@ -672,32 +676,28 @@ pciSpecs cfg = do
                (pciSlot   addr)
                (pciFunc   addr)
        where addr = devAddr d
-   -- Xenvm requires guest_slot=blabla to be passed if we want to force the pci device slot in guest
-   -- to specific value
-   fslot (PciPtDev _ PciSlotDontCare _ _)  = ""
-   fslot (PciPtDev d PciSlotMatchHost _ _) = printf ",guest_slot=%d" (pciSlot . devAddr $ d)
-   fslot (PciPtDev d (PciSlotUse s) _ _)   = printf ",guest_slot=%d" s
-
-   msi d | pciPtMsiTranslate d = ",msitranslate=1"
-         | otherwise           = ""
-
-   -- Some additional info depending on type of vm
-   vgaopts xengfx = vgaopts' where
-     vgaopts' HDX    Nothing _           = [ "extra-hvm=gfx_passthru=" ]
-     vgaopts' HDX    (Just vgpu) _
-         | null (vgpuPciPtDevices vgpu) = [ "extra-hvm=vgpu", xengfx, "extra-hvm=surfman=" ]
-         | otherwise                    = [ "extra-hvm=gfx_passthru=", "extra-hvm=surfman=" ]
-     vgaopts' VGAEmu _       VNC         = [ xengfx ]
-     vgaopts' VGAEmu _       _           = [ xengfx, "extra-hvm=surfman=" ]
 
 -- Extra HVM parameters from database
 extraHvmSpecs :: Uuid -> Rpc [Param]
 extraHvmSpecs uuid =
-    readConfigPropertyDef uuid vmExtraHvms []
+    do
+        prop <- readConfigPropertyDef uuid vmExtraHvms []
+        return $ ["device_model_args=[" ++ (concat (intersperse "," prop)) ++ "]"]
 
 cpuidResponses :: VmConfig -> [String]
 cpuidResponses cfg = map option (vmcfgCpuidResponses cfg) where
     option (CpuidResponse r) = printf "cpuid=%s" r
+
+--helper function to wrap config options in quotes (xl specific)
+wrapQuotes :: String -> String
+wrapQuotes = (++"'") <$> ("'"++)
+
+--helper function to wrap config option in brackets (xl specific)
+wrapBrackets :: String -> String
+wrapBrackets = (++"]") <$> ("["++)
+
+--helper function to combine all extra_hvm args into one 'extra_hvm' entry
+combineExtraHvmParams hvmStuff = ["extra_hvm=[" ++ concat (intersperse "," (map wrapQuotes hvmStuff)) ++ "]"]
 
 -- Additional misc stuff in xenvm config
 miscSpecs :: VmConfig -> Rpc [Param]
@@ -712,20 +712,24 @@ miscSpecs cfg = do
     let cdexcl_opt = case vmcfgCdExclusive cfg of
                        True -> "-exclusive"
                        _    -> ""
-    let cdromParams = map cdromParam bsgs
+    let cdromParams = let bsgList = map cdromParam bsgs in
+                        case length bsgList of
+                           0 -> []
+                           _ -> (["-drive"] ++) $ intersperse "-drive" bsgList
         cdromParam (BSGDevice a b c d) =
             let bsg_str = "/dev/bsg/" ++ (concat . intersperse ":" $ map show [a,b,c,d]) in
             case (cdromA,cdromR) of
               -- no cdrom
               (False, _)    -> ""
               -- full access to cdrom
-              (True, True)  -> "extra-hvm=cdrom-pt" ++ cdexcl_opt ++ "=" ++ bsg_str
+              --atapi-pt-local until we get stubdoms going, then we need atapi-pt-v4v
+              (True, True)  -> printf "file=%s:%s,media=cdrom,if=atapi-pt,format=raw,readonly=%s" "atapi-pt-local" bsg_str "off"
               -- readonly access to cdrom
-              (True, False) -> "extra-hvm=cdrom-pt-ro" ++ cdexcl_opt ++ "=" ++ bsg_str
+              (True, False) -> printf "file=%s:%s,media=cdrom,if=atapi-pt,format=raw,readonly=%s" "atapi-pt-local" bsg_str "on"
 
     let empty = pure []
     snd      <- ifM (policyQueryAudioAccess    uuid) sound          empty
-    audioRec <- ifM (policyQueryAudioRecording uuid) empty          (pure ["extra-hvm=disable-audio-rec="])
+    audioRec <- ifM (policyQueryAudioRecording uuid) empty          (pure ["-disable-audio-rec"])
     vcpus    <- readConfigPropertyDef uuid vmVcpus (1::Int)
     coresPS  <- readConfigPropertyDef uuid vmCoresPerSocket vcpus
     stubdom_ <- liftIO stubdom
@@ -733,10 +737,11 @@ miscSpecs cfg = do
     hpet_    <- hpet
     timer_mode_ <- timer_mode
     nested_ <- nested
+    dm_override_ <- liftRpc dm_override
 
     let coresPSpms = if coresPS > 1 then ["cores-per-socket=" ++ show coresPS] else ["cores-per-socket=" ++ show vcpus]
     return $
-           t ++ v ++ cdromParams
+           t ++ v ++ combineExtraHvmParams (cdromParams ++ audioRec)
         ++ ["memory="++show (vmcfgMemoryMib cfg) ]
         ++ ["memory-max="++show (vmcfgMemoryStaticMaxMib cfg) ]
         ++ smbios_pt ++ snd ++ audioRec ++ coresPSpms
@@ -744,6 +749,7 @@ miscSpecs cfg = do
         ++ hpet_
         ++ timer_mode_
         ++ nested_
+        ++ dm_override_
     where
       uuid = vmcfgUuid cfg
       -- omit if not specified
@@ -759,7 +765,7 @@ miscSpecs cfg = do
              where i True = 1
                    i _    = 0
       timer_mode = readConfigPropertyDef uuid vmTimerMode vmTimerModeDefault >>= 
-                   \ v -> return ["timer-mode=" ++ show v]
+                   \ v -> return ["timer_mode=" ++ (show v)]
       nested = readConfigPropertyDef uuid vmNestedHvm False >>=
                    \ v -> if v then return ["nested=true"] else return []
 
@@ -770,54 +776,74 @@ miscSpecs cfg = do
                      , "smbios-pt=true" ]
 
       -- Activate sound
-      sound = maybeToList . fmap ("sound="++) <$> readConfigProperty uuid vmSound
+      sound = maybeToList . fmap (("soundhw='"++) <$> (++"'")) <$> readConfigProperty uuid vmSound
 
+      -- Tells xl to use a stubdom or not
       stubdom | not (vmcfgStubdom cfg) = return []
-              | otherwise              = (\u -> ["stubdom="++show u]) <$> uuidGen
+              | otherwise              = return ["device_model_stubdomain_override=1"]
+
+      -- Specifies path to qemu binary
+      dm_override =
+        do
+           hvm <- readConfigPropertyDef uuid vmHvm False
+           case hvm of
+             False     -> return []
+             otherwise -> return ["device_model_override='/usr/bin/qemu-system-i386'"]
 
       usb_opts | not (vmcfgUsbEnabled cfg) = return ["usb=false"]
                | otherwise                 = return []
 
       platform =
-                  x (vmcfgRestrictDisplayDepth cfg) "platform=restrictdisplaydepth=1"
-               ++ x (vmcfgRestrictDisplayRes   cfg) "platform=restrictdisplayres=1"
-               where x cond s = if cond then [s] else []
+                  x (vmcfgRestrictDisplayDepth cfg) "restrictdisplaydepth="
+               ++ x (vmcfgRestrictDisplayRes   cfg) "restrictdisplayres="
+               where x cond s = if cond then [s++"1"] else [s++"0"]
 
       -- Other config keys taken directly from .config subtree which we delegate directly
       -- to xenvm
       passToXenvmProperties =
-          [ ("notify"          , vmNotify)
-          , ("hvm"             , vmHvm)
+          [ ("hvm"             , vmHvm)
           , ("pae"             , vmPae)
           , ("acpi"            , vmAcpi)
           , ("apic"            , vmApic)
-          , ("viridian"        , vmViridian)
+          , ("viridian"        , vmViridian) --set to 'default'
           , ("nx"              , vmNx)
-          , ("display"         , vmDisplay)
+          , ("dm_display"      , vmDisplay) --this should now be set to surfman or none
           , ("boot"            , vmBoot)
-          , ("cmdline"         , vmCmdLine)
-          , ("initrd"          , vmInitrd)
-          , ("acpi-pt"         , vmAcpiPt)
+          , ("extra"           , vmCmdLine)
           , ("vcpus"           , vmVcpus)
           , ("hap"             , vmHap)
-          , ("vsnd"            , vmVsnd)
-          , ("vkbd"            , vmVkbd)
+          , ("vkb"             , vmVkb)
           , ("vfb"             , vmVfb)
-          , ("v4v"             , vmV4v)
-          , ("passthrough-io"  , vmPassthroughIo)
-          , ("passthrough-mmio", vmPassthroughMmio)
-          , ("startup"         , vmStartup)
-          , ("flask-label"     , vmFlaskLabel)
+          , ("seclabel"        , vmFlaskLabel)
           , ("serial"          , vmSerial)
-          , ("stubdom-cmdline" , vmStubdomCmdline)
-          , ("stubdom-memory"  , vmStubdomMemory)
+          , ("stubdom_cmdline" , vmStubdomCmdline)
+          , ("stubdom_memory"  , vmStubdomMemory)
           ]
 
+      -- xl config handles certain options different than others (eg. quotes, brackets)
+      -- we format them on a case by case basis here before sending them off to xl.
       otherXenvmParams = concat <$> sequence
                          [ reverse . catMaybes <$> mapM g passToXenvmProperties
                          , extra_xenvm
                          ]
-        where g (name,prop) = fmap (\v -> name ++ "=" ++ v) <$> readConfigProperty uuid prop
+        where g (name,prop) = fmap (\v ->
+                              case v of
+                                "none"  -> []
+                                "true"  -> name ++ "=" ++ "1"
+                                "false" -> name ++ "=" ++ "0"
+                                _       -> case name of
+                                             "viridian" -> name ++ "=" ++ (wrapBrackets $ wrapQuotes v)
+                                             "serial"   -> name ++ "=" ++ (wrapBrackets $ wrapQuotes v)
+                                             "extra"    -> case v of
+                                                           "" -> []
+                                                           _  -> name ++ "=" ++ (wrapQuotes v)
+                                             "seclabel" -> name ++ "=" ++ (wrapQuotes v)
+                                             "dm_display" -> name ++ "=" ++ (wrapQuotes v)
+                                             "boot"     -> name ++ "=" ++ (wrapQuotes v)
+                                             "stubdom_cmdline" -> name ++ "=" ++ (wrapQuotes v)
+                                             _          -> name ++ "=" ++ v) <$>
+                                readConfigProperty uuid prop
+
               -- additional parameters passed through config/extra-xenvm/... key
               extra_xenvm :: Rpc [Param]
               extra_xenvm = readConfigPropertyDef uuid vmExtraXenvm []
