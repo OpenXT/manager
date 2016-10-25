@@ -40,8 +40,8 @@ module Vm.Config (
                 , vmUuidP, vmName, vmDescription, vmType, vmSlot, vmImagePath, vmPvAddons, vmPvAddonsVersion
                 , vmStartOnBoot, vmStartOnBootPriority, vmKeepAlive, vmProvidesNetworkBackend, vmTimeOffset
                 , vmAmtPt, vmCryptoUser, vmCryptoKeyDirs, vmStartup
-                , vmNotify, vmHvm, vmPae, vmAcpi, vmApic, vmViridian, vmNx, vmSound, vmMemory, vmHap, vmSmbiosPt
-                , vmDisplay, vmBoot, vmCmdLine, vmKernel, vmInitrd, vmAcpiPt, vmVcpus, vmGpu
+                , vmNotify, vmHvm, vmPae, vmAcpi, vmApic, vmViridian, vmNx, vmSound, vmMemory, vmHap, vmSmbios
+                , vmDisplay, vmBoot, vmCmdLine, vmKernel, vmInitrd, vmAcpiPath, vmVcpus, vmGpu
                 , vmKernelExtract, vmInitrdExtract
                 , vmMemoryStaticMax
                 , vmMemoryMin
@@ -426,9 +426,9 @@ vmKernel = property "config.kernel"
 vmKernelExtract = property "config.kernel-extract"
 vmInitrd = property "config.initrd"
 vmInitrdExtract = property "config.initrd-extract"
-vmAcpiPt = property "config.acpi-pt"
+vmAcpiPath = property "config.acpi-path"
 vmVcpus = property "config.vcpus"
-vmSmbiosPt = property "config.smbios-pt"
+vmSmbios = property "config.smbios"
 vmVideoram = property "config.videoram"
 vmPassthroughMmio = property "config.passthrough-mmio"
 vmPassthroughIo = property "config.passthrough-io"
@@ -743,13 +743,14 @@ miscSpecs cfg = do
     return $
            t ++ v ++ combineExtraHvmParams (cdromParams ++ audioRec)
         ++ ["memory="++show (vmcfgMemoryMib cfg) ]
-        ++ ["memory-max="++show (vmcfgMemoryStaticMaxMib cfg) ]
-        ++ smbios_pt ++ snd ++ audioRec ++ coresPSpms
+        ++ ["maxmem="++show (vmcfgMemoryStaticMaxMib cfg) ]
+        ++ smbios_path ++ snd -- ++ coresPSpms --disable and CoresPS for now
         ++ stubdom_ ++ cpuidResponses cfg ++ usb ++ platform ++ other               
         ++ hpet_
         ++ timer_mode_
         ++ nested_
         ++ dm_override_
+        ++ acpi_path
     where
       uuid = vmcfgUuid cfg
       -- omit if not specified
@@ -769,11 +770,15 @@ miscSpecs cfg = do
       nested = readConfigPropertyDef uuid vmNestedHvm False >>=
                    \ v -> if v then return ["nested=true"] else return []
 
-      smbios_pt =
-          case (vmcfgSmbiosOemTypesPt cfg) of
+      smbios_path =
+          case (vmcfgSmbios cfg) of
             [] -> []
-            types -> [ "smbios-oem-types-pt=" ++ intercalate "," (map show types)
-                     , "smbios-pt=true" ]
+            smbiosPath -> [ "smbios_firmware='" ++ smbiosPath ++ "'" ]
+
+      acpi_path =
+          case (vmcfgAcpi cfg) of
+            [] -> []
+            acpiPath   -> [ "acpi_firmware='" ++ acpiPath ++ "'" ]
 
       -- Activate sound
       sound = maybeToList . fmap (("soundhw='"++) <$> (++"'")) <$> readConfigProperty uuid vmSound
@@ -847,10 +852,3 @@ miscSpecs cfg = do
               -- additional parameters passed through config/extra-xenvm/... key
               extra_xenvm :: Rpc [Param]
               extra_xenvm = readConfigPropertyDef uuid vmExtraXenvm []
-
-                  
-cryptoSpec :: Uuid -> [FilePath] -> Disk -> String
-cryptoSpec uuid crypto_dirs disk
-    | diskType disk /= VirtualHardDisk = ""
-    | null crypto_dirs                 = ""
-    | otherwise                        = printf ":key-dir=%s" (concat . intersperse "," $ crypto_dirs)

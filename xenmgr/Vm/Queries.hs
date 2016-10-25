@@ -68,7 +68,7 @@ module Vm.Queries
                , getVmIconBytes
                , getSeamlessVms
                  -- property accessors
-               , getVmType, getVmGraphics, getMaxVgpus, getVmSmbiosOemTypesPt
+               , getVmType, getVmGraphics, getMaxVgpus
                , getVmWiredNetwork, getVmWirelessNetwork, getVmGpu, getVmCd, getVmMac, getVmAmtPt, getVmPorticaEnabled, getVmPorticaInstalled
                , getVmSeamlessTraffic, getVmAutostartPending, getVmHibernated, getVmMemoryStaticMax
                , getVmMemoryMin
@@ -77,12 +77,12 @@ module Vm.Queries
                , getVmImagePath, getVmSlot, getVmPvAddons, getVmPvAddonsVersion
                , getVmTimeOffset, getVmCryptoUser, getVmCryptoKeyDirs, getVmAutoS3Wake
                , getVmNotify, getVmHvm, getVmPae, getVmApic, getVmViridian, getVmNx, getVmSound, getVmDisplay
-               , getVmBoot, getVmCmdLine, getVmKernel, getVmInitrd, getVmAcpiPt, getVmVcpus, getVmCoresPerSocket
+               , getVmBoot, getVmCmdLine, getVmKernel, getVmInitrd, getVmAcpiPath, getVmVcpus, getVmCoresPerSocket
                , getVmKernelPath
                , getVmKernelExtract
                , getVmInitrdExtract
                , getVmVideoram, getVmPassthroughMmio, getVmPassthroughIo, getVmFlaskLabel
-               , getVmAcpiState, getVmHap, getVmSmbiosPt, getVmDescription, getVmMeasured
+               , getVmAcpiState, getVmHap, getVmSmbios, getVmDescription, getVmMeasured
                , getVmExtraXenvm, getVmExtraHvm
                , getVmStartOnBootPriority, getVmKeepAlive, getVmProvidesNetworkBackend
                , getVmShutdownPriority, getVmProvidesGraphicsFallback
@@ -229,7 +229,7 @@ getVmConfig uuid resolve_backend_uuids =
              | otherwise                 = nic
        nics  <- future $ (map (setupGeneratedMac uuid) <$> getVmNicDefs' uuid)
        nets  <- future $ getAvailableVmNetworks =<< force nics
-       key_dirs <- future $ getCryptoKeyLookupPaths uuid
+       key_dirs <- future $ getVmCryptoKeyDirs uuid --vm config only needs crypto dirs set for the vm, if any
        pcis <- future $ getPciPtDevices uuid
        qemu <- future $ getVmQemuDmPath uuid
        qemu_timeout <- future $ getVmQemuDmTimeout uuid
@@ -240,7 +240,8 @@ getVmConfig uuid resolve_backend_uuids =
        pv_addons <- future $ getVmPvAddons uuid
        autostart <- future $ getVmStartOnBoot uuid
        seamless <- future $ getVmSeamlessTraffic uuid
-       oem_types <- future $ getVmSmbiosOemTypesPt uuid
+       smbios_path <- future $ getVmSmbios uuid
+       acpi_path <- future $ getVmAcpiPath uuid
        stubdom <- future $ getVmStubdom uuid
        stubdom_memory <- future $ getVmStubdomMemory uuid
        stubdom_cmdline <- future $ Just <$> getVmStubdomCmdline uuid
@@ -282,7 +283,8 @@ getVmConfig uuid resolve_backend_uuids =
                      <*> excl_cd
                      <*> autostart
                      <*> seamless
-                     <*> oem_types
+                     <*> smbios_path
+                     <*> acpi_path
                      <*> v
                      <*> usb
                      <*> auto_passthrough
@@ -376,15 +378,6 @@ getAvailableVmNetworks nics
     = do all_networks <- listNetworks
          let nic_networks = map nicdefNetwork (filter nicdefEnable nics)
          catMaybes <$> (mapM statNetwork $ intersect all_networks nic_networks)
-
-getVmSmbiosOemTypesPt :: Uuid -> Rpc [Int]
-getVmSmbiosOemTypesPt uuid = getVmSmbiosPt uuid >>= go where
-    go True = dbMaybeRead "/xenmgr/smbios-oem-types-pt" >>= from_user_setting
-    go _ = return []
-    from_user_setting (Just str) = return $ catMaybes [ maybeRead t | t <- split ',' str ]
-    from_user_setting Nothing    = from_manufacturer <$> liftIO getHostSystemManufacturer'
-    from_manufacturer DELL       = [ 129, 130, 131, 177 ]
-    from_manufacturer _          = [ 129, 130, 131 ]
 
 getDependencyGraph :: Rpc (DepGraph Uuid)
 getDependencyGraph =
@@ -953,7 +946,7 @@ getVmKernel uuid = readConfigPropertyDef uuid vmKernel ""
 getVmKernelExtract uuid = readConfigPropertyDef uuid vmKernelExtract ""
 getVmInitrd uuid = readConfigPropertyDef uuid vmInitrd ""
 getVmInitrdExtract uuid = readConfigPropertyDef uuid vmInitrdExtract ""
-getVmAcpiPt uuid = readConfigPropertyDef uuid vmAcpiPt False
+getVmAcpiPath uuid = readConfigPropertyDef uuid vmAcpiPath ""
 getVmVcpus uuid = readConfigPropertyDef uuid vmVcpus (0::Int)
 getVmCoresPerSocket uuid = readConfigPropertyDef uuid vmCoresPerSocket (0::Int)
 getVmVideoram uuid = readConfigPropertyDef uuid vmVideoram (0::Int)
@@ -961,7 +954,7 @@ getVmPassthroughMmio uuid = readConfigPropertyDef uuid vmPassthroughMmio ""
 getVmPassthroughIo uuid = readConfigPropertyDef uuid vmPassthroughIo ""
 getVmFlaskLabel uuid = readConfigPropertyDef uuid vmFlaskLabel ""
 getVmHap uuid = readConfigPropertyDef uuid vmHap False
-getVmSmbiosPt uuid = readConfigPropertyDef uuid vmSmbiosPt False
+getVmSmbios uuid = readConfigPropertyDef uuid vmSmbios ""
 getVmDescription uuid = readConfigPropertyDef uuid vmDescription ""
 getVmStartOnBootPriority uuid = readConfigPropertyDef uuid vmStartOnBootPriority (0::Int)
 getVmKeepAlive uuid = readConfigPropertyDef uuid vmKeepAlive False
