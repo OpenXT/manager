@@ -30,6 +30,7 @@ import Data.Maybe
 import Data.Monoid
 import Data.IORef
 import Data.String
+import Data.Int
 import System.IO
 import Text.Printf (printf)
 import Tools.Log
@@ -40,7 +41,7 @@ import Tools.IfM
 import Tools.Future
 import System.Directory
 
-import Vm.DomainCore (updateStubDomainID, domainXSPath)
+import Vm.DomainCore (updateStubDomainID, domainXSPath, domainUIVM)
 import Vm.Types
 import Vm.Config
 import Vm.Monitor
@@ -145,6 +146,9 @@ detectBsgDevStatusR =
 
 detectStateChange =
   whenE VmStateUpdate notifyVmStateUpdate
+
+detectAcpiChange =
+  whenE VmAcpiUpdate reactVmAcpiUpdate
 
 clockR = mkReact f where
   f (VmRtcChange offset) = vmUuid >>= \uuid -> saveConfigProperty uuid vmTimeOffset offset
@@ -254,6 +258,7 @@ vmEventProcessor
                `mappend` runEventScriptR
                `mappend` notifyExternalR
                `mappend` detectStateChange
+               `mappend` detectAcpiChange
          return $
                 \hid e -> sequence_ $ [err (f e) | f <- r]
       where
@@ -264,6 +269,11 @@ whenRunning xm = do
     usb <- uuidRpc getVmUsbEnabled
     when usb $ whenDomainID_ uuid $ \domid -> usbUp (fromIntegral domid)
 
+cleanupVkbd :: Uuid -> DomainID -> Rpc ()
+cleanupVkbd uuid domid = do
+    rpcCallOnce (Xl.xlInputDbus uuid "detach_vkbd" [toVariant $ (read (show domid) :: Int32) ])
+    return ()
+
 whenShutdown xm reason = do
     uuid <- vmUuid
     info ("vm " ++ show uuid ++ " shutdown, reason: " ++ show reason)
@@ -272,6 +282,9 @@ whenShutdown xm reason = do
       Just domid -> do
         usbDown domid
         removeAlsa domid
+        cleanupV4VDevice domid
+        vkb_enabled <- getVmVkb uuid
+        when vkb_enabled $ liftRpc $ cleanupVkbd uuid domid
       _ -> return ()
     liftIO $ removeVmEnvIso uuid
     uuidRpc disconnectFrontVifs
@@ -297,6 +310,12 @@ whenRebooted xm = do
     uuid <- vmUuid
     uuidRpc unapplyVmFirewallRules
     liftIO $ removeVmEnvIso uuid
+    domidStr <- liftIO $ xsRead ("/xenmgr/vms/" ++ show uuid ++ "/domid")
+    case join (fmap maybeRead domidStr) of
+      Just domid -> do
+        vkb_enabled <- getVmVkb uuid
+        when vkb_enabled $ liftRpc $ cleanupVkbd uuid domid
+      _ -> return ()
     uuidRpc (backgroundRpc . runXM xm . startVm)
   where
     backgroundRpc f =
@@ -460,6 +479,23 @@ checkBsgDevStatus = uuidRpc $ \uuid -> whenDomainID_ uuid $ \domid ->
           BSGDevice <$> r a <*> r b <*> r c <*> r d
         _ -> Nothing
 
+-- This is implemented in xenmgr for several reasons. First, there's really only
+-- 1 acpi state we care about: s3. Xenvm used to fork a thread that polled xen
+-- for domain acpi state with xc_hvm_param_get, which is BAD since xc_hvm_param_get
+-- makes a hypercall.Second, we can remove responsibility from inputserver to react
+-- to acpi state changes (it shouldn't have to deal with that anyway). Third, we 
+-- won't have to patch libxl.
+reactVmAcpiUpdate :: Vm ()
+reactVmAcpiUpdate = do
+    uuid <- vmUuid
+    whenDomainID_ uuid $ \domid -> do
+      maybe_acpi <- liftIO $ xsRead ("/local/domain/" ++ show domid ++ "/acpi-state")
+      case maybe_acpi of
+          Just acpi -> if acpi == "s3" then do switchVm domainUIVM 
+                                               return () 
+                                       else return () 
+          Nothing   -> return () 
+    
 -- This is a new notify function to support state updates coming from xl
 -- Instead of implementing dbus support in xl, state updates are written to a
 -- xenstore node which XenMgr watches, which then fires off a dbus message, upon

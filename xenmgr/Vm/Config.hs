@@ -537,7 +537,6 @@ getXlConfig :: VmConfig -> Rpc XlConfig
 getXlConfig cfg =
     fmap (XlConfig . concat) . mapM (force <=< future) $
     [prelude, diskSpecs cfg, nicSpecs cfg, pciSpecs cfg
-    , extraHvmSpecs uuid
     , miscSpecs cfg]
   where
     uuid = vmcfgUuid cfg
@@ -677,13 +676,6 @@ pciSpecs cfg = do
                (pciFunc   addr)
        where addr = devAddr d
 
--- Extra HVM parameters from database
-extraHvmSpecs :: Uuid -> Rpc [Param]
-extraHvmSpecs uuid =
-    do
-        prop <- readConfigPropertyDef uuid vmExtraHvms []
-        return $ ["device_model_args=[" ++ (concat (intersperse "," prop)) ++ "]"]
-
 cpuidResponses :: VmConfig -> [String]
 cpuidResponses cfg = map option (vmcfgCpuidResponses cfg) where
     option (CpuidResponse r) = printf "cpuid=%s" r
@@ -697,7 +689,7 @@ wrapBrackets :: String -> String
 wrapBrackets = (++"]") <$> ("["++)
 
 --helper function to combine all extra_hvm args into one 'extra_hvm' entry
-combineExtraHvmParams hvmStuff = ["extra_hvm=[" ++ concat (intersperse "," (map wrapQuotes hvmStuff)) ++ "]"]
+combineExtraHvmParams hvmStuff = ["device_model_args=[" ++ concat (intersperse "," (map wrapQuotes hvmStuff)) ++ "]"]
 
 -- Additional misc stuff in xenvm config
 miscSpecs :: VmConfig -> Rpc [Param]
@@ -722,10 +714,10 @@ miscSpecs cfg = do
               -- no cdrom
               (False, _)    -> ""
               -- full access to cdrom
-              --atapi-pt-local until we get stubdoms going, then we need atapi-pt-v4v
-              (True, True)  -> printf "file=%s:%s,media=cdrom,if=atapi-pt,format=raw,readonly=%s" "atapi-pt-local" bsg_str "off"
+              (True, True)  -> printf "file=%s:%s,media=cdrom,if=atapi-pt,format=atapi-pt-fmt,readonly=%s" atapiType bsg_str "off"
               -- readonly access to cdrom
-              (True, False) -> printf "file=%s:%s,media=cdrom,if=atapi-pt,format=raw,readonly=%s" "atapi-pt-local" bsg_str "on"
+              (True, False) -> printf "file=%s:%s,media=cdrom,if=atapi-pt,format=atapi-pt-fmt,readonly=%s" atapiType bsg_str "on"
+        atapiType = if (vmcfgStubdom cfg) then "atapi-pt-v4v" else "atapi-pt-local"
 
     let empty = pure []
     snd      <- ifM (policyQueryAudioAccess    uuid) sound          empty
@@ -738,10 +730,11 @@ miscSpecs cfg = do
     timer_mode_ <- timer_mode
     nested_ <- nested
     dm_override_ <- liftRpc dm_override
+    extra_hvms <- readConfigPropertyDef uuid vmExtraHvms []
 
     let coresPSpms = if coresPS > 1 then ["cores-per-socket=" ++ show coresPS] else ["cores-per-socket=" ++ show vcpus]
     return $
-           t ++ v ++ combineExtraHvmParams (cdromParams ++ audioRec)
+           t ++ v ++ combineExtraHvmParams (cdromParams ++ audioRec ++ extra_hvms)
         ++ ["memory="++show (vmcfgMemoryMib cfg) ]
         ++ ["maxmem="++show (vmcfgMemoryStaticMaxMib cfg) ]
         ++ smbios_path ++ snd -- ++ coresPSpms --disable and CoresPS for now

@@ -76,7 +76,7 @@ module Vm.Queries
                , getVmMemoryTarget, getVmStartOnBoot, getVmHiddenInSwitcher, getVmHiddenInUi, getVmMemory, getVmName
                , getVmImagePath, getVmSlot, getVmPvAddons, getVmPvAddonsVersion
                , getVmTimeOffset, getVmCryptoUser, getVmCryptoKeyDirs, getVmAutoS3Wake
-               , getVmNotify, getVmHvm, getVmPae, getVmApic, getVmViridian, getVmNx, getVmSound, getVmDisplay
+               , getVmNotify, getVmHvm, getVmPae, getVmApic, getVmAcpi, getVmViridian, getVmNx, getVmSound, getVmDisplay
                , getVmBoot, getVmCmdLine, getVmKernel, getVmInitrd, getVmAcpiPath, getVmVcpus, getVmCoresPerSocket
                , getVmKernelPath
                , getVmKernelExtract
@@ -936,6 +936,7 @@ getVmNotify uuid = readConfigPropertyDef uuid vmNotify ""
 getVmHvm uuid = readConfigPropertyDef uuid vmHvm False
 getVmPae uuid = readConfigPropertyDef uuid vmPae False
 getVmApic uuid = readConfigPropertyDef uuid vmApic False
+getVmAcpi uuid = readConfigPropertyDef uuid vmAcpi False
 getVmViridian uuid = readConfigPropertyDef uuid vmViridian False
 getVmNx uuid = readConfigPropertyDef uuid vmNx False
 getVmSound uuid = readConfigPropertyDef uuid vmSound ""

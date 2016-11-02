@@ -65,6 +65,7 @@ data VmEvent
    | VmBsgDevNodeChange
    | VmMeasurementFailure !FilePath !Integer !Integer
    | VmStateUpdate
+   | VmAcpiUpdate
      deriving (Eq,Show)
 
 data VmMonitor
@@ -263,5 +264,6 @@ watchesForVm submit =
     [ newVmWatch "/attr/PVAddons" (submit VmPvAddonsNodeChange)
     , newVmWatch "/attr/PVAddonsUninstalled" (submit VmPvAddonsUninstallNodeChange)
     , newVmWatch "/bsgdev" (submit VmBsgDevNodeChange)
+    , newVmWatch "/acpi-state" (submit VmAcpiUpdate)
     ]
 

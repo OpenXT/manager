@@ -71,7 +71,7 @@ module Vm.Actions
           , setVmStartOnBoot, setVmHiddenInSwitcher, setVmHiddenInUi, setVmMemory, setVmName
           , setVmImagePath, setVmSlot, setVmPvAddons, setVmPvAddonsVersion
           , setVmTimeOffset, setVmCryptoUser, setVmCryptoKeyDirs, setVmAutoS3Wake
-          , setVmNotify, setVmHvm, setVmPae, setVmApic, setVmViridian, setVmNx, setVmSound, setVmDisplay
+          , setVmNotify, setVmHvm, setVmPae, setVmApic, setVmAcpi, setVmViridian, setVmNx, setVmSound, setVmDisplay
           , setVmBoot, setVmCmdLine, setVmKernel, setVmInitrd, setVmAcpiPath, setVmVcpus, setVmCoresPerSocket
           , setVmKernelExtract
           , setVmInitrdExtract
@@ -115,6 +115,7 @@ module Vm.Actions
           , setVmNestedHvm
           , setVmSerial
           , setVmAutolockCdDrives
+          , cleanupV4VDevice
           , EventHookFailMode(..)
           ) where
 
@@ -728,11 +729,26 @@ setupV4VDevice uuid =
     xsWrite (xsp domid ++ "/device/v4v/0/backend") ("/local/domain/0/backend/v4v/" ++ show domid ++ "/0")
     xsWrite (xsp domid ++ "/device/v4v/0/backend-id") "0"
     xsWrite (xsp domid ++ "/device/v4v/0/state") "1"
+    xsChmod (xsp domid ++ "/device/v4v/0/backend") ("n"++show domid++",r0")
+    xsChmod (xsp domid ++ "/device/v4v/0/backend-id") ("n"++show domid++",r0")
+    xsChmod (xsp domid ++ "/device/v4v/0/state") ("n"++show domid++",r0")
+
 
     xsWrite (xsp_dom0 ++ (v4vBack domid) ++ "/frontend") (xsp domid ++ "/device/v4v/0")
     xsWrite (xsp_dom0 ++ (v4vBack domid) ++ "/frontend-id") $ show domid
     xsWrite (xsp_dom0 ++ (v4vBack domid) ++ "/state") "0"
 
+cleanupV4VDevice domid = liftIO $ do
+    xsRm (xsp_dom0 ++ "/backend/v4v/" ++ show domid)
+   
+setupAcpiNode uuid = 
+  whenDomainID_ uuid $ \domid -> do
+     stubdom <- getStubDomainID uuid
+     liftIO $ xsWrite (xsp domid ++ "/acpi-state") ("")
+     case stubdom of
+         Just stubdomid -> liftIO $ xsChmod (xsp domid ++ "/acpi-state") ("b" ++ show stubdomid)
+         Nothing        -> liftIO $ xsChmod (xsp domid ++ "/acpi-state") ("b" ++ show domid)
+ 
 --Watch acpi state when booting a VM, used to be handled in xenvm
 monitorAcpi :: Uuid -> VmMonitor -> AcpiState -> IO ()
 monitorAcpi uuid m state = do
@@ -845,6 +861,8 @@ bootVm config
           stubdom_memory <- getVmStubdomMemory uuid
           stubdom_cmdline <- getVmStubdomCmdline uuid
           applyVmFirewallRules uuid
+          whenDomainID_ uuid $ \domid -> do
+            liftIO $ xsWrite (domainXSPath domid ++ "/v4v-firewall-ready") "1"
 
         waitForVmInternalState uuid Created 30
         -- BEFORE DEVICE MODEL
@@ -857,6 +875,7 @@ bootVm config
           when v4v_enabled $ setupV4VDevice uuid
 
           setupBiosStrings uuid
+          setupAcpiNode uuid
           -- some little network plumbing
           gives_network <- getVmProvidesNetworkBackend uuid
           when gives_network $ whenDomainID_ uuid $ \domid -> do
@@ -1090,7 +1109,7 @@ switchVm :: MonadRpc e m => Uuid -> m Bool
 switchVm uuid = whenDomainID False uuid $ \domid -> do
     debug $ "Attempting to switch screen to domain " ++ show uuid
     -- ensure switcher is ready
-    liftIO $ waitForSwitcher domid
+    liftIO $ Xl.wakeIfS3 uuid
     success <- inputSwitchFocus domid
     when (not success) $ warn ("switchVm: failed for uuid " ++ show uuid)
     return success
@@ -1109,22 +1128,6 @@ reallySwitchVm uuid timeout_time =
                 else do
                   r <- switchVm uuid
                   if r then return True else liftIO (threadDelay (2*10^5)) >> loop t0
-
--- Wait until switcher for given domain is ready
-waitForSwitcher :: DomainID -> IO Bool
-waitForSwitcher domid = do
-       status <-
-                   timeout ( 10^6 * max_wait_secs ) .
-                   xsWaitFor (notify_path domid) $
-                           do ready_str <- xsRead (notify_path domid)
-                              return $ ready_str == Just "true"
-       case status of
-         Just ()   -> return True
-         Nothing   -> warn ("timeout while waiting for switcher " ++ show domid ++ " to become ready") >> return False
-
-    where
-      notify_path domid = "/local/domain/" ++ show domid ++ "/switcher/ready"
-      max_wait_secs = 10
 
 -- Switch to graphics fallback vm
 switchGraphicsFallback :: Rpc Bool
@@ -1716,6 +1719,7 @@ setVmNotify uuid v = saveConfigProperty uuid vmNotify (v::String)
 setVmHvm uuid v = saveConfigProperty uuid vmHvm (v::Bool)
 setVmPae uuid v = saveConfigProperty uuid vmPae (v::Bool)
 setVmApic uuid v = saveConfigProperty uuid vmApic (v::Bool)
+setVmAcpi uuid v = saveConfigProperty uuid vmAcpi (v::Bool)
 setVmViridian uuid v = saveConfigProperty uuid vmViridian (v::Bool)
 setVmNx uuid v = saveConfigProperty uuid vmNx (v::Bool)
 setVmSound uuid v = saveConfigProperty uuid vmSound (v::String)

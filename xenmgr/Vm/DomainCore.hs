@@ -26,6 +26,7 @@ module Vm.DomainCore
     , whenDomainID_
     , domainXSPath
     , domain0uuid
+    , domainUIVM
     ) where
 
 import Data.String
@@ -50,6 +51,9 @@ domainXSPath domid = printf "/local/domain/%d" domid
 
 domain0uuid :: Uuid
 domain0uuid = fromString "00000000-0000-0000-0000-000000000000"
+
+domainUIVM :: Uuid
+domainUIVM = fromString "00000000-0000-0000-0000-000000000001"
 
 -- Query xenvm for domain ID
 getDomainID :: (MonadRpc e m) => Uuid -> m (Maybe DomainID)
