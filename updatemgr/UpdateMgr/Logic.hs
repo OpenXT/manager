@@ -232,13 +232,24 @@ setUpdateState s = go s >> notifyUpdateStateChange s where
 getUpdateFailReason :: Update String
 getUpdateFailReason = fromMaybe "" <$> dbMaybeRead failReasonPath
 
+isUpgradeable new_version upgradeable_versions =
+  let matched_versions = filter (checkVersion new_version) $ map show upgradeable_versions in
+  case matched_versions of
+    [] -> False
+    _  -> True
+  where
+    checkVersion (x:v1) (y:v2) =
+      case x == y of
+        True  -> checkVersion v1 v2
+        False -> y == '*'
+
 checkApplicability :: Meta -> Update UpdateApplicability
 checkApplicability update_meta = do
   current <- currentXcVersion
   let server = metaVersion update_meta
   case () of
     _ | current == server -> return UpToDate
-      | current `elem` metaApplicableTo update_meta -> return CanUpgrade
+      | isUpgradeable (show current) (metaApplicableTo update_meta) -> return CanUpgrade
       | otherwise -> return CannotUpgrade
 
 getUpdateApplicability :: Update UpdateApplicability
