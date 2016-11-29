@@ -283,7 +283,7 @@ whenShutdown xm reason = do
         usbDown domid
         removeAlsa domid
         cleanupV4VDevice domid
-        vkb_enabled <- getVmVkb uuid
+        vkb_enabled <- getVmVkbd uuid
         when vkb_enabled $ liftRpc $ cleanupVkbd uuid domid
       _ -> return ()
     liftIO $ removeVmEnvIso uuid
@@ -313,7 +313,7 @@ whenRebooted xm = do
     domidStr <- liftIO $ xsRead ("/xenmgr/vms/" ++ show uuid ++ "/domid")
     case join (fmap maybeRead domidStr) of
       Just domid -> do
-        vkb_enabled <- getVmVkb uuid
+        vkb_enabled <- getVmVkbd uuid
         when vkb_enabled $ liftRpc $ cleanupVkbd uuid domid
       _ -> return ()
     uuidRpc (backgroundRpc . runXM xm . startVm)

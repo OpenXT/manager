@@ -103,7 +103,7 @@ module Vm.Actions
           , setVmDownloadProgress
           , setVmReady
           , setVmProvidesDefaultNetworkBackend
-          , setVmVkb
+          , setVmVkbd
           , setVmVfb
           , setVmV4V
           , setVmRestrictDisplayDepth
@@ -828,11 +828,11 @@ bootVm config
           liftIO $
             mapM_ updateCdDeviceMediaStatusKey =<< liftIO getHostBSGDevices
 
-      setupBiosStrings uuid =
-          whenDomainID_ uuid $ \domid -> do
-            liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-manufacturer") "OpenXT"
-            liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-product") "OpenXT 5.0.0"
-            liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-seamless-hint") "0"
+      --setupBiosStrings uuid =
+      --    whenDomainID_ uuid $ \domid -> do
+      --      liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-manufacturer") "OpenXT"
+      --      liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-product") "OpenXT 5.0.0"
+       --     liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-seamless-hint") "0"
 
       --Changes to surfman/inputserver moved these calls into xenvm. With xenvm removal, it's easier to call
       --them from Xenmgr.
@@ -874,7 +874,7 @@ bootVm config
           v4v_enabled <- getVmV4V uuid
           when v4v_enabled $ setupV4VDevice uuid
 
-          setupBiosStrings uuid
+          --setupBiosStrings uuid
           setupAcpiNode uuid
           -- some little network plumbing
           gives_network <- getVmProvidesNetworkBackend uuid
@@ -885,7 +885,7 @@ bootVm config
           vfb_enabled <- getVmVfb uuid
           when vfb_enabled $ surfmanDbusCalls uuid
 
-          vkb_enabled <- getVmVkb uuid
+          vkb_enabled <- getVmVkbd uuid
           when vkb_enabled $ inputDbusCalls uuid
           info $ "done pre-dm setup for " ++ show uuid
          
@@ -1807,7 +1807,7 @@ setVmDownloadProgress uuid v = do
   dbWrite ("/vm/"++show uuid++"/download-progress") (v::Int)
   notifyVmTransferChanged uuid  
 setVmReady uuid v = saveConfigProperty uuid vmReady (v::Bool)
-setVmVkb uuid v = saveConfigProperty uuid vmVkb (v::Bool)
+setVmVkbd uuid v = saveConfigProperty uuid vmVkbd (v::Bool)
 setVmVfb uuid v = saveConfigProperty uuid vmVfb (v::Bool)
 setVmV4V uuid v = saveConfigProperty uuid vmV4v (v::Bool)
 setVmRestrictDisplayDepth uuid v = saveConfigProperty uuid vmRestrictDisplayDepth (v::Bool)

@@ -65,7 +65,7 @@ module Vm.Config (
                 , vmXciCpuidSignature
                 , vmS3Mode
                 , vmS4Mode
-                , vmVsnd, vmVkb, vmVfb, vmV4v
+                , vmVsnd, vmVkbd, vmVfb, vmV4v
                 , vmRealm
                 , vmSyncUuid
                 , vmIcbinnPath
@@ -438,7 +438,7 @@ vmCoresPerSocket = property "config.cores-per-socket"
 vmQemuDmPath = property "config.qemu-dm-path"
 vmQemuDmTimeout = property "config.qemu-dm-timeout"
 vmVsnd = property "config.vsnd"
-vmVkb = property "config.vkb"
+vmVkbd = property "config.vkbd"
 vmVfb = property "config.vfb"
 vmV4v = property "config.v4v"
 vmHpet = property "config.hpet"
@@ -624,7 +624,7 @@ nicSpecs cfg =
 
 nicSpec :: VmConfig -> Bool -> Maybe Mac -> NicDef -> DomainID -> String
 nicSpec cfg amt eth0Mac nic networkDomID =
-    let entries = [] ++ bridge ++ backend ++ wireless ++ vmMac ++ nicType
+    let entries = bridge ++ backend ++ wireless ++ vmMac ++ nicType
     in
       concat $ intersperse "," entries
     where
@@ -810,7 +810,7 @@ miscSpecs cfg = do
           , ("extra"           , vmCmdLine)
           , ("vcpus"           , vmVcpus)
           , ("hap"             , vmHap)
-          , ("vkb"             , vmVkb)
+          , ("vkb"             , vmVkbd)
           , ("vfb"             , vmVfb)
           , ("seclabel"        , vmFlaskLabel)
           , ("serial"          , vmSerial)

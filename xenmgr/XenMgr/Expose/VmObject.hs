@@ -595,10 +595,10 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmSetProvidesDefaultNetworkBackend = restrict' $ setVmProvidesDefaultNetworkBackend uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetProvidesDefaultNetworkBackend = setVmProvidesDefaultNetworkBackend uuid
 
-  , comCitrixXenclientXenmgrVmGetVkbd = getVmVkb uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedGetVkbd = getVmVkb uuid
-  , comCitrixXenclientXenmgrVmSetVkbd = restrict' $ setVmVkb uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetVkbd = setVmVkb uuid
+  , comCitrixXenclientXenmgrVmGetVkbd = getVmVkbd uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetVkbd = getVmVkbd uuid
+  , comCitrixXenclientXenmgrVmSetVkbd = restrict' $ setVmVkbd uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetVkbd = setVmVkbd uuid
 
   , comCitrixXenclientXenmgrVmGetVfb = getVmVfb uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetVfb = getVmVfb uuid
