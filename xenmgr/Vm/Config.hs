@@ -604,9 +604,10 @@ nicSpecs cfg =
     do amt <- amtPtActive (vmcfgUuid cfg)
        maybeHostmac <- liftIO eth0Mac
        -- Get the configuration file entries ...
-       (fmap.map) (\nic -> "vif=['" ++ (nicSpec cfg amt maybeHostmac nic (net_domid nic)) ++ "']") .
-         -- ... for all the nics which are defined & enabled & pass the policy check
-         filterM policyCheck . filter nicdefEnable $ vmcfgNics cfg
+       -- ... for all the nics which are defined & enabled & pass the policy check
+       nics <- filterM policyCheck . filter nicdefEnable $ vmcfgNics cfg
+       let niclist = fmap (\nic -> nicSpec cfg amt maybeHostmac nic (net_domid nic)) nics
+       return $ ["vif=[" ++ (concat (intersperse "," niclist)) ++ "]"]
 
   where
     net_domid nic = fromMaybe 0 (nicdefBackendDomid nic)
@@ -626,7 +627,7 @@ nicSpec :: VmConfig -> Bool -> Maybe Mac -> NicDef -> DomainID -> String
 nicSpec cfg amt eth0Mac nic networkDomID =
     let entries = bridge ++ backend ++ wireless ++ vmMac ++ nicType
     in
-      concat $ intersperse "," entries
+      "'" ++ (concat $ intersperse "," entries) ++ "'"
     where
       netinfo :: Maybe NetworkInfo
       netinfo
