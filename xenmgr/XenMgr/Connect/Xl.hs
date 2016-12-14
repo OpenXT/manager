@@ -117,9 +117,9 @@ acpiState uuid = do
               acpi_state <- readProcess "xl" ["acpi-state", domid] []
               let plain_acpi = (T.unpack (T.stripEnd (T.pack acpi_state)))
               case plain_acpi of
-                "9" -> return 0  --If we have the domid but xl returns us 9 for acpi state, it's likely the domain
-                                 --is fully PV, so just return 0.
-                _   -> return $ (read plain_acpi :: Int)
+                "-1" -> return 0  --If we have the domid but xl returns us -1 for acpi state, it's likely the domain
+                                  --is fully PV, so just return 0.
+                _    -> return $ (read plain_acpi :: Int)
 
 --Return whether the vm is currently in focus
 isFocused :: Uuid -> IO Bool
