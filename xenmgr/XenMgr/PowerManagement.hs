@@ -82,6 +82,7 @@ data PMAction = ActionSleep
               | ActionForcedShutdown
               | ActionReboot
               | ActionNothing
+              | ActionInvalid
               deriving (Eq, Show)
 
 data PMSettings = PMSettings { pmLidCloseACAction      :: PMAction
@@ -92,7 +93,12 @@ data BatteryLevel = BatNormal | BatWarning | BatLow | BatCritical
                   deriving (Eq, Show)
 
 instance Marshall PMAction where
-    dbRead  path   = dbReadStr path >>= pure . pmActionOfStr
+    dbRead  path   = dbReadStr path >>= (\act -> let pmact = (pmActionOfStr act) in
+                                                 case pmact of
+                                                   ActionInvalid -> do
+                                                                     liftIO $ warn ("Incorrect pm action specification: " ++ act)
+                                                                     return ActionNothing 
+                                                   _             -> return pmact )
     dbWrite path a = dbWriteStr path (pmActionToStr a)
 
 instance Marshall PMSettings where
@@ -111,7 +117,8 @@ pmActionOfStr "shutdown"  = ActionShutdown
 pmActionOfStr "forced-shutdown" = ActionForcedShutdown
 pmActionOfStr "reboot"    = ActionReboot
 pmActionOfStr "nothing"   = ActionNothing
-pmActionOfStr _           = error "incorrect pm action specification"
+pmActionOfStr ""          = ActionNothing
+pmActionOfStr bad         = ActionInvalid
 
 pmActionToStr ActionSleep     = "sleep"
 pmActionToStr ActionHibernate = "hibernate"
@@ -119,6 +126,7 @@ pmActionToStr ActionShutdown  = "shutdown"
 pmActionToStr ActionForcedShutdown = "forced-shutdown"
 pmActionToStr ActionReboot    = "reboot"
 pmActionToStr ActionNothing   = "nothing"
+pmActionToStr ActionInvalid   = "nothing"
 
 pmGetSettings :: Rpc PMSettings
 pmGetSettings = dbReadWithDefault PMSettings { pmLidCloseACAction = ActionNothing
@@ -141,6 +149,7 @@ hostStateOfPmAction ActionReboot = HostRebooting
 hostStateOfPmAction ActionShutdown = HostShuttingDown
 hostStateOfPmAction ActionForcedShutdown = HostShuttingDown
 hostStateOfPmAction ActionNothing = HostIdle
+hostStateOfPmAction ActionInvalid = HostIdle
 
 -- Do an operation if the host is idle
 hostWhenIdle :: (MonadRpc e m) => m () -> m ()
@@ -200,6 +209,7 @@ setCurrentPmAction action =
     str ActionShutdown = "shutdown"
     str ActionForcedShutdown = "forced-shutdown"
     str ActionNothing = error "bad pm action"
+    str ActionInvalid = error "bad pm action"
 
 clearCurrentPmAction :: Rpc ()
 clearCurrentPmAction =
@@ -454,6 +464,7 @@ execute_ ActionHibernate supervised = do
 
 
 execute_ ActionNothing supervised = return ()
+execute_ ActionInvalid supervised = return ()
 
 isTXTLaunch :: IO Bool
 isTXTLaunch =

@@ -10,6 +10,7 @@ data PMAction = ActionSleep
 	      | ActionForcedShutdown
               | ActionReboot
               | ActionNothing
+              | ActionInvalid
 
 instance Show PMAction
 instance Eq PMAction
