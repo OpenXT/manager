@@ -111,7 +111,8 @@ pmActionOfStr "shutdown"  = ActionShutdown
 pmActionOfStr "forced-shutdown" = ActionForcedShutdown
 pmActionOfStr "reboot"    = ActionReboot
 pmActionOfStr "nothing"   = ActionNothing
-pmActionOfStr _           = error "incorrect pm action specification"
+pmActionOfStr ""          = ActionNothing
+pmActionOfStr bad         = error ("incorrect pm action specification: " ++ bad)
 
 pmActionToStr ActionSleep     = "sleep"
 pmActionToStr ActionHibernate = "hibernate"
