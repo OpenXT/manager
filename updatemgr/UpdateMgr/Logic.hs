@@ -238,6 +238,9 @@ isUpgradeable new_version upgradeable_versions =
     [] -> False
     _  -> True
   where
+    checkVersion []     []     = True
+    checkVersion []     _      = False
+    checkVersion _      []     = False
     checkVersion (x:v1) (y:v2) =
       case x == y of
         True  -> checkVersion v1 v2
