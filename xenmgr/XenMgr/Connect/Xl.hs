@@ -194,11 +194,20 @@ start uuid =
                         _           -> error "error creating domain"
         _        -> do return ()
 
+--if domain has no domid, the domain is already dead. But we should make sure
+--the xenstore state is set to 'shutdown'.  Sometimes when domains crash on startup,
+--UI shows either 'starting' or 'off', but the internal state is 'creating-devices',
+--preventing further boots
 destroy :: Uuid -> IO ()
 destroy uuid = do
     domid    <- getDomainId uuid
-    exitCode <- system ("xl destroy " ++ domid)
-    bailIfError exitCode "error destroying domain"
+    case domid of
+        ""  -> do maybe_state <- xsRead ("/state/" ++ show uuid ++ "/state")
+                  case maybe_state of
+                    Just state -> if state /= "shutdown" then do xsWrite ("/state/" ++ show uuid ++ "/state") "shutdown" else return ()
+                    Nothing    -> return ()
+        _   -> do exitCode <- system ("xl destroy " ++ domid)
+                  bailIfError exitCode "error destroying domain"
 
 sleep :: Uuid -> IO ()
 sleep uuid =
@@ -234,8 +243,7 @@ getDomainId uuid = do
     domid <- readProcess "xl" ["uuid-to-domid", show uuid] []
     let plain_domid = (T.unpack (T.stripEnd (T.pack domid)))
     case plain_domid of
-      "-1" -> do info "failed to get domid"
-                 return ("")
+      "-1" -> return ("")
       _    -> return (plain_domid) --remove trailing newline
 
 --For a given uuid, change the iso in the cd drive slot
