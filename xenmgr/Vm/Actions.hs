@@ -911,19 +911,49 @@ disconnectFrontVifs back_uuid =
           info $ "disconnecting nic uuid=" ++ show front_uuid ++ " id=" ++ show nic_id
           Xenvm.connectVif front_uuid nid False
 
+xsWaitForNodeToDisappear :: Int -> String -> IO Bool
+xsWaitForNodeToDisappear timeout_secs node = do
+    r <- timeout (10^6 * timeout_secs) $ xsWaitFor node test
+    case r of
+      Just () -> return True
+      Nothing -> return False
+  where
+    test = isNothing <$> xsRead node
+
+
+ensureS0Listening :: DomainID -> Int -> Rpc ()
+ensureS0Listening domid 0 = do
+    error $ "pv drivers not listening for power commands"
+ensureS0Listening domid timeout = do
+    liftIO $ xsWrite node "0"
+    r <- liftIO $ xsWaitForNodeToDisappear 1 node
+    when (not r) $ ensureS0Listening domid (timeout-1)
+    where
+        node = "/local/domain/" ++ show domid ++ "/control/awake"
 
 -- Reboot a VM
 rebootVm :: Uuid -> Rpc ()
 rebootVm uuid = do
     info $ "rebooting VM " ++ show uuid
+    acpi <- getVmAcpiState uuid
     -- Write XENVM configuration file
     writeXenvmConfig =<< getVmConfig uuid True
 
     -- Ask xenvm kindly to reload it
     Xenvm.readConfig uuid
 
+    when (acpi == 3) $ do
+      info $ "resuming " ++ show uuid ++ " from S3 first.."
+      resumeS3AndWaitS0 uuid
+      info $ "resuming " ++ show uuid ++ " from S3 DONE."
     -- Request start from XENVM
     use_agent <- RpcAgent.guestAgentRunning uuid
+    pv <- getVmPvAddons uuid
+    when (pv) $ do
+      domid <- getDomainID uuid
+      case domid of
+        Just domid -> ensureS0Listening domid 10
+        Nothing    -> return ()
     if use_agent
        then RpcAgent.reboot uuid
        else Xenvm.reboot uuid
@@ -938,6 +968,12 @@ shutdownVm uuid = do
       info $ "resuming " ++ show uuid ++ " from S3 first.."
       resumeS3AndWaitS0 uuid
       info $ "resuming " ++ show uuid ++ " from S3 DONE."
+    pv <- getVmPvAddons uuid
+    when (pv) $ do
+      domid <- getDomainID uuid
+      case domid of
+        Just domid -> ensureS0Listening domid 10
+        Nothing    -> return ()
     if use_agent
        then RpcAgent.shutdown uuid
        else Xenvm.shutdown uuid
