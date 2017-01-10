@@ -73,7 +73,7 @@ import Vm.Queries
 import Vm.State
 import XenMgr.Rpc
 import Rpc.Autogen.SurfmanClient
-import qualified XenMgr.Connect.Xenvm as Xenvm
+import qualified XenMgr.Connect.Xl as Xl
 import XenMgr.Connect.InputDaemon
 
 data PMAction = ActionSleep
@@ -250,7 +250,7 @@ pmShutdownVms force = do
                        | otherwise = do
       acpi <- getVmAcpiState uuid
       when (acpi == 3) $
-           do resumed <- resumeFromSleep uuid
+           do resumed <- liftIO $ resumeFromSleep uuid
               when (not resumed) $ failResumeFromSleep
       running <- isRunning uuid
       when running $
@@ -322,7 +322,7 @@ resumeS3 uuid = resumeS3' uuid =<< liftRpc (getVmS3Mode uuid)
 
 resumeS3' uuid S3Ignore = return ()
 resumeS3' uuid S3Pv = do
-  void . liftRpc $ Xenvm.resumeFromSleep uuid
+  void . liftIO $ Xl.resumeFromSleep uuid
   info $ "PM: Successfully resumed " ++ show uuid ++ " from S3"
 resumeS3' uuid S3Restart = do
   startVm uuid

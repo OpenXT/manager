@@ -53,7 +53,7 @@ import Vm.State
 import Vm.ProductProperty
 
 import qualified Vm.V4VFirewall as Firewall
-import qualified XenMgr.Connect.Xenvm as Xenvm
+import qualified XenMgr.Connect.Xl as Xl
 import XenMgr.Errors
 import qualified XenMgr.Expose.VmDiskObject as VmDiskObj
 import qualified XenMgr.Expose.VmNicObject as VmNicObj
@@ -105,13 +105,13 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmStart              = runXM xm (startVm uuid) >> return ()
   , comCitrixXenclientXenmgrVmStartInternal      = runXM xm (startVmInternal uuid) >> return ()
   , comCitrixXenclientXenmgrVmReboot             = rebootVm uuid
-  , comCitrixXenclientXenmgrVmShutdown           = runvm shutdownVmIfSafe
-  , comCitrixXenclientXenmgrVmDestroy            = runvm forceShutdownVmIfSafe
+  , comCitrixXenclientXenmgrVmShutdown           = runvm invokeShutdownVm
+  , comCitrixXenclientXenmgrVmDestroy            = runvm invokeForceShutdownVm
   , comCitrixXenclientXenmgrVmSleep              = sleepVm uuid
   , comCitrixXenclientXenmgrVmHibernate          = hibernateVm uuid
-  , comCitrixXenclientXenmgrVmResume             = resumeFromSleep uuid >> return ()
-  , comCitrixXenclientXenmgrVmSuspendToFile      = \f -> suspendToFile uuid f
-  , comCitrixXenclientXenmgrVmResumeFromFile     = \f -> resumeFromFile uuid f False False
+  , comCitrixXenclientXenmgrVmResume             = liftIO $ Xl.resumeFromSleep uuid >> return ()
+  , comCitrixXenclientXenmgrVmSuspendToFile      = \f -> liftIO $ suspendToFile uuid f
+  , comCitrixXenclientXenmgrVmResumeFromFile     = \f -> liftIO $ resumeFromFile uuid f False False
   , comCitrixXenclientXenmgrVmPause              = pauseVm uuid
   , comCitrixXenclientXenmgrVmUnpause            = unpauseVm uuid
   , comCitrixXenclientXenmgrVmReadIcon           = getVmIconBytes uuid
@@ -195,14 +195,16 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedSetPae = \v -> setVmPae uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetApic = getVmApic uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetApic = \v -> setVmApic uuid v
+  , comCitrixXenclientXenmgrVmUnrestrictedGetAcpi = getVmAcpi uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetAcpi = \v -> setVmAcpi uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetViridian = getVmViridian uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetViridian = \v -> setVmViridian uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetNx = getVmNx uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetNx = \v -> setVmNx uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetHap = getVmHap uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetHap = \v -> setVmHap uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetSmbiosPt = getVmSmbiosPt uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetSmbiosPt = \v -> setVmSmbiosPt uuid v
+  , comCitrixXenclientXenmgrVmUnrestrictedGetSmbios = getVmSmbios uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetSmbios = \v -> setVmSmbios uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetSound = getVmSound uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetSound = setVmSound uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetDisplay = getVmDisplay uuid
@@ -217,8 +219,8 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedSetKernelExtract = setVmKernelExtract uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetInitrd = getVmInitrd uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetInitrd = setVmInitrd uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedGetAcpiPt = getVmAcpiPt uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetAcpiPt = \v -> setVmAcpiPt uuid v
+  , comCitrixXenclientXenmgrVmUnrestrictedGetAcpiPath = getVmAcpiPath uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetAcpiPath = \v -> setVmAcpiPath uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetVcpus  = fromIntegral <$> getVmVcpus uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetVcpus  = \v -> setVmVcpus uuid (fromIntegral v)
   , comCitrixXenclientXenmgrVmUnrestrictedGetCoresPerSocket = fromIntegral <$> getVmCoresPerSocket uuid
@@ -396,14 +398,16 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmSetPae = \v -> restrict >> setVmPae uuid v
   , comCitrixXenclientXenmgrVmGetApic = getVmApic uuid
   , comCitrixXenclientXenmgrVmSetApic = \v -> restrict >> setVmApic uuid v
+  , comCitrixXenclientXenmgrVmGetAcpi = getVmAcpi uuid
+  , comCitrixXenclientXenmgrVmSetAcpi = \v -> restrict >> setVmAcpi uuid v
   , comCitrixXenclientXenmgrVmGetViridian = getVmViridian uuid
   , comCitrixXenclientXenmgrVmSetViridian = \v -> restrict >> setVmViridian uuid v
   , comCitrixXenclientXenmgrVmGetNx = getVmNx uuid
   , comCitrixXenclientXenmgrVmSetNx = \v -> restrict >> setVmNx uuid v
   , comCitrixXenclientXenmgrVmGetHap = getVmHap uuid
   , comCitrixXenclientXenmgrVmSetHap = \v -> restrict >> setVmHap uuid v
-  , comCitrixXenclientXenmgrVmGetSmbiosPt = getVmSmbiosPt uuid
-  , comCitrixXenclientXenmgrVmSetSmbiosPt = \v -> restrict >> setVmSmbiosPt uuid v
+  , comCitrixXenclientXenmgrVmGetSmbios = getVmSmbios uuid
+  , comCitrixXenclientXenmgrVmSetSmbios = \v -> restrict >> setVmSmbios uuid v
   , comCitrixXenclientXenmgrVmGetSound = getVmSound uuid
   , comCitrixXenclientXenmgrVmSetSound = \v -> restrict >> setVmSound uuid v
   , comCitrixXenclientXenmgrVmGetDisplay = getVmDisplay uuid
@@ -418,8 +422,8 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmSetKernelExtract = \v -> restrict >> setVmKernelExtract uuid v
   , comCitrixXenclientXenmgrVmGetInitrd = getVmInitrd uuid
   , comCitrixXenclientXenmgrVmSetInitrd = \v -> restrict >> setVmInitrd uuid v
-  , comCitrixXenclientXenmgrVmGetAcpiPt = getVmAcpiPt uuid
-  , comCitrixXenclientXenmgrVmSetAcpiPt = \v -> restrict >> setVmAcpiPt uuid v
+  , comCitrixXenclientXenmgrVmGetAcpiPath = getVmAcpiPath uuid
+  , comCitrixXenclientXenmgrVmSetAcpiPath = \v -> restrict >> setVmAcpiPath uuid v
   , comCitrixXenclientXenmgrVmGetVcpus  = fromIntegral <$> getVmVcpus uuid
   , comCitrixXenclientXenmgrVmSetVcpus  = \v -> restrict >> setVmVcpus uuid (fromIntegral v)
   , comCitrixXenclientXenmgrVmGetCoresPerSocket = fromIntegral <$> getVmCoresPerSocket uuid
@@ -636,10 +640,10 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmSetHpet = restrict' $ setVmHpet uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetHpet = setVmHpet uuid
 
-  , comCitrixXenclientXenmgrVmGetTimerMode = fromIntegral <$> getVmTimerMode uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedGetTimerMode = fromIntegral <$> getVmTimerMode uuid
-  , comCitrixXenclientXenmgrVmSetTimerMode = (restrict' $ setVmTimerMode uuid) . fromIntegral
-  , comCitrixXenclientXenmgrVmUnrestrictedSetTimerMode = (setVmTimerMode uuid) . fromIntegral
+  , comCitrixXenclientXenmgrVmGetTimerMode = getVmTimerMode uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetTimerMode = getVmTimerMode uuid
+  , comCitrixXenclientXenmgrVmSetTimerMode = (restrict' $ setVmTimerMode uuid)
+  , comCitrixXenclientXenmgrVmUnrestrictedSetTimerMode = (setVmTimerMode uuid)
 
   , comCitrixXenclientXenmgrVmGetNestedhvm = getVmNestedHvm uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetNestedhvm = getVmNestedHvm uuid

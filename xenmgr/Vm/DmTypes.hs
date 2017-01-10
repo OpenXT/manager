@@ -82,6 +82,7 @@ data DiskType = DiskImage
               | VirtualHardDisk
               | ExternalVdi
               | Aio
+              | Raw
                 deriving (Eq, Show)
 
 data DiskSnapshotMode = SnapshotTemporary

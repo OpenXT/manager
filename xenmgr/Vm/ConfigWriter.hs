@@ -18,7 +18,7 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Vm.ConfigWriter ( writeXenvmConfig ) where
+module Vm.ConfigWriter ( writeXlConfig ) where
 
 import qualified Control.Exception as E
 import Control.Concurrent
@@ -31,19 +31,18 @@ import Vm.Types
 import Vm.Queries
 import Vm.Config
 import XenMgr.Config
-import XenMgr.Connect.Xenvm
 import Tools.Log
 
 -- Write a XENVM configuration file for VM
-writeXenvmConfig :: VmConfig -> Rpc ()
-writeXenvmConfig cfg = do
-  config <- getXenvmConfig cfg
-  let stringconfig = stringifyXenvmConfig config
+writeXlConfig :: VmConfig -> Rpc ()
+writeXlConfig cfg = do
+  config <- getXlConfig cfg
+  let stringconfig = stringifyXlConfig config
 
-  liftIO $ retry 10 (writeFile xenvmConfigPath stringconfig)
-  info $ "written xenvm config for " ++ show (vmcfgUuid cfg)
+  liftIO $ retry 10 (writeFile xlConfigPath stringconfig)
+  info $ "written xl config for " ++ show (vmcfgUuid cfg)
   where
-    xenvmConfigDir  = "/tmp"
-    xenvmConfigPath = joinPath [xenvmConfigDir, "xenmgr-xenvm-" ++ (show $ vmcfgUuid cfg)]
+    xlConfigDir  = "/tmp"
+    xlConfigPath = joinPath [xlConfigDir, "xenmgr-xl-" ++ (show $ vmcfgUuid cfg)]
     retry 0 _ = return ()
     retry n f = f `E.catch` \(err::IOError) -> threadDelay (10^5) >> retry (n-1) f

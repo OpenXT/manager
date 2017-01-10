@@ -26,16 +26,18 @@ module Vm.DomainCore
     , whenDomainID_
     , domainXSPath
     , domain0uuid
+    , domainUIVM
     ) where
 
 import Data.String
 import Data.Maybe
+import Data.Int
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Text.Printf
 import Vm.Types
-import qualified XenMgr.Connect.Xenvm as Xenvm
+import qualified XenMgr.Connect.Xl as Xl
 import Tools.XenStore
 import XenMgr.Db
 import XenMgr.Rpc
@@ -50,6 +52,9 @@ domainXSPath domid = printf "/local/domain/%d" domid
 domain0uuid :: Uuid
 domain0uuid = fromString "00000000-0000-0000-0000-000000000000"
 
+domainUIVM :: Uuid
+domainUIVM = fromString "00000000-0000-0000-0000-000000000001"
+
 -- Query xenvm for domain ID
 getDomainID :: (MonadRpc e m) => Uuid -> m (Maybe DomainID)
 getDomainID uuid
@@ -58,7 +63,11 @@ getDomainID uuid
         in_db <- dbExists $ "/vm/" ++ show uuid
         if not in_db
            then return Nothing
-           else Xenvm.domainID uuid
+           else liftIO $ do
+             domid <- Xl.getDomainId uuid
+             case domid of
+               "" -> return Nothing
+               _  -> return (Just (read domid :: Int32))
 
 whenDomainID :: (MonadRpc e m) => a -> Uuid -> (DomainID -> m a) -> m a
 whenDomainID def uuid f

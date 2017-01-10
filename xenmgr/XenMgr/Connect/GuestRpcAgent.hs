@@ -33,8 +33,8 @@ import Data.String
 import Control.Monad
 import Tools.Misc
 import Vm.Types
-import qualified XenMgr.Connect.Xenvm as Xenvm
 import qualified Data.Text.Lazy as TL
+import qualified XenMgr.Connect.Xl as Xl
 import Rpc.Core
 import Rpc.Autogen.GuestClient
 import Rpc.Autogen.DbusClient
@@ -56,19 +56,19 @@ agentService uuid =
 shutdown :: Uuid -> Rpc ()
 shutdown uuid =
     do comCitrixXenclientGuestRequestShutdown (agentService uuid) "/"
-       done <- Xenvm.waitForState uuid Shutdown Nothing
+       done <- liftIO $ Xl.waitForState uuid Shutdown Nothing
        when (not done) $ failShutdownTimeout
 
 sleep :: Uuid -> Rpc ()
 sleep uuid =
     do comCitrixXenclientGuestRequestSleep (agentService uuid) "/"
-       done <- Xenvm.waitForAcpiState uuid 3 (Just 180)
+       done <- liftIO $ Xl.waitForAcpiState uuid 3 (Just 180)
        when (not done) $ failSleepTimeout
 
 hibernate :: Uuid -> Rpc ()
 hibernate uuid =
     do comCitrixXenclientGuestRequestHibernate (agentService uuid) "/"
-       done <- Xenvm.waitForState uuid Shutdown (Just 180)
+       done <- liftIO $ Xl.waitForState uuid Shutdown (Just 180)
        when (not done) $ failHibernateTimeout
 
 reboot :: Uuid -> Rpc ()

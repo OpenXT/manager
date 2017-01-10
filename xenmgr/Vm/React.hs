@@ -29,6 +29,8 @@ import Data.List
 import Data.Maybe
 import Data.Monoid
 import Data.IORef
+import Data.String
+import Data.Int
 import System.IO
 import Text.Printf (printf)
 import Tools.Log
@@ -39,7 +41,7 @@ import Tools.IfM
 import Tools.Future
 import System.Directory
 
-import Vm.DomainCore (updateStubDomainID, domainXSPath)
+import Vm.DomainCore (updateStubDomainID, domainXSPath, domainUIVM)
 import Vm.Types
 import Vm.Config
 import Vm.Monitor
@@ -58,7 +60,7 @@ import XenMgr.PowerManagement
 import XenMgr.XM
 import XenMgr.CdLock
 
-import qualified XenMgr.Connect.Xenvm as Xenvm
+import qualified XenMgr.Connect.Xl as Xl
 import Rpc.Autogen.NetworkDaemonClient
 import Rpc.Autogen.CtxusbDaemonClient
 
@@ -78,6 +80,7 @@ monitorAndReactVm uuid
               monitor <- liftRpc $ newVmMonitor uuid
               c <- xmCreateAndRegisterVmContext uuid monitor
               processVmEvent <- vmEventProcessor
+              liftRpc $ vmStateWatch monitor
               liftRpc . void $ react monitor (\hid e -> runVm c $ processVmEvent hid e)
 
 -- TODO: clean method to stop monitoring events
@@ -141,6 +144,12 @@ detectPvAddonsR =
 detectBsgDevStatusR =
   whenE VmBsgDevNodeChange checkBsgDevStatus
 
+detectStateChange =
+  whenE VmStateUpdate notifyVmStateUpdate
+
+detectAcpiChange =
+  whenE VmAcpiUpdate reactVmAcpiUpdate
+
 clockR = mkReact f where
   f (VmRtcChange offset) = vmUuid >>= \uuid -> saveConfigProperty uuid vmTimeOffset offset
   f _ = return ()
@@ -187,14 +196,14 @@ powerlinkR xm get_shr =
                             liftRpc $ pmSetScreenRestoreVm (vm_uuid vm)
                             -- make sure the vm's hibernation is actually done as we receive acpi state change notifications
                             -- slightly before domain gets destroyed
-                            done <- liftRpc $ Xenvm.waitForState (vm_uuid vm) Shutdown (Just 60)
+                            done <- liftIO $ Xl.waitForState (vm_uuid vm) Shutdown (Just 60)
                             when (not done) $ warn ("Power Link: VM " ++ show (vm_uuid vm) ++ " is still running, but should be hibernated!")
                             hostHibernate
       sleep vm         = do info "Power Link: sleep"
                             liftRpc $ pmSetScreenRestoreVm (vm_uuid vm)
                             hostSleep
                             info $ "Power Link: resume " ++ show (vm_uuid vm)
-                            liftRpc (Xenvm.resumeFromSleep (vm_uuid vm))
+                            liftIO (Xl.resumeFromSleep (vm_uuid vm))
                             return ()
       shutdown vm      = do reason <- runVm vm get_shr
                             when ( reason == AcpiPoweroff ) $
@@ -225,6 +234,9 @@ notifyNetworkDaemonR = mkReact f where
 uuidRpc :: (Uuid -> Rpc a) -> Vm a
 uuidRpc f = vmUuid >>= \uuid -> liftRpc (f uuid)
 
+uuidIO :: (Uuid -> IO a) -> Vm a
+uuidIO f = vmUuid >>= \uuid -> liftIO (f uuid)
+
 vmEventProcessor :: XM (HandlerID -> VmEvent -> Vm ())
 vmEventProcessor
     = do shut_r <- liftIO $ newMVar CreationFailure
@@ -245,6 +257,8 @@ vmEventProcessor
                `mappend` powerlinkR xm get_shut_r
                `mappend` runEventScriptR
                `mappend` notifyExternalR
+               `mappend` detectStateChange
+               `mappend` detectAcpiChange
          return $
                 \hid e -> sequence_ $ [err (f e) | f <- r]
       where
@@ -255,6 +269,11 @@ whenRunning xm = do
     usb <- uuidRpc getVmUsbEnabled
     when usb $ whenDomainID_ uuid $ \domid -> usbUp (fromIntegral domid)
 
+cleanupVkbd :: Uuid -> DomainID -> Rpc ()
+cleanupVkbd uuid domid = do
+    rpcCallOnce (Xl.xlInputDbus uuid "detach_vkbd" [toVariant $ (read (show domid) :: Int32) ])
+    return ()
+
 whenShutdown xm reason = do
     uuid <- vmUuid
     info ("vm " ++ show uuid ++ " shutdown, reason: " ++ show reason)
@@ -263,6 +282,9 @@ whenShutdown xm reason = do
       Just domid -> do
         usbDown domid
         removeAlsa domid
+        cleanupV4VDevice domid
+        vkb_enabled <- getVmVkbd uuid
+        when vkb_enabled $ liftRpc $ cleanupVkbd uuid domid
       _ -> return ()
     liftIO $ removeVmEnvIso uuid
     uuidRpc disconnectFrontVifs
@@ -281,15 +303,20 @@ whenShutdown xm reason = do
         info $ "remove alsa file " ++ alsafile
         whenM (doesFileExist alsafile) (removeFile alsafile)
 
+--Reboot has been slightly reworked. The domain is brought down by xl and
+--restarted, XenMgr simply performs its regular duties on domain creation,
+--synchronizing at the "Creating Devices" and "Created" states.
 whenRebooted xm = do
     uuid <- vmUuid
-    p <- uuidRpc getVmPreserveOnReboot
-    -- do not destroy/restart vm if preserve on reboot flag is set
-    when (not p) $ do
-      uuidRpc Xenvm.destroy
-      uuidRpc unapplyVmFirewallRules
-      liftIO $ removeVmEnvIso uuid
-      uuidRpc (backgroundRpc . runXM xm . startVm)
+    uuidRpc unapplyVmFirewallRules
+    liftIO $ removeVmEnvIso uuid
+    domidStr <- liftIO $ xsRead ("/xenmgr/vms/" ++ show uuid ++ "/domid")
+    case join (fmap maybeRead domidStr) of
+      Just domid -> do
+        vkb_enabled <- getVmVkbd uuid
+        when vkb_enabled $ liftRpc $ cleanupVkbd uuid domid
+      _ -> return ()
+    uuidRpc (backgroundRpc . runXM xm . startVm)
   where
     backgroundRpc f =
       do c <- rpcGetContext
@@ -312,7 +339,7 @@ whenControlsPlatformPState uuid act = getVmControlPlatformPowerState uuid >>= go
 
 maybeWake :: Vm Bool
 maybeWake = uuidRpc $ \uuid -> getVmAutoS3Wake uuid >>= wake uuid where
-    wake uuid True = Xenvm.resumeFromSleep uuid >> return True
+    wake uuid True = liftIO $ Xl.resumeFromSleep uuid >> return True
     wake _ _ = return False
 
 maybeKeepVmAlive :: Uuid -> XM Bool
@@ -342,7 +369,7 @@ maybeUpdateV4VHosts =
 updateEtcHosts :: String -> Vm ()
 updateEtcHosts tag = uuidRpc $ \uuid -> do
   running  <- isRunning uuid
-  domid    <- Xenvm.domainID uuid
+  domid    <- liftIO $ Xl.domainID uuid
   liftIO . withFile "/etc/hosts" ReadWriteMode $ \handle ->
       do str <- hGetContents' handle
          let contents = length str `seq` parse str
@@ -451,6 +478,41 @@ checkBsgDevStatus = uuidRpc $ \uuid -> whenDomainID_ uuid $ \domid ->
         [a,b,c,d] -> let r = maybeRead in
           BSGDevice <$> r a <*> r b <*> r c <*> r d
         _ -> Nothing
+
+-- This is implemented in xenmgr for several reasons. First, there's really only
+-- 1 acpi state we care about: s3. Xenvm used to fork a thread that polled xen
+-- for domain acpi state with xc_hvm_param_get, which is BAD since xc_hvm_param_get
+-- makes a hypercall.Second, we can remove responsibility from inputserver to react
+-- to acpi state changes (it shouldn't have to deal with that anyway). Third, we 
+-- won't have to patch libxl.
+reactVmAcpiUpdate :: Vm ()
+reactVmAcpiUpdate = do
+    uuid <- vmUuid
+    whenDomainID_ uuid $ \domid -> do
+      maybe_acpi <- liftIO $ xsRead ("/local/domain/" ++ show domid ++ "/acpi-state")
+      case maybe_acpi of
+          Just acpi -> if acpi == "s3" then do switchVm domainUIVM 
+                                               return () 
+                                       else return () 
+          Nothing   -> return () 
+    
+-- This is a new notify function to support state updates coming from xl
+-- Instead of implementing dbus support in xl, state updates are written to a
+-- xenstore node which XenMgr watches, which then fires off a dbus message, upon
+-- which any state change code is handled normally.
+notifyVmStateUpdate :: Vm ()
+notifyVmStateUpdate = do
+    uuid <- vmUuid
+    maybe_state <- liftIO $ xsRead ("/state/" ++ show uuid ++ "/state")
+    liftRpc $ notifyComCitrixXenclientXenmgrNotify
+      xenmgrObjectPath
+      (uuidStr uuid)
+      (st maybe_state)
+    where
+    st s =
+      case s of
+        Just state -> (fromString "vm:state:" ++ state)
+        Nothing -> (fromString "vm:state:shutdown")
 
 notifyVmStateChange :: VmState -> Vm ()
 notifyVmStateChange state

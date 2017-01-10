@@ -23,7 +23,7 @@ module XenMgr.Connect.Xenvm
                domainID
              , stubDomainID
              , domainXsPath
-             , isRunning
+             --, isRunning  --disable this export for now, as xl also implements and exports this function
              , isFocused
              , state
              , stateStr

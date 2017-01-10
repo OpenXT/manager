@@ -106,7 +106,7 @@ data VmConfig = VmConfig {
     , vmcfgNics :: [NicDef]
     , vmcfgDisks :: [Disk]
     , vmcfgNetworks :: [NetworkInfo]
-    , vmcfgCryptoKeyDirs :: [FilePath]
+    , vmcfgCryptoKeyDirs :: FilePath
     , vmcfgPvAddons :: Bool
     , vmcfgGraphics :: VmGraphics
     , vmcfgRestrictDisplayDepth :: Bool
@@ -117,7 +117,8 @@ data VmConfig = VmConfig {
     , vmcfgCdExclusive :: Bool
     , vmcfgAutostart :: Bool
     , vmcfgSeamlessSupport :: Bool
-    , vmcfgSmbiosOemTypesPt :: [Int] -- list of vendor specific dmi tables to pass thru to guest
+    , vmcfgSmbios :: String -- path to extra smbios table
+    , vmcfgAcpi :: String -- path to extra acpi table
     , vmcfgXcVersion :: XcVersion
     , vmcfgUsbEnabled :: Bool
     , vmcfgUsbAutoPassthrough :: Bool

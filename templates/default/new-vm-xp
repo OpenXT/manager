@@ -4,7 +4,8 @@
     "0": "my-stubdom -> 0:4001",
     "1": "my-stubdom -> 0:4002",
     "2": "my-stubdom -> 0:5000",
-    "3": "my-stubdom -> 0:5001"
+    "3": "my-stubdom -> 0:5001",
+    "4": "my-stubdom -> 0:5100"
   },
   "os": "windows",
   "description": "Windows XP",
