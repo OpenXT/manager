@@ -559,6 +559,10 @@ getXlConfig cfg =
                           , "vga='stdvga'"
                           , "crypto_key_dir='" ++ (vmcfgCryptoKeyDirs cfg) ++ "'"
                           , "xci_cpuid_signature=" ++ (if vmcfgXciCpuidSignature cfg then "1" else "0")
+                          , "pci_permissive=1"
+                          , "pci_msitranslate=1"
+                          , "pci_seize=1"
+                          , "pci_power_mgmt=1"
                           ]
                             ++ nameStr
                             ++ kernel
