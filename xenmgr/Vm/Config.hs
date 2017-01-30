@@ -789,7 +789,7 @@ miscSpecs cfg = do
              False     -> return []
              otherwise -> return ["device_model_override='/usr/bin/qemu-system-i386'"]
 
-      usb_opts | not (vmcfgUsbEnabled cfg) = return ["usb=false"]
+      usb_opts | not (vmcfgUsbEnabled cfg) = return ["usb=0"]
                | otherwise                 = return []
 
       platform =
