@@ -337,20 +337,20 @@ kibToMib = (`div` 1024)
 
 getPhysInfo :: IO PhysInfo
 getPhysInfo = parse (PhysInfo 0 0 0 0) . lines <$> xenops where
-  xenops = readProcessOrDie "xenops" ["physinfo"] ""
+  xenops = readProcessOrDie "xl" ["info"] ""
   parse pi [] = pi
   parse pi (l:ls) = case words l of
     ("nr_cpus":_:v:_)     -> parse (pi{ cpuCount = read v }) ls
-    ("total_pages":_:v:_) -> parse (pi{ totalPages = read v }) ls
-    ("free_pages" :_:v:_) -> parse (pi{ freePages = read v }) ls
-    ("scrub_pages":_:v:_) -> parse (pi{ scrubPages = read v }) ls
+    ("total_memory":_:v:_) -> parse (pi{ totalPages = read v }) ls
+    ("free_memory" :_:v:_) -> parse (pi{ freePages = read v }) ls
+    ("outstanding_claims":_:v:_) -> parse (pi{ scrubPages = read v }) ls
     _                     -> parse pi ls
 
 getTotalMem :: IO Int
-getTotalMem = pagesToMib . totalPages <$> getPhysInfo
+getTotalMem = totalPages <$> getPhysInfo
 
 getFreeMem :: IO Int
-getFreeMem = pagesToMib . freePages <$> getPhysInfo
+getFreeMem = freePages <$> getPhysInfo
 
 getCpuCount :: IO Int
 getCpuCount = cpuCount <$> getPhysInfo
