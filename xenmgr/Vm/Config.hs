@@ -705,7 +705,7 @@ miscSpecs cfg = do
     let cdexcl_opt = case vmcfgCdExclusive cfg of
                        True -> "-exclusive"
                        _    -> ""
-    let cdromParams = let bsgList = map cdromParam bsgs in
+    let cdromParams = let bsgList = if cdromA then map cdromParam bsgs else [] in
                         case length bsgList of
                            0 -> []
                            _ -> (["-drive"] ++) $ intersperse "-drive" bsgList
