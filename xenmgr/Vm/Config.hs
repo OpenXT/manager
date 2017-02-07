@@ -733,12 +733,12 @@ miscSpecs cfg = do
     dm_override_ <- liftRpc dm_override
     extra_hvms <- readConfigPropertyDef uuid vmExtraHvms []
 
-    let coresPSpms = if coresPS > 1 then ["cores-per-socket=" ++ show coresPS] else ["cores-per-socket=" ++ show vcpus]
+    let coresPSpms = if coresPS > 1 then ["cores_per_socket=" ++ show coresPS] else ["cores_per_socket=" ++ show vcpus]
     return $
            t ++ v ++ combineExtraHvmParams (cdromParams ++ audioRec ++ extra_hvms)
         ++ ["memory="++show (vmcfgMemoryMib cfg) ]
         ++ ["maxmem="++show (vmcfgMemoryStaticMaxMib cfg) ]
-        ++ smbios_path ++ snd -- ++ coresPSpms --disable and CoresPS for now
+        ++ smbios_path ++ snd ++ coresPSpms
         ++ stubdom_ ++ cpuidResponses cfg ++ usb ++ platform ++ other               
         ++ hpet_
         ++ timer_mode_
