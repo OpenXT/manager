@@ -274,6 +274,22 @@ cleanupVkbd uuid domid = do
     rpcCallOnce (Xl.xlInputDbus uuid "detach_vkbd" [toVariant $ (read (show domid) :: Int32) ])
     return ()
 
+maybeCleanupSnapshots :: Vm ()
+maybeCleanupSnapshots = do
+    uuid <- vmUuid
+    config <- liftRpc $ getVmConfig uuid False
+    let disks = vmcfgDisks config
+    info $ "cleanupSnapshots disks = " ++ (show disks)
+    sequence $ map removeIfExists $ map (++".snap.tmp.vhd") $ map diskPath disks
+    return ()
+  where
+    removeIfExists path = do
+                            exists <- liftIO $ doesFileExist path
+                            case exists of
+                                True  -> do liftIO $ removeFile path
+                                            return ()
+                                False -> return ()
+
 whenShutdown xm reason = do
     uuid <- vmUuid
     info ("vm " ++ show uuid ++ " shutdown, reason: " ++ show reason)
@@ -295,6 +311,7 @@ whenShutdown xm reason = do
     maybeUpdateV4VHosts
     -- sent cd lock state notifications
     liftRpc $ mapM_ notifyCdDeviceAssignmentChanged =<< liftIO getHostBSGDevices
+    maybeCleanupSnapshots
     runXM xm (maybeKeepVmAlive uuid)
     return ()
     where

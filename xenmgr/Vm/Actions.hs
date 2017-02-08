@@ -763,11 +763,44 @@ monitorAcpi uuid m state = do
           else do threadDelay (10^6)
                   monitorAcpi uuid m acpi_state
 
+-- Creates a snapshot from the primary disk when the disk persistence option is
+-- set. It first checks to see if a snapshot already exists and deletes it before
+-- creating a new one.
+createSnapshot :: Disk -> IO Disk
+createSnapshot disk = do
+    let path = diskPath disk
+    let newPath = path ++ ".snap.tmp.vhd"
+    exists <- liftIO $ doesFileExist newPath --ensure we're creating a fresh snapshot
+    when exists (removeFile newPath)
+    create path newPath
+  where
+    create path newPath = do readProcess "vhd-util" ["snapshot", "-n", newPath, "-p", path] []
+                             info $ "newPath = " ++ newPath
+                             return disk { diskPath = newPath }
+
+checkAndPerformSnapshotIfReq :: Uuid -> [Disk] -> IO [Disk]
+checkAndPerformSnapshotIfReq uuid disks = do
+    mapM checkDisk disks
+
+  where
+    checkDisk disk = do
+        let snapshot = diskSnapshotMode disk
+        case snapshot of
+            Nothing                          -> return disk --return the same disk we were passed in, no changes required
+            Just SnapshotTemporary           -> createSnapshot disk
+            _                                -> return disk --other Snapshot types unimplemented for now since UI can't set them
+
+
 bootVm :: VmConfig -> XM ()
 bootVm config
   = do
        monitor <- vm_monitor <$> xmRunVm uuid vmContext
-       liftRpc $ updateXVConfig config
+
+       -- Check persistence type, create snapshot and update path if required
+       newDisks <- liftIO $ checkAndPerformSnapshotIfReq uuid (vmcfgDisks config)
+       let newConfig = config { vmcfgDisks = newDisks }
+
+       liftRpc $ updateXVConfig newConfig
 
        withPreCreationState uuid (create monitor)
     where
