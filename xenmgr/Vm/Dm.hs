@@ -93,7 +93,7 @@ backXSPath t frontdomid backdomid =
         d = case t of
               VBD  -> "vbd"
               VIF  -> "vif"
-              VWIF -> "vif"
+              VWIF -> "vwif"
               VKBD -> "vkbd"
               V4V  -> "v4v"
 
