@@ -262,7 +262,7 @@ nicFrontendPath uuid (XbDeviceID nicid) =
        let nicid_str = show nicid
        case () of
          _ | nicid_str `elem` vifs -> return $ Just (domainP ++ "/device/vif/" ++ nicid_str)
-           | nicid_str `elem` vwifs -> return $ Just (domainP ++ "/device/vwif" ++ nicid_str)
+           | nicid_str `elem` vwifs -> return $ Just (domainP ++ "/device/vwif/" ++ nicid_str)
            | otherwise -> return Nothing
 
 --For a given nic, reassign the backend network it should belong to

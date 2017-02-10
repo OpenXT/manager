@@ -646,7 +646,7 @@ nicSpec cfg amt eth0Mac nic networkDomID =
 
       -- HACK: don't put device as wireless for linuxes, as we have no pv driver for that
       wireless  | nicdefWirelessDriver nic
-                , vmcfgOs cfg /= Linux   = ["wireless=true"]
+                , vmcfgOs cfg /= Linux   = ["wireless=1"]
                 | otherwise              = [ ]
 
       -- use mac specified in configuration as first priority
