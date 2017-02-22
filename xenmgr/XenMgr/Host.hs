@@ -451,7 +451,7 @@ readHostInfo = do
     physCpuModel   <- future $
                         do out <- spawnShell "grep \"model name\" /proc/cpuinfo"
                            return $ (strip out) `fetch` "model name[^:]*:(.*)"
-    physGpuModel   <- future $ strip <$> spawnShell "lspci  -nn | grep \"\\[0300\\]\" | cut -d: -f3-"
+    physGpuModel   <- future $ strip <$> spawnShell "lspci  -nn | grep \"\\[03..\\]\" | cut -d: -f3-"
     eth0Model      <- future $ getEth0Model
     wifiModel      <- future $ getWlan0Model
     eth0Addr       <- future $ maybe "" id <$> eth0Mac
