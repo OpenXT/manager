@@ -49,6 +49,7 @@ module Vm.Pci (
            ) where
 
 import Data.Char
+import Data.Bits
 import Data.Function
 import Data.List
 import Data.Maybe
@@ -210,11 +211,15 @@ matchingPciAddresses rule@(PciPtRule {})
   select (PciCache cache) = filter predAll cache
   pred rulePart infoPart (_,info) =
     maybe (const True) (==) (rulePart rule) $ infoPart info
-  predAll entry = pred ruleClass pciinfoClass entry &&
+  predMask rulePart infoPart (_,info) =
+    maybe (const True) (==) (rulePart rule) $ ((infoPart info) .&. 0xFF00)
+  predAll entry = gpuClass entry &&
                   pred ruleVendor pciinfoVendor entry &&
                   pred ruleDevice pciinfoDevice entry
   slapForce (dev, _) = (devAddr dev, guest_slot)
   guest_slot = if ruleForceSlot rule then PciSlotMatchHost else PciSlotDontCare
+  gpuClass entry = if (maybe (const False) (==) (ruleClass rule) $ 0x300) then 
+    predMask ruleClass pciinfoClass entry else pred ruleClass pciinfoClass entry
 
 matchingPciAddressesMany :: [PciPtRule] -> IO [(PciAddr, PciPtGuestSlot)]
 matchingPciAddressesMany rules = unions <$> mapM matchingPciAddresses rules
