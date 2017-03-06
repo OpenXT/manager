@@ -71,6 +71,8 @@ import XenMgr.Rpc
 import XenMgr.Db
 import qualified Data.Map as M
 
+import Rpc.Autogen.CdromDaemonClient
+
 type NotifyHandler = [String] -> Rpc ()
 type Params = [(String, String)]
 
@@ -247,11 +249,11 @@ getDomainId uuid = do
       _    -> return (plain_domid) --remove trailing newline
 
 --For a given uuid, change the iso in the cd drive slot
-changeCd :: Uuid -> String -> IO ()
+changeCd :: Uuid -> String -> Rpc ()
 changeCd uuid path = do
-    domid <- getDomainId uuid
-    (exitCode, _, _)  <- readProcessWithExitCode "xl" ["cd-insert", domid, "hdc", path] []
-    bailIfError exitCode "error changing cd"
+    domid <- liftIO $ getDomainId uuid
+    comCitrixXenclientCdromdaemonChangeIso "com.citrix.xenclient.cdromdaemon" "/" path (read domid)
+    return ()
 
 --Return the frontend xenstore path of the nic device (or Nothing)
 nicFrontendPath :: Uuid -> NicID -> IO (Maybe String)

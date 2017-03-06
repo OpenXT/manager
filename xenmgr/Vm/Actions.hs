@@ -1664,7 +1664,7 @@ setVmCd uuid str =
                      | otherwise          = do isos <- appIsoPath
                                                let path = isos ++ "/" ++ name
                                                -- hot swap cd
-                                               whenVmRunning uuid (liftIO $ Xl.changeCd uuid path)
+                                               whenVmRunning uuid (liftRpc $ Xl.changeCd uuid path)
                                                return $ disk { diskPath = path }
     name | str == ""   = "null.iso"
          | otherwise   = str
