@@ -117,8 +117,7 @@ data VmConfig = VmConfig {
     , vmcfgCdExclusive :: Bool
     , vmcfgAutostart :: Bool
     , vmcfgSeamlessSupport :: Bool
-    , vmcfgSmbios :: String -- path to extra smbios table
-    , vmcfgAcpi :: String -- path to extra acpi table
+    , vmcfgAcpi :: Bool -- use/don't use path to acpi table
     , vmcfgXcVersion :: XcVersion
     , vmcfgUsbEnabled :: Bool
     , vmcfgUsbAutoPassthrough :: Bool
