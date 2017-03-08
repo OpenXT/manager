@@ -72,13 +72,13 @@ module Vm.Actions
           , setVmImagePath, setVmSlot, setVmPvAddons, setVmPvAddonsVersion
           , setVmTimeOffset, setVmCryptoUser, setVmCryptoKeyDirs, setVmAutoS3Wake
           , setVmNotify, setVmHvm, setVmPae, setVmApic, setVmAcpi, setVmViridian, setVmNx, setVmSound, setVmDisplay
-          , setVmBoot, setVmCmdLine, setVmKernel, setVmInitrd, setVmAcpiPath, setVmVcpus, setVmCoresPerSocket
+          , setVmBoot, setVmCmdLine, setVmKernel, setVmInitrd, setVmAcpiTable, setVmVcpus, setVmCoresPerSocket
           , setVmKernelExtract
           , setVmInitrdExtract
           , setVmMemoryStaticMax
           , setVmMemoryMin
           , setVmVideoram, setVmPassthroughMmio, setVmPassthroughIo, setVmFlaskLabel
-          , setVmAmtPt, setVmHap, setVmSmbios, setVmDescription
+          , setVmAmtPt, setVmHap, setVmDescription
           , setVmExtraXenvm, setVmExtraHvm
           , setVmStartOnBootPriority, setVmKeepAlive, setVmProvidesNetworkBackend
           , setVmProvidesGraphicsFallback, setVmShutdownPriority, setVmSeamlessId
@@ -1763,7 +1763,7 @@ setVmKernel uuid v = saveConfigProperty uuid vmKernel (v::String)
 setVmKernelExtract uuid v = saveConfigProperty uuid vmKernelExtract (v::String)
 setVmInitrd uuid v = saveConfigProperty uuid vmInitrd (v::String)
 setVmInitrdExtract uuid v = saveConfigProperty uuid vmInitrdExtract (v::String)
-setVmAcpiPath uuid v = saveConfigProperty uuid vmAcpiPath (v::String)
+setVmAcpiTable uuid v = saveConfigProperty uuid vmAcpiTable (v::Bool)
 setVmVcpus uuid v = saveConfigProperty uuid vmVcpus (v::Int)
 setVmCoresPerSocket uuid v = saveConfigProperty uuid vmCoresPerSocket (v::Int)
 setVmVideoram uuid v = saveConfigProperty uuid vmVideoram (v::Int)
@@ -1771,7 +1771,6 @@ setVmPassthroughMmio uuid v = saveConfigProperty uuid vmPassthroughMmio (v::Stri
 setVmPassthroughIo uuid v = saveConfigProperty uuid vmPassthroughIo (v::String)
 setVmFlaskLabel uuid v = saveConfigProperty uuid vmFlaskLabel (v::String)
 setVmHap uuid v = saveConfigProperty uuid vmHap (v::Bool)
-setVmSmbios uuid v = saveConfigProperty uuid vmSmbios (v::String)
 setVmDescription uuid v = saveConfigProperty uuid vmDescription (v::String)
 setVmStartOnBootPriority uuid v = saveConfigProperty uuid vmStartOnBootPriority (v::Int)
 setVmKeepAlive uuid v = saveConfigProperty uuid vmKeepAlive (v::Bool)

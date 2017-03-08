@@ -77,12 +77,12 @@ module Vm.Queries
                , getVmImagePath, getVmSlot, getVmPvAddons, getVmPvAddonsVersion
                , getVmTimeOffset, getVmCryptoUser, getVmCryptoKeyDirs, getVmAutoS3Wake
                , getVmNotify, getVmHvm, getVmPae, getVmApic, getVmAcpi, getVmViridian, getVmNx, getVmSound, getVmDisplay
-               , getVmBoot, getVmCmdLine, getVmKernel, getVmInitrd, getVmAcpiPath, getVmVcpus, getVmCoresPerSocket
+               , getVmBoot, getVmCmdLine, getVmKernel, getVmInitrd, getVmAcpiTable, getVmVcpus, getVmCoresPerSocket
                , getVmKernelPath
                , getVmKernelExtract
                , getVmInitrdExtract
                , getVmVideoram, getVmPassthroughMmio, getVmPassthroughIo, getVmFlaskLabel
-               , getVmAcpiState, getVmHap, getVmSmbios, getVmDescription, getVmMeasured
+               , getVmAcpiState, getVmHap, getVmDescription, getVmMeasured
                , getVmExtraXenvm, getVmExtraHvm
                , getVmStartOnBootPriority, getVmKeepAlive, getVmProvidesNetworkBackend
                , getVmShutdownPriority, getVmProvidesGraphicsFallback
@@ -240,8 +240,7 @@ getVmConfig uuid resolve_backend_uuids =
        pv_addons <- future $ getVmPvAddons uuid
        autostart <- future $ getVmStartOnBoot uuid
        seamless <- future $ getVmSeamlessTraffic uuid
-       smbios_path <- future $ getVmSmbios uuid
-       acpi_path <- future $ getVmAcpiPath uuid
+       acpi_table <- future $ getVmAcpiTable uuid
        stubdom <- future $ getVmStubdom uuid
        stubdom_memory <- future $ getVmStubdomMemory uuid
        stubdom_cmdline <- future $ Just <$> getVmStubdomCmdline uuid
@@ -283,8 +282,7 @@ getVmConfig uuid resolve_backend_uuids =
                      <*> excl_cd
                      <*> autostart
                      <*> seamless
-                     <*> smbios_path
-                     <*> acpi_path
+                     <*> acpi_table
                      <*> v
                      <*> usb
                      <*> auto_passthrough
@@ -947,7 +945,7 @@ getVmKernel uuid = readConfigPropertyDef uuid vmKernel ""
 getVmKernelExtract uuid = readConfigPropertyDef uuid vmKernelExtract ""
 getVmInitrd uuid = readConfigPropertyDef uuid vmInitrd ""
 getVmInitrdExtract uuid = readConfigPropertyDef uuid vmInitrdExtract ""
-getVmAcpiPath uuid = readConfigPropertyDef uuid vmAcpiPath ""
+getVmAcpiTable uuid = readConfigPropertyDef uuid vmAcpiTable False
 getVmVcpus uuid = readConfigPropertyDef uuid vmVcpus (0::Int)
 getVmCoresPerSocket uuid = readConfigPropertyDef uuid vmCoresPerSocket (0::Int)
 getVmVideoram uuid = readConfigPropertyDef uuid vmVideoram (0::Int)
@@ -955,7 +953,6 @@ getVmPassthroughMmio uuid = readConfigPropertyDef uuid vmPassthroughMmio ""
 getVmPassthroughIo uuid = readConfigPropertyDef uuid vmPassthroughIo ""
 getVmFlaskLabel uuid = readConfigPropertyDef uuid vmFlaskLabel ""
 getVmHap uuid = readConfigPropertyDef uuid vmHap False
-getVmSmbios uuid = readConfigPropertyDef uuid vmSmbios ""
 getVmDescription uuid = readConfigPropertyDef uuid vmDescription ""
 getVmStartOnBootPriority uuid = readConfigPropertyDef uuid vmStartOnBootPriority (0::Int)
 getVmKeepAlive uuid = readConfigPropertyDef uuid vmKeepAlive False

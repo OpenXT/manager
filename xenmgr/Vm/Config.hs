@@ -40,8 +40,8 @@ module Vm.Config (
                 , vmUuidP, vmName, vmDescription, vmType, vmSlot, vmImagePath, vmPvAddons, vmPvAddonsVersion
                 , vmStartOnBoot, vmStartOnBootPriority, vmKeepAlive, vmProvidesNetworkBackend, vmTimeOffset
                 , vmAmtPt, vmCryptoUser, vmCryptoKeyDirs, vmStartup
-                , vmNotify, vmHvm, vmPae, vmAcpi, vmApic, vmViridian, vmNx, vmSound, vmMemory, vmHap, vmSmbios
-                , vmDisplay, vmBoot, vmCmdLine, vmKernel, vmInitrd, vmAcpiPath, vmVcpus, vmGpu
+                , vmNotify, vmHvm, vmPae, vmAcpi, vmApic, vmViridian, vmNx, vmSound, vmMemory, vmHap
+                , vmDisplay, vmBoot, vmCmdLine, vmKernel, vmInitrd, vmAcpiTable, vmVcpus, vmGpu
                 , vmKernelExtract, vmInitrdExtract
                 , vmMemoryStaticMax
                 , vmMemoryMin
@@ -426,9 +426,8 @@ vmKernel = property "config.kernel"
 vmKernelExtract = property "config.kernel-extract"
 vmInitrd = property "config.initrd"
 vmInitrdExtract = property "config.initrd-extract"
-vmAcpiPath = property "config.acpi-path"
+vmAcpiTable = property "config.acpi-table"
 vmVcpus = property "config.vcpus"
-vmSmbios = property "config.smbios"
 vmVideoram = property "config.videoram"
 vmPassthroughMmio = property "config.passthrough-mmio"
 vmPassthroughIo = property "config.passthrough-io"
@@ -736,19 +735,20 @@ miscSpecs cfg = do
     nested_ <- nested
     dm_override_ <- liftRpc dm_override
     extra_hvms <- readConfigPropertyDef uuid vmExtraHvms []
+    acpi_table_ <- liftIO $ acpi_table
 
     let coresPSpms = if coresPS > 1 then ["cores_per_socket=" ++ show coresPS] else ["cores_per_socket=" ++ show vcpus]
     return $
            t ++ v ++ combineExtraHvmParams (cdromParams ++ audioRec ++ extra_hvms)
         ++ ["memory="++show (vmcfgMemoryMib cfg) ]
         ++ ["maxmem="++show (vmcfgMemoryStaticMaxMib cfg) ]
-        ++ smbios_path ++ snd ++ coresPSpms
+        ++ snd ++ coresPSpms
         ++ stubdom_ ++ cpuidResponses cfg ++ usb ++ platform ++ other               
         ++ hpet_
         ++ timer_mode_
         ++ nested_
         ++ dm_override_
-        ++ acpi_path
+        ++ acpi_table_
     where
       uuid = vmcfgUuid cfg
       -- omit if not specified
@@ -768,16 +768,13 @@ miscSpecs cfg = do
       nested = readConfigPropertyDef uuid vmNestedHvm False >>=
                    \ v -> if v then return ["nested=true"] else return []
 
-      smbios_path =
-          case (vmcfgSmbios cfg) of
-            [] -> []
-            smbiosPath -> [ "smbios_firmware='" ++ smbiosPath ++ "'" ]
-
-      acpi_path =
+      acpi_table = do
           case (vmcfgAcpi cfg) of
-            [] -> []
-            acpiPath   -> [ "acpi_firmware='" ++ acpiPath ++ "'" ]
-
+            False -> return []
+            True  -> do exists <- doesFileExist "/sys/firmware/acpi/tables/SLIC"
+                        if exists then return [ "acpi_firmware='/sys/firmware/acpi/tables/SLIC'" ] else do info $ "SLIC table missing"
+                                                                                                           return []
+            
       -- Activate sound
       sound = maybeToList . fmap (("soundhw='"++) <$> (++"'")) <$> readConfigProperty uuid vmSound
 
