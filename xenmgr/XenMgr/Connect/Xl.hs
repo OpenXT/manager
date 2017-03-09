@@ -10,7 +10,7 @@
 --
 
 
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, DeriveDataTypeable #-}
 module XenMgr.Connect.Xl
     (
     --xl domain control
@@ -56,6 +56,7 @@ import Control.Monad
 import Control.Monad.Error hiding (liftIO)
 import Control.Concurrent
 import Data.String
+import Data.Typeable
 import Data.Text as T
 import Vm.Types
 import Vm.DmTypes
@@ -69,17 +70,26 @@ import System.Process
 import System.Directory
 import XenMgr.Rpc
 import XenMgr.Db
+import XenMgr.Errors
 import qualified Data.Map as M
 
 type NotifyHandler = [String] -> Rpc ()
 type Params = [(String, String)]
+
+data XlExceptionClass = OOMException String | XlException String
+    deriving (Typeable)
+instance Exception XlExceptionClass
+
+instance Show XlExceptionClass where
+    show e@(OOMException s) = show s
+    show e@(XlException s) = show s
 
 bailIfError :: ExitCode -> String -> IO ()
 bailIfError exitCode msg =
     do
       case exitCode of
         ExitSuccess -> return ()
-        _           -> error msg
+        _           -> throw $ XlException msg
 
 resumeFromSleep :: Uuid -> IO Bool
 resumeFromSleep uuid = do
@@ -168,7 +178,7 @@ pause uuid =
     do
       domid     <- getDomainId uuid
       exitCode  <- system ("xl pause " ++ domid)
-      bailIfError exitCode "error parsing domain"
+      bailIfError exitCode "Error parsing domain."
 
 unpause :: Uuid -> IO ()
 unpause uuid = do
@@ -177,7 +187,7 @@ unpause uuid = do
         "" -> return ()
         _  -> do
                 exitCode <- system ("xl unpause " ++ domid)
-                bailIfError exitCode "error unpausing domain"
+                bailIfError exitCode "Error unpausing domain."
 
 --It should be noted that by design, we start our domains paused to ensure all the
 --backend components are created and xenstore nodes are written before the domain
@@ -191,7 +201,10 @@ start uuid =
                       exitCode <- system ("xl create " ++ configPath uuid ++ " -p")
                       case exitCode of
                         ExitSuccess -> return ()
-                        _           -> error "error creating domain"
+                        ExitFailure rc ->
+                            case rc of
+                                3   -> throw $ OOMException "Insufficient memory available." 
+                                _   -> throw $ XlException "Unknown problem occurred."
         _        -> do return ()
 
 --if domain has no domid, the domain is already dead. But we should make sure
@@ -207,28 +220,28 @@ destroy uuid = do
                     Just state -> if state /= "shutdown" then do xsWrite ("/state/" ++ show uuid ++ "/state") "shutdown" else return ()
                     Nothing    -> return ()
         _   -> do exitCode <- system ("xl destroy " ++ domid)
-                  bailIfError exitCode "error destroying domain"
+                  bailIfError exitCode "Error destroying domain."
 
 sleep :: Uuid -> IO ()
 sleep uuid =
     do
       domid    <- getDomainId uuid
       exitCode <- system ("xl trigger " ++ domid ++ " sleep")
-      bailIfError exitCode "error entering s3"
+      bailIfError exitCode "Error entering s3."
 
 hibernate :: Uuid -> IO ()
 hibernate uuid =
     do
       domid    <- getDomainId uuid
       exitCode <- system ("xl hiberate " ++ domid)
-      bailIfError exitCode "error entering s4"
+      bailIfError exitCode "Error entering s4."
       
 suspendToFile :: Uuid -> FilePath -> IO ()
 suspendToFile uuid file =
     do
       domid    <- getDomainId uuid
       exitCode <- system ("xl save " ++ domid ++ " " ++ file)
-      bailIfError exitCode "error suspending to file"
+      bailIfError exitCode "Error suspending to file."
 
 resumeFromFile :: Uuid -> FilePath -> Bool -> Bool -> IO ()
 resumeFromFile uuid file delete paused =
@@ -251,7 +264,7 @@ changeCd :: Uuid -> String -> IO ()
 changeCd uuid path = do
     domid <- getDomainId uuid
     (exitCode, _, _)  <- readProcessWithExitCode "xl" ["cd-insert", domid, "hdc", path] []
-    bailIfError exitCode "error changing cd"
+    bailIfError exitCode "Error changing cd."
 
 --Return the frontend xenstore path of the nic device (or Nothing)
 nicFrontendPath :: Uuid -> NicID -> IO (Maybe String)
@@ -305,16 +318,16 @@ setMemTarget :: Uuid -> Int -> IO ()
 setMemTarget uuid mbs = do
     domid    <- getDomainId uuid
     exitCode <- system ("xl mem-set " ++ domid ++ " " ++ show mbs ++ "m")
-    bailIfError exitCode "error setting mem target"
+    bailIfError exitCode "Error setting mem target."
 
 --Given the uuid of a domain and a nic id, set the target backend domid for that nic
 setNicBackendDom :: Uuid -> NicID -> DomainID -> IO ()
 setNicBackendDom uuid nic back_domid = do
     domid    <- getDomainId uuid
     exitCode <- system ("xl network-detach " ++ show domid ++ " " ++ show nic)
-    bailIfError exitCode "error detatching nic from domain"
+    bailIfError exitCode "Error detatching nic from domain."
     exitCode <- system ("xl network-attach " ++ show domid ++ " backend=" ++ show back_domid)
-    bailIfError exitCode "error attaching new nic to domain"
+    bailIfError exitCode "Error attaching new nic to domain."
 
 --Implement signal watcher to fire off handler upon receiving
 --notify message over dbus
