@@ -769,7 +769,9 @@ monitorAcpi uuid m state = do
 createSnapshot :: Disk -> IO Disk
 createSnapshot disk = do
     let path = diskPath disk
-    let newPath = path ++ ".snap.tmp.vhd"
+    let splitPath = split '/' path
+    let newname = "snap_" ++ (last splitPath) ++ ".snap.tmp.vhd"
+    let newPath = intercalate "/" $ (reverse $ drop 1 $ reverse splitPath) ++ [newname] 
     exists <- liftIO $ doesFileExist newPath --ensure we're creating a fresh snapshot
     when exists (removeFile newPath)
     create path newPath
