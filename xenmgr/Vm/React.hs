@@ -529,7 +529,7 @@ notifyVmStateUpdate = do
     st s =
       case s of
         Just state -> (fromString "vm:state:" ++ state)
-        Nothing -> (fromString "vm:state:shutdown")
+        Nothing -> (fromString "")
 
 notifyVmStateChange :: VmState -> Vm ()
 notifyVmStateChange state
