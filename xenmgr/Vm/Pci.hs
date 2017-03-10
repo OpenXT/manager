@@ -53,6 +53,7 @@ import Data.Bits
 import Data.Function
 import Data.List
 import Data.Maybe
+import Data.Bits
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.Map as M
@@ -221,6 +222,23 @@ matchingPciAddresses rule@(PciPtRule {})
   gpuClass entry = if (maybe (const False) (==) (ruleClass rule) $ 0x300) then 
     predMask ruleClass pciinfoClass entry else pred ruleClass pciinfoClass entry
 
+-- Match PCI devices on this machine against passthrough rules, output a result in the form of pci addresses
+matchingPciAddressesMasked :: PciPtRule -> IO [(PciAddr, PciPtGuestSlot)]
+matchingPciAddressesMasked (PciPtRuleBDF addr fslot)
+  = return [ (addr, maybe PciSlotDontCare PciSlotUse fslot) ]
+matchingPciAddressesMasked rule@(PciPtRule {})
+  = map slapForce . select <$> readPciCache where
+  select (PciCache cache) = filter predAll cache
+  pred rulePart infoPart (_,info) =
+    maybe (const True) (==) (rulePart rule) $ infoPart info
+  predMask rulePart infoPart (_,info) =
+    maybe (const True) (==) (rulePart rule) $ ((infoPart info) .&. 0xFF00)
+  predAll entry = predMask ruleClass pciinfoClass entry &&
+                  pred ruleVendor pciinfoVendor entry &&
+                  pred ruleDevice pciinfoDevice entry
+  slapForce (dev, _) = (devAddr dev, guest_slot)
+  guest_slot = if ruleForceSlot rule then PciSlotMatchHost else PciSlotDontCare
+
 matchingPciAddressesMany :: [PciPtRule] -> IO [(PciAddr, PciPtGuestSlot)]
 matchingPciAddressesMany rules = unions <$> mapM matchingPciAddresses rules
   where unions = S.toList . S.unions . map S.fromList
@@ -284,7 +302,7 @@ pciGetMatchingDevices src rules = unions <$> mapM from_rule rules
       unions = S.toList . S.unions . map S.fromList
 
 pciGetGpus :: IO [PciDev]
-pciGetGpus = mapM (pciGetDevice . fst) =<< matchingPciAddresses gpuPciPtRule
+pciGetGpus = mapM (pciGetDevice . fst) =<< matchingPciAddressesMasked gpuPciPtRule
 
 pciGetSecondaryGpus :: IO [PciDev]
 pciGetSecondaryGpus = filterM pciGpuIsSecondary =<< pciGetGpus
