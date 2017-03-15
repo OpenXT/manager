@@ -450,6 +450,7 @@ removeVm uuid =
        -- Need to quit xenvm
        -- FIXME: cleanly stop monitoring events
        removeDefaultEvents uuid	--cleanly...stop monitoring events
+       liftIO $ xsRm $ "/state/" ++ show uuid --vm is deleted, no need for state node anymore
        notifyVmDeleted uuid
   where
     removeVhds  = Data.Foldable.mapM_ (removeDiskFiles uuid) =<< getDisks uuid
