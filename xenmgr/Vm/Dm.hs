@@ -110,24 +110,25 @@ getFrontDevice :: DmDevType -> DomainID -> XbDeviceID -> IO (Maybe DmFront)
 getFrontDevice t domid id@(XbDeviceID devid) = do
     let path = dir ++ "/" ++ (show devid)
         dir  = frontXSPath t domid
+    exists <- xsDir path
     statestr_ <- xsRead $ path ++ "/state"
     backpath_ <- xsRead $ path ++ "/backend"
     backdomid_ <- xsRead $ path ++ "/backend-id"
-    backdomuuid_ <- fmap fromString <$> xsRead (path ++ "/backend-uuid")
-    return $ do
-      statestr <- statestr_
-      state <- dmDevStateFromInt <$> maybeRead statestr
-      backdomid <- maybeRead =<< backdomid_
-      backdomuuid <- if backdomid == 0 then return domain0uuid else backdomuuid_
-      return DmFront {
-                   dmfType = t
-                 , dmfID = id
-                 , dmfDomid = domid
-                 , dmfState = state
-                 , dmfBackPath = backpath_
-                 , dmfBackDomid = backdomid
-                 , dmfBackUuid = backdomuuid
-                 }
+    backdomuuid_ <- xsRead $ path ++ "/backend-uuid"
+    let state = dmDevStateFromInt $ (read (fromMaybe "0" statestr_) :: Int)
+    let backdomid = read (fromMaybe "0" backdomid_) :: DomainID
+    let backdomuuid = fromString $ fromMaybe (show domain0uuid) backdomuuid_
+    case (length exists) of
+        0 -> return Nothing
+        _ -> return $ Just DmFront {
+                      dmfType = t
+                    , dmfID = id
+                    , dmfDomid = domid
+                    , dmfState = state
+                    , dmfBackPath = backpath_
+                    , dmfBackDomid = backdomid
+                    , dmfBackUuid = backdomuuid
+                  }
 
 moveBackend :: DmDevType -> DomainID -> XbDeviceID -> DomainID -> Rpc ()
 moveBackend t frontdomid id backdomid = do

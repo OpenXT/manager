@@ -38,7 +38,7 @@ module Vm.DmTypes
        , NetworkInfo (..)
        , Network
        , networkObjectPath
-       , networkToStr, networkFromStr
+       , networkToStr, networkFromStr, networkStateFromStr
        , fallbackNetwork
        , isCdrom
        )
@@ -163,6 +163,9 @@ networkToStr (Network p) = TL.unpack (strObjectPath p)
 
 networkFromStr :: String -> Network
 networkFromStr s = Network (mkObjectPath_ $ fromString $ legacyNNames s)
+
+networkStateFromStr :: String -> Int
+networkStateFromStr s = read s :: Int
 
 -- TODO: ideally this could be handled somewhere in the upgrade process
 legacyNNames "brbridged" = "/wired/0/bridged"

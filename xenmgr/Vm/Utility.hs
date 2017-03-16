@@ -20,10 +20,12 @@ module Vm.Utility ( withMountedDisk, copyFileFromDisk
                   , tapCreate
                   , tapCreateVhd
                   , tapDestroy
-                  , PartitionNum ) where
+                  , PartitionNum
+                  , manageFrontVifs) where
 
 import qualified Control.Exception as E
 import Control.Applicative
+import Control.Monad
 import Data.Int
 import Data.List
 import Data.Maybe
@@ -37,8 +39,17 @@ import Tools.Misc
 import Tools.Process
 import Tools.Text
 import Tools.PartTable
+import Tools.Log
 
 import Vm.DmTypes
+import Vm.Dm
+import Vm.DomainCore
+import Vm.Queries
+import Vm.Types
+import Vm.Uuid
+
+import XenMgr.Connect.Xl as Xl
+import XenMgr.Rpc
 
 type PartitionNum = Int
 
@@ -128,3 +139,26 @@ copyFileFromDisk :: [(String, String)] -> DiskType -> Bool -> FilePath -> (Maybe
 copyFileFromDisk extraEnv diskT ro phys_path (part,src_path) dst_path
   = withMountedDisk extraEnv diskT ro phys_path part $ \contents ->
       void $ readProcessOrDie "cp" [contents </> deslash src_path, dst_path] ""
+
+manageFrontVifs :: Bool -> Uuid -> Rpc ()
+manageFrontVifs connect_action back_uuid =
+    do
+       vms  <- filter ((/=) back_uuid) <$> (filterM Xl.isRunning =<< getVms)
+       devs <- mapM getdevs vms
+       devices <- filterM (uses back_uuid) (concat devs)
+       mapM_ (manage connect_action) devices
+
+    where
+      getdevs :: Uuid -> Rpc [(Uuid, DmFront)]
+      getdevs uuid = whenDomainID [] uuid $ \domid -> do
+        -- TODO: only supporting vif,vwif devices atm
+        vifs  <- liftIO $ getFrontDevices VIF  domid
+        vwifs <- liftIO $ getFrontDevices VWIF domid
+        return $ zip (repeat uuid) (vifs ++ vwifs)
+      uses bkuuid (_,d) = do 
+            domid <- liftIO $ Xl.getDomainId bkuuid
+            return $ (read domid :: DomainID) == dmfBackDomid d
+      manage connect_action (front_uuid, dev) = do
+          let nid@(XbDeviceID nic_id) = dmfID dev
+          liftIO $ Xl.connectVif front_uuid nid connect_action
+

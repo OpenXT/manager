@@ -46,11 +46,14 @@ import Tools.Misc
 import Tools.Text
 
 import Vm.Types
+import Vm.Config
 import Vm.State (stateFromStr)
 import Vm.Queries
 import Vm.ConfigWriter
+import Vm.Utility
 import qualified XenMgr.Connect.Xl as Xl
 import qualified XenMgr.Connect.GuestRpcAgent as RpcAgent
+import qualified XenMgr.Connect.NetworkDaemon as ND
 import XenMgr.Rpc
 import XenMgr.Errors
 
@@ -134,15 +137,19 @@ submitVmEvent m e = liftIO $ (vmm_submit m) e
 
 insertDefaultEvents :: VmMonitor -> Rpc ()
 insertDefaultEvents m = let uuid = vmm_uuid m in do
+    isNdvm <- readConfigPropertyDef uuid vmType ""
     Xl.onNotify uuid "rtc" whenRtc
     Xl.onNotify uuid "vm" whenVm
     Xl.onNotify uuid "power-state" whenPowerState
+
     RpcAgent.onAgentStarted uuid (submit VmRpcAgentStart)
     RpcAgent.onAgentUninstalled uuid (submit VmRpcAgentStop)
-
     -- xenstore watches installed on domain creation/shutdown
     watches <- liftIO . sequence $ watchesForVm (vmm_submit m)
     insertWatchEvents m watches
+    case isNdvm of
+        "ndvm" -> ND.onNetworkStateChanged whenNetState
+        _      -> return ()
 
   where
     submit e = liftIO (vmm_submit m e)
@@ -160,9 +167,16 @@ insertDefaultEvents m = let uuid = vmm_uuid m in do
           _ -> return ()
     whenPowerState _ = return ()
 
+    whenNetState state backend = 
+        case state of
+            30  -> manageFrontVifs False (ND.netbackToUuid backend) --Network backend disconnected, handle it...
+            100 -> manageFrontVifs True (ND.netbackToUuid backend)
+            _  -> return ()
+
 --Chain some calls to eventually invoke removeMatch
 removeDefaultEvents :: Uuid -> Rpc ()
 removeDefaultEvents uuid = do
+    isNdvm <- readConfigPropertyDef uuid vmType ""
     Xl.onNotifyRemove uuid "rtc" whenRtc
     Xl.onNotifyRemove uuid "vm" whenVm
     Xl.onNotifyRemove uuid "power-state" whenPowerState
@@ -170,12 +184,16 @@ removeDefaultEvents uuid = do
     --Need to undo the onAgent stuff to remove match rules
     RpcAgent.onAgentStartedRemove uuid (submit VmRpcAgentStart)
     RpcAgent.onAgentUninstalledRemove uuid (submit VmRpcAgentStop)
+    case isNdvm of
+        "ndvm" -> ND.onNetworkStateChangedRemove whenNetState
+        _      -> return ()
 
   where     --do nothing here on these handlers
     submit _ = return ()
     whenRtc _ = return ()
     whenVm _ = return ()
     whenPowerState _ = return ()
+    whenNetState _ _ = return ()
 
 -- add watches on vm creation (or if already running), prune watches on vm destroy
 insertWatchEvents :: VmMonitor -> [VmWatch] -> Rpc ()

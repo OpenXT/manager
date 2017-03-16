@@ -22,8 +22,9 @@ module XenMgr.Connect.NetworkDaemon
     , statNetwork
     , joinNetwork
     , anyNetworksActive
-    , onNetworkAdded, onNetworkRemoved
+    , onNetworkAdded, onNetworkRemoved, onNetworkStateChanged, onNetworkStateChangedRemove
     , getNetworkBackend'
+    , netbackToUuid
     ) where
 
 import Data.Time
@@ -38,9 +39,12 @@ import Control.Concurrent
 
 import Vm.Types
 import Vm.DmTypes
+import Vm.Uuid
 import qualified Data.Text.Lazy as TL
 import Text.Printf
+import Tools.Misc
 import Tools.Log
+import Tools.Text
 
 import Rpc.Autogen.NetworkDaemonClient
 import Rpc.Autogen.NetworkClient
@@ -144,3 +148,30 @@ onNetworkRemoved f
           case fromVariant networkV of
             Just name -> f $ networkFromStr name
             _ -> return ()
+
+onNetworkStateChanged :: (Int -> String -> Rpc ()) -> Rpc ()
+onNetworkStateChanged f
+    = rpcOnSignal rule handle
+    where
+      rule = matchSignal "com.citrix.xenclient.networkdaemon.notify" "network_state_changed"
+      handle _ s =
+          let (networkV:stateV:backendV:_) = signalArgs s in
+          case (fromVariant stateV, fromVariant backendV) of
+            (Just state, Just backend) -> f (networkStateFromStr state) backend
+            (_, _) -> return ()
+
+
+onNetworkStateChangedRemove :: (Int -> String -> Rpc ()) -> Rpc ()
+onNetworkStateChangedRemove f
+    = rpcOnSignalRemove rule handle
+    where
+      rule = matchSignal "com.citrix.xenclient.networkdaemon.notify" "network_state_changed"
+      handle _ s =
+          let (networkV:stateV:backendV:_) = signalArgs s in
+          case (fromVariant stateV, fromVariant backendV) of
+            (Just state, Just backend) -> f (networkStateFromStr state) backend
+            (_, _) -> return ()
+
+-- "/ndvm/000000000_0000_0000_00000001"
+netbackToUuid :: String -> Uuid
+netbackToUuid backend = fromString $ replace "_" "-" $ last $ split '/' backend

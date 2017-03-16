@@ -149,7 +149,7 @@ domainXsPath uuid = do
     domid <- getDomainId uuid
     case domid of
       "" -> return $ "/local/domain/unknown"
-      _  -> return $ "/local/domain/" ++ show domid
+      _  -> return $ "/local/domain/" ++ domid
 
 
 --The following functions are all domain lifecycle operations, and self-explanatory
