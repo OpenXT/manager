@@ -126,6 +126,7 @@ import Data.Maybe
 import Data.Bits
 import Data.String
 import Data.Int
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import qualified Data.Set as Set
@@ -767,17 +768,30 @@ monitorAcpi uuid m state = do
 -- Creates a snapshot from the primary disk when the disk persistence option is
 -- set. It first checks to see if a snapshot already exists and deletes it before
 -- creating a new one.
-createSnapshot :: Disk -> IO Disk
-createSnapshot disk = do
+createSnapshot :: Disk -> Bool -> IO Disk
+createSnapshot disk encrypted = do
     let path = diskPath disk
-    let newPath = path ++ ".snap.tmp.vhd"
+    let splitPath = split '/' path
+    let newname = "snap_" ++ (last splitPath) ++ ".snap.tmp.vhd"
+    let newPath = intercalate "/" $ (init splitPath) ++ [newname] 
     exists <- liftIO $ doesFileExist newPath --ensure we're creating a fresh snapshot
     when exists (removeFile newPath)
-    create path newPath
+    if encrypted then createEnc path newPath else create path newPath
   where
     create path newPath = do readProcess "vhd-util" ["snapshot", "-n", newPath, "-p", path] []
                              info $ "newPath = " ++ newPath
                              return disk { diskPath = newPath }
+    createEnc path newPath = do readProcess "vhd-util" ["snapshot", "-n", newPath, "-p", path] []
+                                let keyname = head $ split '.' $ last $ split '/' newPath
+                                let keypath = "/config/platform-crypto-keys/" ++ keyname ++ ",aes-xts-plain,256.key"
+                                urandHandle <- openFile "/dev/urandom" ReadMode
+                                key <- B.hGet urandHandle 32
+                                B.writeFile keypath key
+                                readProcess "vhd-util" ["key", "-s", "-n", newPath, "-k", keypath] []
+                                hClose urandHandle
+                                info $ "newPath = " ++ newPath
+                                return disk { diskPath = newPath }
+
 
 checkAndPerformSnapshotIfReq :: Uuid -> [Disk] -> IO [Disk]
 checkAndPerformSnapshotIfReq uuid disks = do
@@ -788,7 +802,8 @@ checkAndPerformSnapshotIfReq uuid disks = do
         let snapshot = diskSnapshotMode disk
         case snapshot of
             Nothing                          -> return disk --return the same disk we were passed in, no changes required
-            Just SnapshotTemporary           -> createSnapshot disk
+            Just SnapshotTemporary           -> createSnapshot disk False
+            Just SnapshotTemporaryEncrypted  -> createSnapshot disk True
             _                                -> return disk --other Snapshot types unimplemented for now since UI can't set them
 
 

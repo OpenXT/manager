@@ -188,7 +188,14 @@ _GetSnapshot id =
 
 _SetSnapshot :: ID -> String -> Vm ()
 _SetSnapshot id "none" = _modify_disk id $ \d -> d { diskSnapshotMode = Nothing }
-_SetSnapshot id s      = _modify_disk id $ \d -> d { diskSnapshotMode = Just $ enumMarshallReverse_ s }
+_SetSnapshot id s      = do
+                            enc <- liftRpc $ _GetEncryptionKeySet id
+                            if enc
+                              then
+                                _modify_disk id $ \d -> d { diskSnapshotMode = Just $ enumMarshallReverse_ "temporary-encrypted" }
+                              else
+                                _modify_disk id $ \d -> d { diskSnapshotMode = Just $ enumMarshallReverse_ s }
+
 
 _GetEncryptionKeySet :: ID -> Rpc Bool
 _GetEncryptionKeySet (ID vm disk) = getVmDiskEncryptionKeySet vm disk
