@@ -44,7 +44,6 @@ module Vm.Actions
           , addDiskToVm, addDefaultDiskToVm, removeDiskFromVm, addVhdDiskToVm, addPhyDiskToVm
           , addVmFirewallRule, deleteVmFirewallRule, applyVmFirewallRules, unapplyVmFirewallRules
           , applyVmBackendShift
-          , disconnectFrontVifs
           , createAndAddDiskToVm
           , createVhd
           , exportVmSwitcherInfo
@@ -1008,25 +1007,6 @@ applyVmBackendShift bkuuid = do
         return (vifs ++ vwifs)
       uses bkuuid (_,d) = bkuuid == dmfBackUuid d
       move target (_,d) = moveBackend (dmfType d) (dmfDomid d) (dmfID d) target
-
-disconnectFrontVifs :: Uuid -> Rpc ()
-disconnectFrontVifs back_uuid =
-    do vms      <- filter ((/=) back_uuid) <$> (filterM isRunning =<< getVms)
-       devices  <- filter (uses back_uuid) . concat <$> mapM getdevs vms
-       mapM_ disconnect devices
-
-    where
-      getdevs  uuid = zip (repeat uuid) <$> getdevs' uuid
-      getdevs' uuid = whenDomainID [] uuid $ \domid -> do
-        -- TODO: only supporting vif,vwif devices atm
-        vifs  <- liftIO $ getFrontDevices VIF  domid
-        vwifs <- liftIO $ getFrontDevices VWIF domid
-        return (vifs ++ vwifs)
-      uses bkuuid (_,d) = bkuuid == dmfBackUuid d
-      disconnect (front_uuid, dev) = do
-          let nid@(XbDeviceID nic_id) = dmfID dev
-          info $ "disconnecting nic uuid=" ++ show front_uuid ++ " id=" ++ show nic_id
-          liftIO $ Xl.connectVif front_uuid nid False
 
 
 -- Reboot a VM

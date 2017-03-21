@@ -50,6 +50,7 @@ import Vm.QueriesM
 import Vm.Actions
 import Vm.Monad
 import Vm.State
+import Vm.Utility
 import Rpc.Autogen.XenmgrNotify
 import XenMgr.Expose.ObjectPaths
 import XenMgr.Config
@@ -303,7 +304,7 @@ whenShutdown xm reason = do
         when vkb_enabled $ liftRpc $ cleanupVkbd uuid domid
       _ -> return ()
     liftIO $ removeVmEnvIso uuid
-    uuidRpc disconnectFrontVifs
+    uuidRpc $ manageFrontVifs False
     -- has to be done before /xenmgr/vms/domid in XS is removed 
     uuidRpc unapplyVmFirewallRules `catchError` \err -> do
       warn $ "error while unapplying v4v firewall rules: " ++ show err
