@@ -582,12 +582,37 @@ isDiskValid disk =
 diskSpecs :: VmConfig -> Rpc [DiskSpec]
 diskSpecs cfg = do
   disklist <- dSpec
-  return $ ["disk=[" ++ (concat (intersperse "," disklist)) ++ "]"]
+  bsgList <- bsgSpec cfg
+  return $ ["disk=[" ++ (concat (intersperse "," (disklist ++ bsgList))) ++ "]"]
 
   where
     dSpec       = mapM (diskSpec uuid) =<< disks
     disks       = filter diskEnabled <$> validDisks cfg
     uuid        = vmcfgUuid cfg
+
+bsgSpec :: VmConfig -> Rpc [Param] 
+bsgSpec cfg = do
+    cdromA   <- policyQueryCdAccess uuid
+    cdromR   <- policyQueryCdRecording uuid
+    bsgs     <- liftIO $ getHostBSGDevices
+    let cdromParams = let bsgList = if cdromA then map cdromParam bsgs else [] in
+                        case length bsgList of
+                           0 -> []
+                           _ -> bsgList
+        cdromParam (BSGDevice a b c d) =
+            let bsg_str = "/dev/bsg/" ++ (concat . intersperse ":" $ map show [a,b,c,d]) in
+            case (cdromA,cdromR) of
+              -- no cdrom
+              (False, _)    -> ""
+              -- full access to cdrom
+              (True, True)  -> printf "'%s:%s,raw,atapi-pt,devtype=cdrom,access=ro'" atapiType bsg_str
+              -- readonly access to cdrom
+              (True, False) -> printf "'%s:%s,raw,atapi-pt,devtype=cdrom,access=rw'" atapiType bsg_str
+        atapiType = if (vmcfgStubdom cfg) then "atapi-pt-v4v" else "atapi-pt-local"
+    return cdromParams
+    where
+      uuid = vmcfgUuid cfg
+
 
 diskSpec :: Uuid -> Disk -> Rpc DiskSpec
 diskSpec uuid d  = do
@@ -701,27 +726,6 @@ miscSpecs cfg = do
     t        <- timeOffset
     v        <- videoram
     other    <- otherXenvmParams
-    -- these bits depend on appropriate policy being set to true
-    cdromA   <- policyQueryCdAccess uuid
-    cdromR   <- policyQueryCdRecording uuid
-    bsgs     <- liftIO $ getHostBSGDevices
-    let cdexcl_opt = case vmcfgCdExclusive cfg of
-                       True -> "-exclusive"
-                       _    -> ""
-    let cdromParams = let bsgList = if cdromA then map cdromParam bsgs else [] in
-                        case length bsgList of
-                           0 -> []
-                           _ -> (["-drive"] ++) $ intersperse "-drive" bsgList
-        cdromParam (BSGDevice a b c d) =
-            let bsg_str = "/dev/bsg/" ++ (concat . intersperse ":" $ map show [a,b,c,d]) in
-            case (cdromA,cdromR) of
-              -- no cdrom
-              (False, _)    -> ""
-              -- full access to cdrom
-              (True, True)  -> printf "file=%s:%s,media=cdrom,if=atapi-pt,format=atapi-pt-fmt,readonly=%s" atapiType bsg_str "off"
-              -- readonly access to cdrom
-              (True, False) -> printf "file=%s:%s,media=cdrom,if=atapi-pt,format=atapi-pt-fmt,readonly=%s" atapiType bsg_str "on"
-        atapiType = if (vmcfgStubdom cfg) then "atapi-pt-v4v" else "atapi-pt-local"
 
     let empty = pure []
     snd      <- ifM (policyQueryAudioAccess    uuid) sound          empty
@@ -739,7 +743,7 @@ miscSpecs cfg = do
 
     let coresPSpms = if coresPS > 1 then ["cores_per_socket=" ++ show coresPS] else ["cores_per_socket=" ++ show vcpus]
     return $
-           t ++ v ++ combineExtraHvmParams (cdromParams ++ audioRec ++ extra_hvms)
+           t ++ v ++ combineExtraHvmParams (audioRec ++ extra_hvms)
         ++ ["memory="++show (vmcfgMemoryMib cfg) ]
         ++ ["maxmem="++show (vmcfgMemoryStaticMaxMib cfg) ]
         ++ snd ++ coresPSpms
