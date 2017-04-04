@@ -157,7 +157,7 @@ manageFrontVifs connect_action back_uuid =
         return $ zip (repeat uuid) (vifs ++ vwifs)
       uses bkuuid (_,d) = do 
             domid <- liftIO $ Xl.getDomainId bkuuid
-            return $ (read domid :: DomainID) == dmfBackDomid d
+            if domid /= "" then return $ (read domid :: DomainID) == dmfBackDomid d else return False
       manage connect_action (front_uuid, dev) = do
           let nid@(XbDeviceID nic_id) = dmfID dev
           liftIO $ Xl.connectVif front_uuid nid connect_action
