@@ -605,9 +605,9 @@ bsgSpec cfg = do
               -- no cdrom
               (False, _)    -> ""
               -- full access to cdrom
-              (True, True)  -> printf "'%s:%s,raw,atapi-pt,devtype=cdrom,access=ro'" atapiType bsg_str
+              (True, True)  -> printf "'%s:%s,raw,atapi-pt,devtype=cdrom,access=rw'" atapiType bsg_str
               -- readonly access to cdrom
-              (True, False) -> printf "'%s:%s,raw,atapi-pt,devtype=cdrom,access=rw'" atapiType bsg_str
+              (True, False) -> printf "'%s:%s,raw,atapi-pt,devtype=cdrom,access=ro'" atapiType bsg_str
         atapiType = if (vmcfgStubdom cfg) then "atapi-pt-v4v" else "atapi-pt-local"
     return cdromParams
     where
