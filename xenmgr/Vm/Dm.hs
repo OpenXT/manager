@@ -24,6 +24,7 @@ module Vm.Dm
 
 import Control.Monad
 import Control.Applicative
+import Control.Concurrent
 import Data.String
 import Data.Maybe
 import Text.Printf
@@ -34,6 +35,8 @@ import Vm.Uuid
 
 import qualified XenMgr.Connect.Xl as Xl
 import XenMgr.Rpc
+import XenMgr.Db
+import XenMgr.Connect.NetworkDaemon as ND
 
 import Tools.XenStore
 import Tools.Misc
@@ -145,4 +148,23 @@ moveBackend t frontdomid id backdomid = do
       moveNIC dev =
           do info $ printf "moving NIC (%s) backend to domid=%d" (show dev) backdomid
              uuid <- fromMaybe (error "failed to get domain UUID") <$> getDomainUuid frontdomid
-             liftIO $ Xl.setNicBackendDom uuid id backdomid
+             backuuid <- fromMaybe (error "failed to get domain UUID") <$> getDomainUuid backdomid
+             nicNet <- dbReadWithDefault "" ("/vm/" ++ (show uuid) ++"/config/nic/" ++ (show id) ++ "/network")
+             case (nicNet /= "") of
+                 True   -> do liftIO $ Xl.removeNic uuid id backdomid
+                              vifConnect uuid id nicNet frontdomid backdomid 30
+                 False  -> return ()
+      -- Try to hook up the vif to the backend, retrying for specified timeout in seconds
+      -- Rpc calls are also wrapped in their own retry block in case dbus isn't ready in the ndvm
+      vifConnect uuid id nicNet frontdomid backdomid timeout =
+          do liftIO $ Xl.addNic uuid id nicNet backdomid
+             connected <- rpcRetry (ND.vifConnected frontdomid id backdomid)
+             case (connected, timeout > 0) of
+                (True, _)        -> return ()
+                (False, False)   -> return ()
+                (False, True)    -> do liftIO $ threadDelay(10^6)
+                                       vifConnect uuid id nicNet frontdomid backdomid (timeout-1)
+      rpcRetry f = rpcRetryOnError 10 1000 retryCheck f
+      retryCheck e = case toRemoteErr e of
+                     Nothing  -> False
+                     Just err -> True

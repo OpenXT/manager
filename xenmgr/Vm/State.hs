@@ -83,11 +83,11 @@ updateVmInternalState uuid s = liftIO (xsWrite (internalStatePath uuid) (stateTo
 getVmInternalState :: MonadRpc e m => Uuid -> m VmState
 getVmInternalState uuid = fromMaybe Shutdown . fmap stateFromStr <$> (liftIO $ xsRead (internalStatePath uuid))
 
-waitForVmInternalState :: MonadRpc e m => Uuid -> VmState -> Int -> m ()
-waitForVmInternalState uuid state to_secs = do
+waitForVmInternalState :: MonadRpc e m => Uuid -> VmState -> VmState -> Int -> m ()
+waitForVmInternalState uuid state cond_state to_secs = do
   i_state <- getVmInternalState uuid
   info $ "waitForState: i_state: " ++ (stateToStr i_state) ++ " state: " ++ (stateToStr state)
-  if (stateToStr i_state) == (stateToStr state) then do return ()
+  if (stateToStr i_state) == (stateToStr state)  || ((stateToStr i_state) == (stateToStr cond_state)) then do return ()
     else do
            info $ printf "Wait for vm %s state to become %s" (show uuid) stateStr
            handle =<< ( liftIO $ timeout (10^6 * to_secs) (xsWaitFor (internalStatePath uuid) check) )

@@ -258,7 +258,7 @@ pmShutdownVms force = do
               when (t == HDX) (switchVm uuid >> return())
               -- ensure the VM is considered dead internally (i.e. shutdown even handlers have ran)
               -- by waiting for internal Shutdown state upto 3 secs
-              (shutdownVm uuid >> waitForVmInternalState uuid Shutdown 3)
+              (shutdownVm uuid >> waitForVmInternalState uuid Shutdown Shutdown 3)
                 `catchError` shutdownError
 
     --FIXME! : should really translate xenvm errors into something better than strings

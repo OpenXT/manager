@@ -170,7 +170,7 @@ networkStateFromStr s = read s :: Int
 -- TODO: ideally this could be handled somewhere in the upgrade process
 legacyNNames "brbridged" = "/wired/0/bridged"
 legacyNNames "brshared" = "/wired/0/shared"
-legacyNNames "brwireless" = "/wireless/0/shared"
+legacyNNames "brwireless" = "/wifi/0/shared"
 legacyNNames "brinternal" = "/internal"
 legacyNNames x = x
 
