@@ -40,6 +40,7 @@ module Vm.Queries
                , getVmWiredNics
                , getVmWirelessNics
                , getVmNicMacActual
+               , getDiskEncryptionKeySet
                , getVmDiskEncryptionKeySet
                , getVmDiskVirtualSizeMB
                , getVmDiskPhysicalUtilizationBytes
@@ -615,19 +616,23 @@ orElseIfException :: IO a -> IO a -> IO a
 orElseIfException f g =
   f `E.catch` ( \(_ :: E.SomeException) -> g )
 
-getVmDiskEncryptionKeySet :: MonadRpc XmError m => Uuid -> DiskID -> m Bool
-getVmDiskEncryptionKeySet uuid disk_id =
-  do disk <- getDisk' uuid disk_id
-     if (diskType disk == VirtualHardDisk)
-        then from <$> liftIO (readKey disk)
-        else return False     
+getDiskEncryptionKeySet :: MonadRpc XmError m => Disk -> m Bool
+getDiskEncryptionKeySet disk =
+  if (diskType disk == VirtualHardDisk)
+    then from <$> liftIO (readKey disk)
+    else return False
   where
     from Nothing = False
     from (Just "none") = False
     from _ = True
     readKey disk = (Just . chomp <$> readProcessOrDie "vhd-util" ["key", "-p", "-n", diskPath disk] "")
                                  `orElseIfException` return Nothing
-                   
+
+getVmDiskEncryptionKeySet :: MonadRpc XmError m => Uuid -> DiskID -> m Bool
+getVmDiskEncryptionKeySet uuid disk_id =
+  do disk <- getDisk' uuid disk_id
+     getDiskEncryptionKeySet disk
+
 getVmDiskVirtualSizeMB :: MonadRpc XmError m => Uuid -> DiskID -> m Integer
 getVmDiskVirtualSizeMB uuid disk_id =
   do disk <- getDisk' uuid disk_id

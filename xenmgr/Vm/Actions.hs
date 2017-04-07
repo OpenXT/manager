@@ -158,7 +158,7 @@ import Tools.Text
 import Tools.IfM
 import Tools.FreezeIOM
 import Tools.Future
-import Tools.File (fileSha1Sum)
+import Tools.File (fileSha1Sum, getDirectoryContents_nonDotted)
 import Tools.Apptool
 import Vm.Types
 import Vm.Config
@@ -1368,9 +1368,26 @@ removeDiskFiles uuid d = removeVhd d where
            -- only remove when only this vm references the vhd
            when (refs == [uuid]) $ do
              let p = diskPath d
+             diskhaskey <- getDiskEncryptionKeySet d
+             -- if the disk has a key, remove it first
+             if diskhaskey
+               then do
+                 keydir <- appGetPlatformCryptoKeyDirs
+                 keyfiles <- liftIO $ getDirectoryContents_nonDotted keydir
+                 removeKey keydir keyfiles p
+               else return ()
+             -- remove the vhd
              liftIO . whenM (doesFileExist p) $ do
                info $ "Removing VHD file " ++ p
                removeLink p
+             where
+               removeKey keydir keyfiles p =
+                 let vhd_name = takeBaseName p in
+                 let key_matches = filter (\x -> vhd_name `isPrefixOf` x) keyfiles in
+                 case key_matches of
+                   [x] -> liftIO $ removeLink (keydir ++ "/" ++ x)
+                   []  -> liftIO $ info $ "Key not found for " ++ p
+                   _   -> liftIO $ info $ "Multiple keys found for " ++ p
     removeVhd _ = return ()
 
 --
