@@ -18,7 +18,7 @@
 
 include common.make
 
-PACKAGES = stdext,uuid,log,bigarray,camomile,json,jsonrpc,threads,unix,str,dbus,tscommon,mmap,xb,xs
+PACKAGES = stdext,uuid,log,bigarray,camomile,json,jsonrpc,threads,unix,str,dbus,tscommon,xenmmap,xenbus,xenstore
 OCAMLOPT = ocamlfind ocamlopt -linkpkg -package $(PACKAGES)
 OCAMLC   = ocamlfind ocamlc -linkpkg -package $(PACKAGES)
 

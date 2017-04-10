@@ -24,7 +24,7 @@ module D = Debug.Debugger(struct let name="dbd" end)
 open D
 
 let bus = DBus.Bus.get DBus.Bus.System
-let xs = Xs.daemon_open ()
+let xs = Xenstore.Xs.daemon_open ()
 
 let sender_name msg =
 	match DBus.Message.get_sender msg with
@@ -43,11 +43,11 @@ let get_sender_domid msg =
 		  Some (Int32.to_int domid)
 
 let uuid_of_domid domid =
-	let path = xs.Xs.read ( "/local/domain/" ^ string_of_int domid ^ "/vm" ) in
+	let path = xs.Xenstore.Xs.read ( "/local/domain/" ^ string_of_int domid ^ "/vm" ) in
 	match path with
 	| "" -> None
 	| _  ->
-		  let uuid = xs.Xs.read ( path ^ "/uuid" ) in
+		  let uuid = xs.Xenstore.Xs.read ( path ^ "/uuid" ) in
 		  match uuid with
 		  | "" -> None
 		  | _  -> Some uuid
