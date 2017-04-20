@@ -45,6 +45,8 @@ module XenMgr.Connect.Xl
     , xlSurfmanDbus
     , xlInputDbus
     , setNicBackendDom
+    , removeNic
+    , addNic
     , connectVif
     , changeNicNetwork
     , wakeIfS3
@@ -59,6 +61,7 @@ import Data.String
 import Data.List as L
 import Data.Typeable
 import Data.Text as T
+import Data.Maybe
 import Vm.Types
 import Vm.DmTypes
 import Vm.State
@@ -73,7 +76,9 @@ import System.IO
 import XenMgr.Rpc
 import XenMgr.Db
 import XenMgr.Errors
+import XenMgr.Connect.NetworkDaemon
 import qualified Data.Map as M
+import Text.Printf
 
 type NotifyHandler = [String] -> Rpc ()
 type Params = [(String, String)]
@@ -320,13 +325,29 @@ setMemTarget uuid mbs = do
     exitCode <- system ("xl mem-set " ++ domid ++ " " ++ show mbs ++ "m")
     bailIfError exitCode "Error setting mem target."
 
+removeNic :: Uuid -> NicID -> DomainID -> IO ()
+removeNic uuid nic back_domid = do
+    domid <- getDomainId uuid
+    system ("xl network-detach " ++ domid ++ " " ++ show nic)
+    return ()
+
+addNic :: Uuid -> NicID -> String -> DomainID -> IO ()
+addNic uuid nic net back_domid = do
+    domid <- getDomainId uuid
+    stubdomid <- (liftIO $ xsRead ("/xenmgr/vms/" ++ show uuid ++ "/stubdomid"))
+    let typ = isJust stubdomid
+    let wireless = L.isInfixOf "wifi" net
+    (ec,stdout,_)<- readProcessWithExitCode "xl" ["network-attach", domid, printf "bridge=%s" net, printf "backend=%s" (show back_domid),
+            if typ then "type=ioemu" else "type=vif", if wireless then "wireless=1" else "wireless=0", printf "devid=%s" (show nic)] []
+    return ()
+
 --Given the uuid of a domain and a nic id, set the target backend domid for that nic
 setNicBackendDom :: Uuid -> NicID -> DomainID -> IO ()
 setNicBackendDom uuid nic back_domid = do
     domid    <- getDomainId uuid
     exitCode <- system ("xl network-detach " ++ show domid ++ " " ++ show nic)
     bailIfError exitCode "Error detatching nic from domain."
-    exitCode <- system ("xl network-attach " ++ show domid ++ " backend=" ++ show back_domid)
+    exitCode <- system ("xl network-attach " ++ domid ++ " backend=" ++ show back_domid)
     bailIfError exitCode "Error attaching new nic to domain."
 
 --Implement signal watcher to fire off handler upon receiving

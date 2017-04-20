@@ -897,7 +897,7 @@ bootVm config
 
       handleCreationPhases :: XM ()
       handleCreationPhases = do
-        waitForVmInternalState uuid CreatingDevices 30
+        waitForVmInternalState uuid CreatingDevices Running 30
 
         --Move these tasks up earlier in the guest boot process. Prevents the need
         --for XL to implement a handshake with xenmgr for v4v firewall rules. Also speeds up
@@ -912,7 +912,7 @@ bootVm config
           whenDomainID_ uuid $ \domid -> do
             liftIO $ xsWrite (domainXSPath domid ++ "/v4v-firewall-ready") "1"
 
-        waitForVmInternalState uuid Created 30
+        waitForVmInternalState uuid Created Running 30
         -- BEFORE DEVICE MODEL
         info $ "pre-dm setup for " ++ show uuid
         liftRpc $ do 
@@ -937,7 +937,7 @@ bootVm config
           when vkb_enabled $ inputDbusCalls uuid
           info $ "done pre-dm setup for " ++ show uuid
          
-        waitForVmInternalState uuid Created 60
+        waitForVmInternalState uuid Created Running 60
         sentinel <- sentinelPath
         -- allow writing to sentinel
         maybe (return()) (\p -> liftIO $ xsWrite p "" >> xsChmod p "b0") sentinel
@@ -992,19 +992,19 @@ applyVmBackendShift bkuuid = do
     case target_ of
       Nothing -> warn $ printf "failed to move devices backend; domain %s does not exist" (show bkuuid)
       Just target ->
-        do vms      <- filter ((/=) bkuuid) <$> (filterM isRunning =<< getVms)
-           devices  <- liftRpc $ filter (uses bkuuid) . concat <$> mapM getdevs vms
+        do vms  <- filter ((/=) bkuuid) <$> (filterM Xl.isRunning =<< getVms)
+           devs <- mapM getdevs vms
+           let devices = filter (uses bkuuid) (concat devs)
            when (not . null $ devices) $ do
              info $ printf "moving device backends for %s" (show bkuuid)
              mapM_ (liftRpc . move target) devices
 
     where
-      getdevs  uuid = zip (repeat uuid) <$> getdevs' uuid
-      getdevs' uuid = whenDomainID [] uuid $ \domid -> do
+      getdevs uuid = whenDomainID [] uuid $ \domid -> do
         -- TODO: only supporting vif,vwif devices atm
         vifs  <- liftIO $ getFrontDevices VIF  domid
         vwifs <- liftIO $ getFrontDevices VWIF domid
-        return (vifs ++ vwifs)
+        return $ zip (repeat uuid) (vifs ++ vwifs)
       uses bkuuid (_,d) = bkuuid == dmfBackUuid d
       move target (_,d) = moveBackend (dmfType d) (dmfDomid d) (dmfID d) target
 
