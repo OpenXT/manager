@@ -23,3 +23,4 @@ Executable upgrade-db
     pretty
   Main-Is: Upgrade.hs
   GHC-Options: -O2 -fwarn-incomplete-patterns -dynamic
+  Extra-Libraries: crypto
