@@ -28,7 +28,9 @@ module UpgradeEngine ( module JSONTrees
                        -- transform a primary json file using specified function
                      , xformPrimaryJSON
                        -- transform all VM json files using specified function
-                     , xformVmJSON ) where
+                     , xformVmJSON
+                       -- transform all dom-store json files using specified function
+                     , xformDomStoreJSON ) where
 
 import Data.String
 import Data.List
@@ -45,6 +47,9 @@ mainConfigFile = "/config/db"
 
 vmsDirectory :: String
 vmsDirectory = "/config/vms"
+
+domStoreDirectory :: String
+domStoreDirectory = "/config/dom-store"
 
 -- describe a single migration
 data Migration = Migration {
@@ -98,14 +103,23 @@ xformPrimaryJSON xform = xformJSONFile mainConfigFile xform
 
 -- apply a transformation on all vm json files
 xformVmJSON :: JSXform -> IO ()
-xformVmJSON xform = do
-  files <- vmJSONFiles
-  mapM_ (\f -> xformJSONFile f xform) files
+xformVmJSON = xformDirectory vmsDirectory
 
-vmJSONFiles :: IO [FilePath]
-vmJSONFiles = do
-  output <-spawnShell' $ "ls -1 " ++ (combine vmsDirectory "*.db")
+-- apply a transformation on all dom-store files
+xformDomStoreJSON :: JSXform -> IO ()
+xformDomStoreJSON = xformDirectory domStoreDirectory
+
+-- apply xform to all .db files in the given directory
+xformDirectory :: String -> JSXform -> IO ()
+xformDirectory directory xform = do
+  files <- directoryDbFiles directory
+  mapM_ (`xformJSONFile` xform) files
+
+-- get all .db files in the given directory
+directoryDbFiles :: String -> IO [FilePath]
+directoryDbFiles directory = do
+  output <-spawnShell' $ "ls -1 " ++ combine directory "*.db"
   let files = case output of
                 Nothing -> []
                 Just v  -> lines v
-  return $ map (combine vmsDirectory) files
+  return $ map (combine directory) files
