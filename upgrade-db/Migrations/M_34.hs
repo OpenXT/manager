@@ -43,4 +43,5 @@ updateGuests = xformVmJSON xform where
     where
       modify = jsSet "/v4v-firewall-rules/4" (jsBoxString "my-stubdom -> 0:5100") .
                jsMv "/config/acpi-pt"   "/config/acpi-path" .
-               jsRm "/config/smbios-pt"
+               jsRm "/config/smbios-pt" .
+               jsRm "/time-offset"
