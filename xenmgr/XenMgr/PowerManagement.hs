@@ -325,7 +325,7 @@ resumeS3' uuid S3Pv = do
   void . liftIO $ Xl.resumeFromSleep uuid
   info $ "PM: Successfully resumed " ++ show uuid ++ " from S3"
 resumeS3' uuid S3Restart = do
-  startVm uuid
+  liftRpc $ rebootVm uuid
   info $ "PM: Restarted " ++ show uuid ++ " after S3"
 
 resumeS3' uuid S3Snapshot =
