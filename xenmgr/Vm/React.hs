@@ -285,9 +285,11 @@ maybeCleanupSnapshots = do
     return ()
   where
     removeIfExists path = do
-                            exists <- liftIO $ doesFileExist path
+                            let name = ("snap_"++) $ last $ split '/' path
+                            let path_actual = intercalate "/" ((init $ split '/' path) ++ [name])
+                            exists <- liftIO $ doesFileExist path_actual
                             case exists of
-                                True  -> do liftIO $ removeFile path
+                                True  -> do liftIO $ removeFile path_actual
                                             return ()
                                 False -> return ()
 
