@@ -105,6 +105,7 @@ import Tools.IfM
 import Rpc.Core
 import Vm.Types
 import Vm.Policies
+import Vm.Pci
 import XenMgr.Db
 import XenMgr.Host
 import XenMgr.Notify
@@ -694,8 +695,13 @@ pciSpecs :: VmConfig -> Rpc [PciSpec]
 pciSpecs cfg = do
     let devices = vmcfgPciPtDevices cfg
         uuid    = vmcfgUuid cfg
+        pciSysfsResFiles = map (++ "/resource")
+                           $ map (\(PciPtDev d _ _ _) -> pciSysfsDevPath $ devAddr d) devices
+    pciResources <- liftIO $ mapM pciGetMMIOResources pciSysfsResFiles
+    let mmioHoleAdjusted = 0x100000000 - (pciGetMemHoleBase . pciGetMemHole $ concat pciResources)
 
-    return $ ["pci=[" ++ (concat (intersperse "," (map (\dev -> "'" ++ stringAddr dev ++ "'") devices))) ++ "]"]
+    return $ [ "pci=[" ++ (concat (intersperse "," (map (\dev -> "'" ++ stringAddr dev ++ "'") devices))) ++ "]"
+             , "mmio_hole=" ++ (show . toMB $ mmioHoleAdjusted) ]
  where
    stringAddr (PciPtDev d _ _ _) =
            printf "%04x:%02x:%02x.%x"
@@ -704,6 +710,7 @@ pciSpecs cfg = do
                (pciSlot   addr)
                (pciFunc   addr)
        where addr = devAddr d
+   toMB size = div size (1024 * 1024)
 
 cpuidResponses :: VmConfig -> [String]
 cpuidResponses cfg = map option (vmcfgCpuidResponses cfg) where

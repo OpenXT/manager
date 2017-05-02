@@ -45,6 +45,9 @@ module Vm.Pci (
            , pciSysfsDevPath
            , pciGetInfo
            , pciBindPciback
+           , pciGetMMIOResources
+           , pciGetMemHole
+           , pciGetMemHoleBase
            , querySurfmanVgpuMode
            ) where
 
@@ -53,6 +56,7 @@ import Data.Bits
 import Data.Function
 import Data.List
 import Data.Maybe
+import Data.Word
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.Map as M
@@ -449,7 +453,45 @@ initCache = PciCache <$> enumerateDevices
                  , TE.decodeUtf8 (deDeviceName e)]
       | otherwise = findName es id
 
+-- pciGetMMIOResources will parse PCI MMIO resources from the file at `path'.
+-- It is written for sysfs PCI device `resource' file, (see
+-- https://www.kernel.org/doc/Documentation/filesystems/sysfs-pci.txt,
+-- e.g. /sys/bus/pci/devices/0000:00:02.0/resource).
+-- `resource' file is formatted with 13 lines, each with 3 64bits hex values
+-- separated by a space; with values meaning:
+-- <PCI IO resource base address> <PCI IO resource end address> <resource flags>
+-- (see linux/ioport.h for flags description).
+pciGetMMIOResources :: String -> IO ([(Word, Word, Word)])
+pciGetMMIOResources path = do
+    content <- readFile path
+    return $ resCat $ map resParse $ lines content
+    where
+        resParse line = case (words line) of
+            [a, b, c] -> let [base, end, flags] = map (read::String->Word) [a, b, c] in
+                         Just (base, end, flags)
+            _ -> Nothing
+        -- Keep only valid entries for IO-MEM.
+        resCat res = [ (b, e, f) | Just (b, e, f) <- res,
+                       b /= 0, e /= 0, (f .&. 0x00000200) /= 0 ]
 
+pciGetMemHole :: [(Word, Word, Word)] -> Word
+pciGetMemHole res =
+    -- Defined by QEMU & XL as 0xf0000000-0xfbffffff:192M
+    -- Default configuration from OpenXT's QEMU PCI devices will need ~64M.
+    let dmMinHole = 0x4000000 in
+    let resSizes = dmMinHole : [ e - b + 1 | (b, e, _) <- res ] in
+        sum resSizes
+
+pciGetMemHoleBase :: Word -> Word
+pciGetMemHoleBase size =
+    -- Consider, at least, that the upper 256M of address space are reserved (SeaBIOS),
+    let highestTOLUM = 0xf0000000 in
+    -- and the PCI hole has an upper boundary,
+    let pciHoleLimit = 0xfc000000 in
+    -- Align the TOLUM base to have sizes on 2 multiples (see SeaBIOS behaviour)
+    let bases = [ 0xf0000000 .&. (shiftL highestTOLUM x) | x <- [0..3] ] in
+    -- and get the first base low enough to accomodate for the cumulated size.
+    head [ b | b <- bases, (pciHoleLimit - b) > size ]
 
 pciCache :: MVar PciCache
 {-# NOINLINE pciCache #-}
