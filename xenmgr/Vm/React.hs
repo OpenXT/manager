@@ -103,7 +103,7 @@ instance Monoid React where
   mempty = ignore
   (React p) `mappend` (React q) = React (p ++ q)
 
-data ShutdownReason = CreationFailure | Reboot | Hibernate | Halt | AcpiPoweroff
+data ShutdownReason = CreationFailure | Reboot | Hibernate | Halt | Restarting | AcpiPoweroff
                     deriving (Eq, Show)
 
 updateInternalStateR = mkReact f where
@@ -168,6 +168,7 @@ bookkeepShutdownReasonR set_shr
   =           whenE (VmStateChange PreCreate) ( set_shr CreationFailure )
     `mappend` whenE (VmStateChange Created)   ( set_shr Halt )
     `mappend` whenE (VmStateChange Rebooted)  ( set_shr Reboot )
+    `mappend` whenE (VmStateChange Rebooting)  ( set_shr Restarting )
     `mappend` whenE (VmAcpiStateChange 4)     ( set_shr Hibernate )
     `mappend` whenE (VmAcpiStateChange 5)     ( set_shr AcpiPoweroff )
 
@@ -207,7 +208,7 @@ powerlinkR xm get_shr =
                             liftIO (Xl.resumeFromSleep (vm_uuid vm))
                             return ()
       shutdown vm      = do reason <- runVm vm get_shr
-                            when ( reason == AcpiPoweroff ) $
+                            when ( reason /= Restarting ) $
                               info "Power Link: shutdown" >> hostShutdown
 
 logStatesR = mkReact f where
@@ -512,6 +513,7 @@ reactVmAcpiUpdate = do
       maybe_acpi <- liftIO $ xsRead ("/local/domain/" ++ show domid ++ "/acpi-state")
       case maybe_acpi of
           Just acpi -> if acpi == "s3" then do switchVm domainUIVM 
+                                               notifyVmAcpiState 3
                                                return () 
                                        else return () 
           Nothing   -> return () 
@@ -533,6 +535,16 @@ notifyVmStateUpdate = do
       case s of
         Just state -> (fromString "vm:state:" ++ state)
         Nothing -> (fromString "")
+
+notifyVmAcpiState :: AcpiState -> Vm ()
+notifyVmAcpiState acpi = do
+    uuid <- vmUuid
+    liftRpc $ notifyComCitrixXenclientXenmgrNotify
+      xenmgrObjectPath
+      (uuidStr uuid)
+      (st acpi)
+    where
+    st acpi = (fromString "power-state:" ++ (show acpi))
 
 notifyVmStateChange :: VmState -> Vm ()
 notifyVmStateChange state
