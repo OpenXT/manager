@@ -173,11 +173,16 @@ shutdown :: Uuid -> IO ()
 shutdown uuid =
     do
       domid <- getDomainId uuid
-      exitCode  <- system ("xl shutdown " ++ domid)
-      case exitCode of
-        ExitSuccess   -> return ()
-        _             -> do _ <- system ("xl shutdown -F " ++ domid)
-                            return ()
+      gpe <- xsRead ("/local/domain/" ++ domid ++ "/control/hvm-powerbutton-enable")
+      case gpe of
+        Just g  -> do exitCode  <- system ("xl shutdown " ++ domid)
+                      case exitCode of
+                        ExitSuccess   -> return ()
+                        _             -> do xsWrite ("/local/domain/" ++ domid ++ "/control/hvm-shutdown") "poweroff"
+                                            _ <- system ("xl shutdown -F " ++ domid)
+                                            return ()
+        Nothing -> do system ("xl shutdown -c " ++ domid)
+                      return ()
 
 pause :: Uuid -> IO ()
 pause uuid =
