@@ -40,6 +40,7 @@ module Vm.Queries
                , getVmWiredNics
                , getVmWirelessNics
                , getVmNicMacActual
+               , getVmNicModel
                , getDiskEncryptionKeySet
                , getVmDiskEncryptionKeySet
                , getVmDiskVirtualSizeMB
@@ -805,6 +806,13 @@ getVmNicMacActual uuid nicid
   where
     from_nic Nothing    = failNoSuchNic
     from_nic (Just nic) = return $ fromMaybe (generatedVmNicMac uuid nicid) $ nicdefMac nic
+
+getVmNicModel :: Uuid -> NicID -> Rpc String
+getVmNicModel uuid nicid
+  = from_nic =<< getNic uuid nicid
+  where
+    from_nic Nothing    = failNoSuchNic
+    from_nic (Just nic) = return $ fromMaybe "e1000" $ nicdefModel nic
 
 -- mac generation algo
 generatedVmNicMac :: Uuid -> NicID -> String
