@@ -71,6 +71,8 @@ implementation xm id@(ID vm nic_id) = self where
   , comCitrixXenclientVmnicSetMac = runvm . _SetMac id
   , comCitrixXenclientVmnicGetEnabled = _GetEnabled id
   , comCitrixXenclientVmnicSetEnabled = runvm . _SetEnabled id
+  , comCitrixXenclientVmnicGetModel = _GetModel id
+  , comCitrixXenclientVmnicSetModel = runvm . _SetModel id
   }
 
 _Delete :: ID -> Vm ()
@@ -121,6 +123,16 @@ _GetEnabled id = _nic_field id nicdefEnable
 
 _SetEnabled :: ID -> Bool -> Vm ()
 _SetEnabled id e = _modify_nic id $ \n -> n { nicdefEnable = e }
+
+_GetModel :: ID -> Rpc String
+_GetModel id = _nic_field id nicdefModel >>= return . toStr
+    where
+      toStr Nothing = "e1000"
+      toStr (Just model) = model
+
+_SetModel :: ID -> String -> Vm ()
+_SetModel id ""    = _modify_nic id $ \n -> n { nicdefModel = Nothing }
+_SetModel id model = _modify_nic id $ \n -> n { nicdefModel = Just model }
 
 _nic_field  (ID uuid id) f =
     do nic <- getNic uuid id

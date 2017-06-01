@@ -251,6 +251,7 @@ instance Marshall NicDef where
                   enable <- dbReadWithDefault True (x ++ "/enable"      )
                   wifi   <- dbReadWithDefault False (x ++ "/wireless-driver")
                   mac    <- dbMaybeRead       (x ++ "/mac"         )
+                  model  <- dbMaybeRead       (x ++ "/model"         )
                   let nicid = case ids of
                                 "" -> 0
                                 s  -> read s :: Int
@@ -266,7 +267,8 @@ instance Marshall NicDef where
                         _ -> fmap id bname
                       , nicdefBackendDomid = Nothing
                       , nicdefEnable       = enable
-                      , nicdefMac          = mac }
+                      , nicdefMac          = mac 
+                      , nicdefModel        = model }
 
     dbWrite x v = do current <- dbRead x
                      let XbDeviceID nid = nicdefId v
@@ -286,6 +288,9 @@ instance Marshall NicDef where
                      case nicdefMac v of
                        Nothing -> dbRm    (x ++ "/mac")
                        Just m  -> dbWrite (x ++ "/mac") m
+                     case nicdefModel v of
+                       Nothing -> dbRm    (x ++ "/model")
+                       Just m  -> dbWrite (x ++ "/model") m
 
 -- Portica status is marshallable
 instance Marshall PorticaStatus where
@@ -654,7 +659,7 @@ nicSpecs cfg =
 
 nicSpec :: VmConfig -> Bool -> Maybe Mac -> NicDef -> DomainID -> String
 nicSpec cfg amt eth0Mac nic networkDomID =
-    let entries = bridge ++ backend ++ wireless ++ vmMac ++ nicType
+    let entries = bridge ++ backend ++ wireless ++ vmMac ++ nicType ++ modelType
     in
       "'" ++ (concat $ intersperse "," entries) ++ "'"
     where
@@ -683,6 +688,8 @@ nicSpec cfg amt eth0Mac nic networkDomID =
       -- Otherwise we do not touch the VM mac and let xenvm choose
                 | otherwise                         = [ ]
       nicType   = if (vmcfgStubdom cfg) then ["type=ioemu"] else ["type=vif"]
+      modelType | Just model <- nicdefModel nic = if (vmcfgStubdom cfg) then ["model="++model] else []
+                | otherwise                     = if (vmcfgStubdom cfg) then ["model=e1000"] else []
 
 unswizzleMac :: Mac -> Mac
 unswizzleMac mac = let bytes = macToBytes mac
