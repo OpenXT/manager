@@ -447,7 +447,7 @@ getVmStubdom :: Uuid -> Rpc Bool
 getVmStubdom uuid = readConfigPropertyDef uuid vmStubdom False
 
 getVmStubdomMemory :: Uuid -> Rpc Int
-getVmStubdomMemory uuid = readConfigPropertyDef uuid vmStubdomMemory 80
+getVmStubdomMemory uuid = readConfigPropertyDef uuid vmStubdomMemory 96
 
 getVmStubdomCmdline :: Uuid -> Rpc String
 getVmStubdomCmdline uuid = readConfigPropertyDef uuid vmStubdomCmdline ""
