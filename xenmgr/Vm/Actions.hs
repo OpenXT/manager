@@ -1278,7 +1278,8 @@ addDefaultNicToVm uuid = addNicToVm uuid nic
                    , nicdefBackendName = Nothing
                    , nicdefBackendDomid = Nothing
                    , nicdefEnable = True
-                   , nicdefMac = Nothing }
+                   , nicdefMac = Nothing
+                   , nicdefModel = Nothing }
 
 addDiskToVm :: Uuid -> Disk -> Vm DiskID
 addDiskToVm uuid disk = withVmDbLock . liftRpc $

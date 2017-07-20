@@ -124,6 +124,7 @@ data NicDef = NicDef { nicdefId :: NicID
                      , nicdefBackendDomid :: Maybe DomainID
                      , nicdefEnable :: Bool
                      , nicdefMac :: Maybe String
+                     , nicdefModel :: Maybe String
                      } deriving (Eq, Show)
 
 type NicDefMap = M.Map NicID NicDef
