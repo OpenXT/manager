@@ -68,6 +68,7 @@ import Vm.State
 import Tools.Misc as TM
 import Tools.XenStore
 import Tools.Log
+import Tools.Process
 import System
 import System.Cmd
 import System.Process
@@ -130,7 +131,7 @@ acpiState uuid = do
     case domid of
       "" -> return 5 --no domid indicates domain is off, so acpi state 5
       _  -> do
-              acpi_state <- readProcess "xl" ["acpi-state", domid] []
+              acpi_state <- readProcessOrDie "xl" ["acpi-state", domid] []
               let plain_acpi = (T.unpack (T.stripEnd (T.pack acpi_state)))
               case plain_acpi of
                 "-1" -> return 0  --If we have the domid but xl returns us -1 for acpi state, it's likely the domain
@@ -263,7 +264,7 @@ resumeFromFile uuid file delete paused =
 --Ask xl directly for the domid
 getDomainId :: Uuid -> IO String
 getDomainId uuid = do
-    domid <- readProcess "xl" ["uuid-to-domid", show uuid] []
+    domid <- readProcessOrDie "xl" ["uuid-to-domid", show uuid] []
     let plain_domid = (T.unpack (T.stripEnd (T.pack domid)))
     case plain_domid of
       "-1" -> return ("")
