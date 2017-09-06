@@ -792,17 +792,18 @@ createSnapshot disk encrypted = do
                                 return disk { diskPath = newPath }
 
 
-checkAndPerformSnapshotIfReq :: Uuid -> [Disk] -> IO [Disk]
+checkAndPerformSnapshotIfReq :: Uuid -> [Disk] -> Rpc [Disk]
 checkAndPerformSnapshotIfReq uuid disks = do
     mapM checkDisk disks
 
   where
     checkDisk disk = do
         let snapshot = diskSnapshotMode disk
-        case snapshot of
-            Nothing                          -> return disk --return the same disk we were passed in, no changes required
-            Just SnapshotTemporary           -> createSnapshot disk False
-            Just SnapshotTemporaryEncrypted  -> createSnapshot disk True
+        enc <- getDiskEncryptionKeySet disk
+        case (snapshot, enc) of
+            (Nothing, _)                     -> return disk --return the same disk we were passed in, no changes required
+            (Just SnapshotTemporary, False)  -> liftIO $ createSnapshot disk False
+            (Just SnapshotTemporary, True)   -> liftIO $ createSnapshot disk True
             _                                -> return disk --other Snapshot types unimplemented for now since UI can't set them
 
 
@@ -812,7 +813,7 @@ bootVm config
        monitor <- vm_monitor <$> xmRunVm uuid vmContext
 
        -- Check persistence type, create snapshot and update path if required
-       newDisks <- liftIO $ checkAndPerformSnapshotIfReq uuid (vmcfgDisks config)
+       newDisks <- liftRpc $ checkAndPerformSnapshotIfReq uuid (vmcfgDisks config)
        let newConfig = config { vmcfgDisks = newDisks }
 
        liftRpc $ updateXVConfig newConfig
