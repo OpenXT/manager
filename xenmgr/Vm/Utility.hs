@@ -75,7 +75,15 @@ tapCreateVdi = tapCreate "vdi"
 tapCreateAio = tapCreate "aio"
 
 tapDestroy :: String -> IO ()
-tapDestroy path = void $  readProcessOrDie "tap-ctl" ["destroy", "-d", path] ""
+tapDestroy path =
+    do
+        tapInfo <- readProcessOrDie "tap-ctl" ["list", "-f", path] ""
+        destroyTap (words tapInfo)
+    where
+        destroyTap info =
+          case info of
+            [pid, minor, _, typ, p] -> void $ readProcessOrDie "tap-ctl" ["destroy","-p",pid,"-m",minor] ""
+            _ -> return ()
 
 withTempDirectory :: FilePath -> (FilePath -> IO a) -> IO a
 withTempDirectory root_path action =
