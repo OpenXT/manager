@@ -74,18 +74,8 @@ tapCreateVhd = tapCreate "vhd"
 tapCreateVdi = tapCreate "vdi"
 tapCreateAio = tapCreate "aio"
 
---tapDestroy syntax changed as well, requires more information than just the tap device
---So, we provide the pid and minor number of the tapped instance.
 tapDestroy :: String -> IO ()
-tapDestroy path =
-    do
-        tapInfo <- readProcess "tap-ctl" ["list", "-f", path] ""
-        destroyTap (words tapInfo)
-    where
-        destroyTap info =
-          case info of
-            [pid, minor, _, typ, p] -> void $ readProcessOrDie "tap-ctl" ["destroy","-p",pid,"-m",minor] ""
-            _ -> return ()
+tapDestroy path = void $  readProcessOrDie "tap-ctl" ["destroy", "-d", path] ""
 
 withTempDirectory :: FilePath -> (FilePath -> IO a) -> IO a
 withTempDirectory root_path action =
