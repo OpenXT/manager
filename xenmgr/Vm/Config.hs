@@ -835,8 +835,10 @@ miscSpecs cfg = do
           , ("seclabel"        , vmFlaskLabel)
           , ("serial"          , vmSerial)
           , ("stubdom_cmdline" , vmStubdomCmdline)
-          , ("stubdom_memory"  , vmStubdomMemory)
-          ]
+          , ("stubdom_memory"  , vmStubdomMemory)   --OXT-1220: iomem and ioports should be reworked to support specifying multiple
+          , ("iomem"           , vmPassthroughMmio) --ranges at a finer granularity. Few ways to implement, likely as a db-node with
+          , ("ioports"         , vmPassthroughIo)   --each range as an entry beneath it, which is read and parsed during xl cfg generation.
+          ]                                         --Remove this comment block when implemented.
 
       -- xl config handles certain options different than others (eg. quotes, brackets)
       -- we format them on a case by case basis here before sending them off to xl.
@@ -852,6 +854,8 @@ miscSpecs cfg = do
                                 _       -> case name of
                                              "viridian" -> name ++ "=" ++ (wrapBrackets $ wrapQuotes v)
                                              "serial"   -> name ++ "=" ++ (wrapBrackets $ wrapQuotes v)
+                                             "iomem"   -> name ++ "=" ++ (wrapBrackets $ wrapQuotes v)
+                                             "ioports"   -> name ++ "=" ++ (wrapBrackets $ wrapQuotes v)
                                              "extra"    -> case v of
                                                            "" -> []
                                                            _  -> name ++ "=" ++ (wrapQuotes v)
