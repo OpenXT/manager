@@ -320,7 +320,6 @@ whenShutdown xm reason = do
       then do
         uuidRpc (backgroundRpc . runXM xm . startVm True)
       else do
-        uuidRpc $ shutdownDependencies reason
         runXM xm (maybeKeepVmAlive uuid)
         return ()
     where
