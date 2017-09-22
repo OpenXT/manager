@@ -77,8 +77,14 @@ stateToPublicStr Shutdown        = eVM_STATE_STOPPED
 internalStatePath :: Uuid -> String
 internalStatePath uuid = "/vm/" ++ show uuid ++ "/state"
 
+domainStatePath :: Uuid -> String
+domainStatePath uuid = "/state/" ++ show uuid ++ "/state"
+
 updateVmInternalState :: MonadRpc e m => Uuid -> VmState -> m ()
 updateVmInternalState uuid s = liftIO (xsWrite (internalStatePath uuid) (stateToStr s))
+
+updateVmDomainStateIO :: Uuid -> VmState -> IO ()
+updateVmDomainStateIO uuid s = xsWrite (domainStatePath uuid) (stateToStr s)
 
 getVmInternalState :: MonadRpc e m => Uuid -> m VmState
 getVmInternalState uuid = fromMaybe Shutdown . fmap stateFromStr <$> (liftIO $ xsRead (internalStatePath uuid))
