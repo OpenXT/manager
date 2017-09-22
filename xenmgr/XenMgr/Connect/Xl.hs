@@ -247,7 +247,9 @@ start uuid =
                           stderr <- hGetContents err
                           case ec of
                             ExitSuccess -> return ()
-                            _           -> throw $ XlException $ L.intercalate "<br>" $ L.lines stderr
+                            _           -> do
+                                             updateVmDomainStateIO uuid Shutdown
+                                             throw $ XlException $ L.intercalate "<br>" $ L.lines stderr
             _        -> do return ()
         else do
           throw $ XlException "Don't try to start a guest twice"
