@@ -37,5 +37,5 @@ createVhd :: Int -> IO FilePath
 createVhd sizeMB =
     do info $ "creating VHD (" ++ show sizeMB ++ "MB)"
        uuid <- uuidGen
-       spawnShell $ "vhd-util create -s " ++ show sizeMB ++ " -n /storage/disks/" ++ show uuid ++ ".vhd"
+       readProcessOrDie "vhd-util" [ "create", "-s", show sizeMB, "-n", "/storage/disks/" ++ show uuid ++ ".vhd" ] ""
        return $ "/storage/disks/" ++ show uuid ++ ".vhd"

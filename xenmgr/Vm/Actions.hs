@@ -777,16 +777,16 @@ createSnapshot disk encrypted = do
     when exists (removeFile newPath)
     if encrypted then createEnc path newPath else create path newPath
   where
-    create path newPath = do readProcess "vhd-util" ["snapshot", "-n", newPath, "-p", path] []
+    create path newPath = do readProcessOrDie "vhd-util" ["snapshot", "-n", newPath, "-p", path] []
                              info $ "newPath = " ++ newPath
                              return disk { diskPath = newPath }
-    createEnc path newPath = do readProcess "vhd-util" ["snapshot", "-n", newPath, "-p", path] []
+    createEnc path newPath = do readProcessOrDie "vhd-util" ["snapshot", "-n", newPath, "-p", path] []
                                 let keyname = head $ split '.' $ last $ split '/' newPath
                                 let keypath = "/config/platform-crypto-keys/" ++ keyname ++ ",aes-xts-plain,256.key"
                                 urandHandle <- openFile "/dev/urandom" ReadMode
                                 key <- B.hGet urandHandle 32
                                 B.writeFile keypath key
-                                readProcess "vhd-util" ["key", "-s", "-n", newPath, "-k", keypath] []
+                                readProcessOrDie "vhd-util" ["key", "-s", "-n", newPath, "-k", keypath] []
                                 hClose urandHandle
                                 info $ "newPath = " ++ newPath
                                 return disk { diskPath = newPath }
