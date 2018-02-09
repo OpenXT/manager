@@ -225,36 +225,37 @@ appSeamlessTrafficDefault = do
   return $ M.lookup "seamless-traffic-default" caps == Just "true"
 
 appGetEnableSsh :: Rpc Bool
-appGetEnableSsh = liftIO $ doesFileExist "/config/etc/ssh/enabled"
+appGetEnableSsh = liftIO $ not <$> doesFileExist "/config/etc/ssh/sshd_not_to_be_run"
 
 appSetEnableSsh :: Bool -> Rpc ()
-appSetEnableSsh False =
-    liftIO $ do
-      exist <- doesFileExist "/config/etc/ssh/enabled"
-      if exist then removeFile "/config/etc/ssh/enabled" else return ()
-      safeSpawnShell "/etc/init.d/sshd restart"
-      return ()
 appSetEnableSsh True =
     liftIO $ do
-      writeFile "/config/etc/ssh/enabled" ""
+      exist <- doesFileExist "/config/etc/ssh/sshd_not_to_be_run"
+      if exist then removeFile "/config/etc/ssh/sshd_not_to_be_run" else return ()
+      safeSpawnShell "/etc/init.d/sshd restart"
+      return ()
+
+appSetEnableSsh False =
+    liftIO $ do
+      writeFile "/config/etc/ssh/sshd_not_to_be_run" ""
       safeSpawnShell "/etc/init.d/sshd restart"
       return ()
 
 appGetEnableV4vSsh :: Rpc Bool
-appGetEnableV4vSsh = not <$> liftIO (doesFileExist "/config/etc/ssh/disable-v4v")
+appGetEnableV4vSsh = liftIO $ not <$> doesFileExist "/config/etc/ssh/v4v_not_to_be_run"
 
 appSetEnableV4vSsh :: Bool -> Rpc ()
-appSetEnableV4vSsh False =
-    liftIO $ do
-      writeFile "/config/etc/ssh/disable-v4v" ""
-      safeSpawnShell "/etc/init.d/sshd_v4v restart"
-      return ()
-
 appSetEnableV4vSsh True =
     liftIO $ do
-      exist <- doesFileExist "/config/etc/ssh/disable-v4v"
-      if exist then removeFile "/config/etc/ssh/disable-v4v" else return ()
-      safeSpawnShell "/etc/init.d/sshd_v4v restart"
+      exist <- doesFileExist "/config/etc/ssh/v4v_not_to_be_run"
+      if exist then removeFile "/config/etc/ssh/v4v_not_to_be_run" else return ()
+      safeSpawnShell "/etc/init.d/sshd-v4v restart"
+      return ()
+
+appSetEnableV4vSsh False =
+    liftIO $ do
+      writeFile "/config/etc/ssh/v4v_not_to_be_run" ""
+      safeSpawnShell "/etc/init.d/sshd-v4v restart"
       return ()
 
 appGetEnableDom0Networking :: Rpc Bool
