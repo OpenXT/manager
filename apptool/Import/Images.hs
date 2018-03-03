@@ -306,7 +306,7 @@ finally' = flip E.finally
 withCryptoVhdTap :: FilePath -> (FilePath -> IO a) -> Import a
 withCryptoVhdTap vhdfile action = do
   keys <- tempFileName =<< cryptoKeysFolder
-  liftIO $ withVhdTap [("TAPDISK2_CRYPTO_KEYDIR", keys)] vhdfile action
+  liftIO $ withVhdTap [("TAPDISK2_CRYPTO_KEYDIR", keys), ("TAPDISK3_CRYPTO_KEYDIR", keys)] vhdfile action
 
 withVhdTap :: [(String,String)] -> FilePath -> (FilePath -> IO a) -> IO a
 withVhdTap extraenv vhdfile action = E.bracket (tapCreateVhd extraenv vhdfile) tapDestroy action
