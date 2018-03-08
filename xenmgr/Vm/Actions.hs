@@ -1437,7 +1437,7 @@ mountVmDisk uuid diskID readonly path =
       mountVhd vhdpath =
           do keydirs <- concat . intersperse "," <$> getCryptoKeyLookupPaths uuid
              liftIO $ do
-               dev <- tapCreate "vhd" [("TAPDISK2_CRYPTO_KEYDIR", keydirs)] readonly vhdpath
+               dev <- tapCreate "vhd" [("TAPDISK2_CRYPTO_KEYDIR", keydirs), ("TAPDISK3_CRYPTO_KEYDIR", keydirs)] readonly vhdpath
                E.handle (\(e :: E.SomeException) -> removedev dev >> E.throw e) $ do
                  xsWrite (xspath ++ "/dev") dev
                  let mountopts =
@@ -1547,7 +1547,7 @@ setMeasureFailAction a = dbWrite "/xenmgr/measure-fail-action" a
 tapEnvForVm :: Uuid -> Rpc [(String,String)]
 tapEnvForVm uuid = do
   keydirs <- concat . intersperse "," <$> getCryptoKeyLookupPaths uuid
-  return [("TAPDISK2_CRYPTO_KEYDIR", keydirs)]
+  return [("TAPDISK2_CRYPTO_KEYDIR", keydirs), ("TAPDISK3_CRYPTO_KEYDIR", keydirs)]
 
 tapCreateForVm :: Uuid -> Bool -> FilePath -> Rpc FilePath
 tapCreateForVm uuid ro path = do
@@ -1609,7 +1609,7 @@ extractFileFromPvDomain (Just dst_path) ext_loc uuid = withKernelPath dst_path w
          (_, "") -> return () -- doesn't have a kernel, not a pv domain, ignore
          (Nothing, _) -> error "extract-kernel: domain does not have a disk with ID 0"
          (_, path) | null src_path -> return () -- no extraction
-         (Just disk, path) -> do liftIO $ copyKernelFromDisk [("TAPDISK2_CRYPTO_KEYDIR", keydirs)] disk path (partid,src_path)
+         (Just disk, path) -> do liftIO $ copyKernelFromDisk [("TAPDISK2_CRYPTO_KEYDIR", keydirs), ("TAPDISK3_CRYPTO_KEYDIR", keydirs)] disk path (partid,src_path)
                                  info $ "extracted pv kernel/initrd from " ++ src_path ++ " into " ++ path
 
 copyKernelFromDisk :: [ (String, String) ] -> Disk -> FilePath -> (Maybe PartitionNum,FilePath) -> IO ()
