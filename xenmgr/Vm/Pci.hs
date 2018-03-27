@@ -398,7 +398,7 @@ initCache = PciCache <$> enumerateDevices
   where
     loadPciDatabase :: IO PciDatabase
     loadPciDatabase = do
-        pciDatabase <- loadFromDefaultFile
+        pciDatabase <- loadDefault
         case pciDatabase of
              Left _ ->
                  -- an unexpected error occurred while loading the PCI database.

@@ -27,9 +27,8 @@ module Vm.PciDatabase
         , DeviceEntry(..)
         , Name
 	, empty
-	, loadFromCompressedFile
-	, loadFromDefaultFile
-	, loadFromFile
+	, load
+	, loadDefault
         , gatherPciDeviceEntries
 	) where
 
@@ -48,6 +47,7 @@ import Prelude hiding (concat, foldl, take, readFile, takeWhile)
 import Text.Printf
 import Directory (removeFile)
 import Tools.Process (safeSpawnShell)
+import qualified Codec.Compression.GZip as GZ
 
 data PciDatabase = PciDatabase [Vendor] [Class]
 
@@ -122,25 +122,16 @@ parseLazy x =
 parseStrict :: BS.ByteString -> Either String PciDatabase
 parseStrict = parseOnly pciDatabase
 
-defaultLocation = "/usr/share/pci.ids"
+defaultLocation = "/usr/share/pci.ids.gz"
 
-decompressed :: FilePath -> IO BS.ByteString
-decompressed path =
-  do safeSpawnShell $ "zcat " ++ path ++ " > " ++ out
-     r <- BS.readFile out
-     removeFile out
-     return r
-     where out = "/tmp/pci.ids"
+-- TODO: Use Error Monad
+--       Parsing could be Lazy as well.
+load :: FilePath -> IO (Either String PciDatabase)
+load path = do
+    content <- fmap GZ.decompress (BL.readFile path)
+    return $ parseStrict (BS.concat $ BL.toChunks content)
 
--- TODO: Consider using an Error monad here:
-loadFromCompressedFile :: FilePath -> IO (Either String PciDatabase)
-loadFromCompressedFile filePath = parseStrict <$> decompressed filePath
-
-loadFromFile :: FilePath -> IO (Either String PciDatabase)
-loadFromFile filePath = liftM parseStrict (BS.readFile filePath)
-
-loadFromDefaultFile :: IO (Either String PciDatabase)
-loadFromDefaultFile = loadFromFile defaultLocation
+loadDefault = load defaultLocation
 
 data DeviceEntry
    = DeviceEntry { deId :: (VendorId, DeviceId)
