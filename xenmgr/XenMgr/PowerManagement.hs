@@ -515,7 +515,7 @@ handleLidStateChanged closed = do
 
 handlePowerButtonPressed = do
     debug "PM: detected power button press event"
-    hostWhenIdleDoWithState HostShuttingDown $ executePmActionInternal ActionShutdown True
+    -- hostWhenIdleDoWithState HostShuttingDown $ executePmActionInternal ActionShutdown True
 
 handleSleepButtonPressed = do
     debug "PM: detected sleep button press event"
