@@ -148,7 +148,7 @@ autoStart uuid = do
     running <- liftRpc $ isRunning uuid
     if (not running)
       then do info $ "AutoStart of " ++ show uuid
-              startVm uuid `catchError` \e -> warn $ "Problem trying to autostart " ++ show uuid ++ ": " ++ show e
+              startVm False uuid `catchError` \e -> warn $ "Problem trying to autostart " ++ show uuid ++ ": " ++ show e
               typ <- liftRpc $ getVmGraphics uuid
               case typ of
                 HDX -> liftRpc appPvmAutoStartDelay

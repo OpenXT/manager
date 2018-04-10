@@ -562,6 +562,7 @@ getVmAcpiState uuid = do
   where
     deriveFrom :: VmState -> Int -> Bool -> Int
     deriveFrom Shutdown   _ False = 5
+    deriveFrom Rebooted   _ False = 5
     deriveFrom Shutdown   _ True  = 4
     deriveFrom _          3 _     = 3
     deriveFrom _          0 _     = 0
