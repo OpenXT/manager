@@ -806,7 +806,7 @@ miscSpecs cfg = do
            hvm <- readConfigPropertyDef uuid vmHvm False
            case hvm of
              False     -> return []
-             otherwise -> return ["device_model_override='/usr/bin/qemu-system-i386'"]
+             otherwise -> return ["device_model_override='" ++ (vmcfgQemuDmPath cfg) ++ "'"]
 
       usb_opts | not (vmcfgUsbEnabled cfg) = return ["usb=0"]
                | otherwise                 = return []
