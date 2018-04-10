@@ -28,6 +28,7 @@ module Vm.Monitor
     , getMonitorError
     , vmStateWatch
     , vmStateSubmit
+    , stateChangeInt
     )
     where
 
@@ -61,6 +62,7 @@ type RtcOffset = String
 
 data VmEvent
    = VmStateChange !VmState
+   | VmStateChangeInt !VmState
    | VmAcpiStateChange !AcpiState
    | VmRtcChange !RtcOffset
    | VmRpcAgentStart | VmRpcAgentStop
@@ -138,6 +140,7 @@ submitVmEvent m e = liftIO $ (vmm_submit m) e
 insertDefaultEvents :: VmMonitor -> Rpc ()
 insertDefaultEvents m = let uuid = vmm_uuid m in do
     isNdvm <- readConfigPropertyDef uuid vmType ""
+    info $ "inserting default events for: " ++ (show uuid)
     Xl.onNotify uuid "rtc" whenRtc
     Xl.onNotify uuid "vm" whenVm
     Xl.onNotify uuid "power-state" whenPowerState
@@ -274,8 +277,11 @@ remWatches ws = liftIO $ mapM_ killVmWatch ws
 stateWatch :: (VmEvent -> IO ()) -> IO VmWatch
 stateWatch submit = newVmWatch "/state" (submit VmStateUpdate)
 
-vmStateSubmit :: VmMonitor -> IO ()
-vmStateSubmit m = (vmm_submit m) VmStateUpdate
+vmStateSubmit :: VmMonitor -> AcpiState -> IO ()
+vmStateSubmit m acpi = (vmm_submit m) (VmAcpiStateChange acpi)
+
+stateChangeInt :: VmMonitor -> VmState -> IO ()
+stateChangeInt m s = (vmm_submit m) (VmStateChangeInt s)
 
 watchesForVm :: (VmEvent -> IO ()) -> [IO VmWatch]
 watchesForVm submit =
