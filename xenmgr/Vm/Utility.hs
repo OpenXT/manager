@@ -128,7 +128,21 @@ deslash xs = xs
 copyFileFromDisk :: [(String, String)] -> DiskType -> Bool -> FilePath -> (Maybe PartitionNum,FilePath) -> FilePath -> IO ()
 copyFileFromDisk extraEnv diskT ro phys_path (part,src_path) dst_path
   = withMountedDisk extraEnv diskT ro phys_path part $ \contents ->
-      void $ readProcessOrDie "cp" [contents </> deslash src_path, dst_path] ""
+      void $ 
+        readProcessOrDie "cp" [contents </> deslash src_path, dst_path] "" >>
+          readProcessOrDie "sync" [] "" >> verifyChecksum (contents </> deslash src_path) dst_path
+    where
+    verifyChecksum src dst = do 
+        src_sha_raw <- readProcessOrDie "sha256sum" [src] ""
+        dst_sha_raw <- readProcessOrDie "sha256sum" [dst] ""
+        let src_sha = head $ split ' ' $ src_sha_raw
+        let dst_sha = head $ split ' ' $ dst_sha_raw
+        info $ "copyFile src_sha: " ++ src_sha
+        info $ "copyFile dst_sha: " ++ dst_sha
+        if src_sha /= dst_sha
+          then error "copy file shasums dont match!"
+          else return ()
+
 
 manageFrontVifs :: Bool -> Uuid -> Rpc ()
 manageFrontVifs connect_action back_uuid =

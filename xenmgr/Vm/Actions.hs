@@ -227,7 +227,7 @@ startServiceVm uuid = xmContext >>= \xm -> liftRpc $
                          else liftIO $ do
                            xsWrite (vmSuspendImageStatePath uuid) "start-no-snapshot"
 
-                      runXM xm (startVm uuid)
+                      runXM xm (startVm False uuid)
           True  -> info $ "service vm " ++ show uuid ++ " already running"
     where
       snapshot_request xm file =
@@ -243,7 +243,7 @@ startServiceVm uuid = xmContext >>= \xm -> liftRpc $
                   info $ "DONE taking memory image snapshot for service vm " ++ show uuid
                   liftIO $ xsWrite (vmSuspendImageStatePath uuid) "snapshot-done"
                   -- double start, TODO: maybe wont be necessary
-                  runXM xm (startVm uuid)
+                  runXM xm (startVm False uuid)
                   -- finished waiting on this watch
                   return True
 
@@ -479,11 +479,11 @@ getVhdReferences vhd = concat <$> (mapM (diskVhdReferences vhd) =<< getVms) wher
   diskVhdReferences vhd vm = zip (repeat vm) . filter (references vhd) . M.elems <$> getDisks vm where
     references vhd disk = diskPath disk == vhd
 
-startVm :: Uuid -> XM ()
-startVm uuid = do
+startVm :: Bool -> Uuid -> XM ()
+startVm is_reboot uuid = do
   withPreCreationState uuid $ do
     ran <- liftRpc $ runEventScript HardFail uuid getVmRunInsteadofStart [uuidStr uuid]
-    when (not ran) $ startVmInternal uuid
+    when (not ran) $ startVmInternal uuid is_reboot
 
 --Add a passthrough rule to vm config
 add_pt_rule_bdf uuid dev = modifyVmPciPtRules uuid $ pciAddRule (form_rule_bdf (show (devAddr dev)))
@@ -492,14 +492,14 @@ form_rule_bdf = rule . fromMaybe (error "error parsing rule") . pciAndSlotFromSt
   rule (addr,sl) = PciPtRuleBDF addr sl
 
 -- Start a VM! (maybe, because stuff can happen not)
-startVmInternal :: Uuid -> XM ()
-startVmInternal uuid = do
+startVmInternal :: Uuid -> Bool -> XM ()
+startVmInternal uuid is_reboot = do
     unlessM (dbExists $ "/vm/" ++ show uuid) $ error ("vm does not have a database entry: " ++ show uuid)
     info $ "starting VM " ++ show uuid
     liftRpc $ maybePtGpuFuncs uuid
     config <- prepareAndCheckConfig uuid
     case config of
-      Just c -> info ("done checks for VM " ++ show uuid) >> bootVm c
+      Just c -> info ("done checks for VM " ++ show uuid) >> bootVm c is_reboot
       Nothing-> return ()
   where
 
@@ -603,7 +603,7 @@ startupDependencies uuid
         do dependentVms <- liftRpc $ getVmDependencies uuid
            unless (null dependentVms) $
                 info $ "vm dependencies: " ++ show dependentVms
-           mapM_ startVm =<< (liftRpc $ filterM (fmap not . isRunning) dependentVms)
+           mapM_ (startVm False) =<< (liftRpc $ filterM (fmap not . isRunning) dependentVms)
 
 startupExtractKernel :: Uuid -> XM Bool
 startupExtractKernel uuid
@@ -758,7 +758,7 @@ monitorAcpi uuid m state = do
       then do return ()
       else do
         if state /= acpi_state
-          then do vmStateSubmit m
+          then do vmStateSubmit m acpi_state
                   threadDelay (10^6)
                   monitorAcpi uuid m acpi_state
           else do threadDelay (10^6)
@@ -807,8 +807,8 @@ checkAndPerformSnapshotIfReq uuid disks = do
             _                                -> return disk --other Snapshot types unimplemented for now since UI can't set them
 
 
-bootVm :: VmConfig -> XM ()
-bootVm config
+bootVm :: VmConfig -> Bool -> XM ()
+bootVm config reboot
   = do
        monitor <- vm_monitor <$> xmRunVm uuid vmContext
 
@@ -849,7 +849,10 @@ bootVm config
                   then return False
                   else liftIO (doesFileExist suspend_file)
            if not exists
-                then do liftIO $ Xl.start uuid --we start paused by default
+                then do 
+                  if reboot 
+                    then do liftIO $ Xl.signal uuid
+                    else do liftIO $ Xl.start uuid --we start paused by default
                 else do liftIO $ xsWrite (vmSuspendImageStatePath uuid) "resume"
                         liftIO $ Xl.resumeFromFile uuid suspend_file False True
          return bootstrap
@@ -1601,7 +1604,7 @@ extractInitrdFromPvDomain uuid = do
 extractFileFromPvDomain :: Maybe FilePath -> String -> Uuid -> Rpc ()
 extractFileFromPvDomain Nothing _ _ = return ()
 extractFileFromPvDomain (Just dst_path) ext_loc uuid = withKernelPath dst_path where
-  withKernelPath dst_kernel_path = do
+    withKernelPath dst_kernel_path = do
        let (diskid,partid,src_path) = parseKernelExtract ext_loc
        disk <- getDisk uuid (fromMaybe 0 diskid)
        keydirs <- concat . intersperse "," <$> getCryptoKeyLookupPaths uuid
