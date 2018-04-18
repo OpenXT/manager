@@ -335,28 +335,6 @@ whenShutdown xm reason = do
             err (Left e) = warn (show e)
             err _ = return ()
 
---Reboot has been slightly reworked. The domain is brought down by xl and
---restarted, XenMgr simply performs its regular duties on domain creation,
---synchronizing at the "Creating Devices" and "Created" states.
-whenRebooted xm = do
-    uuid <- vmUuid
-    uuidRpc unapplyVmFirewallRules
-    liftIO $ removeVmEnvIso uuid
-    domidStr <- liftIO $ xsRead ("/xenmgr/vms/" ++ show uuid ++ "/domid")
-    case join (fmap maybeRead domidStr) of
-      Just domid -> do
-        vkb_enabled <- getVmVkbd uuid
-        when vkb_enabled $ liftRpc $ cleanupVkbd uuid domid
-      _ -> return ()
-    uuidRpc (backgroundRpc . runXM xm . startVm True)
-  where
-    backgroundRpc f =
-      do c <- rpcGetContext
-         liftIO . void . forkIO $ (err =<< rpc c f)
-        where
-          err (Left e) = warn (show e)
-          err _ = return ()
-
 whenAsleep = do
     maybeWake
     return ()
@@ -537,7 +515,6 @@ notifyVmStateUpdate :: VmMonitor -> Vm ()
 notifyVmStateUpdate monitor = do
     uuid <- vmUuid
     maybe_state <- liftIO $ xsRead ("/state/" ++ show uuid ++ "/state")
-    info $ "notifyVmStateUpdate called for uuid: " ++ show uuid ++ " state: " ++ fromJust maybe_state
     liftIO $ maybeSubmit maybe_state monitor
     liftRpc $ notifyComCitrixXenclientXenmgrNotify
       xenmgrObjectPath
@@ -546,16 +523,16 @@ notifyVmStateUpdate monitor = do
     where
     maybeSubmit s m =
       case s of
-        Just state -> if state == "rebooted"
-                        then do stateChangeInt m Rebooted
-                        else if state == "shutdown"
-                          then do stateChangeInt m Shutdown
-                          else do return ()
-        Nothing -> return ()
+        Just "rebooted" -> stateChangeInt m Rebooted 
+        Just "shutdown" -> stateChangeInt m Shutdown
+        Just _          -> return ()
+        Nothing         -> return ()
     st s =
       case s of
-        Just state -> if state == "rebooted" then (fromString "vm:state:shutdown") else (fromString "vm:state:" ++ state) 
-        Nothing -> (fromString "")
+        --match rebooted first, anything else after, and Nothing last
+        Just "rebooted" -> (fromString "vm:state:shutdown")
+        Just state      -> (fromString "vm:state:" ++ state) 
+        Nothing         -> (fromString "")
 
 notifyVmAcpiState :: AcpiState -> Vm ()
 notifyVmAcpiState acpi = do

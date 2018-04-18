@@ -140,7 +140,6 @@ submitVmEvent m e = liftIO $ (vmm_submit m) e
 insertDefaultEvents :: VmMonitor -> Rpc ()
 insertDefaultEvents m = let uuid = vmm_uuid m in do
     isNdvm <- readConfigPropertyDef uuid vmType ""
-    info $ "inserting default events for: " ++ (show uuid)
     Xl.onNotify uuid "rtc" whenRtc
     Xl.onNotify uuid "vm" whenVm
     Xl.onNotify uuid "power-state" whenPowerState
