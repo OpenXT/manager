@@ -102,7 +102,7 @@ implementationFor xm uuid = self where
 
   , comCitrixXenclientXenmgrVmDelete             = unlessM policyQueryVmDeletion failActionSuppressedByPolicy >> removeVm uuid
   , comCitrixXenclientXenmgrVmSwitch             = switchVm uuid >> return ()
-  , comCitrixXenclientXenmgrVmStart              = runXM xm (startVm False uuid) >> return ()
+  , comCitrixXenclientXenmgrVmStart              = runXM xm (startVm uuid) >> return ()
   , comCitrixXenclientXenmgrVmStartInternal      = runXM xm (startVmInternal uuid False) >> return ()
   , comCitrixXenclientXenmgrVmReboot             = rebootVm uuid
   , comCitrixXenclientXenmgrVmShutdown           = runvm invokeShutdownVm

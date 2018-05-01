@@ -318,7 +318,7 @@ whenShutdown xm reason = do
     maybeCleanupSnapshots
     if reason == Reboot
       then do
-        uuidRpc (backgroundRpc . runXM xm . startVm True)
+        uuidRpc (backgroundRpc . runXM xm . restartVm)
       else do
         runXM xm (maybeKeepVmAlive uuid)
         return ()
@@ -354,7 +354,7 @@ maybeWake = uuidRpc $ \uuid -> getVmAutoS3Wake uuid >>= wake uuid where
 maybeKeepVmAlive :: Uuid -> XM Bool
 maybeKeepVmAlive uuid =
     do keep_alive <- liftRpc $ getVmKeepAlive uuid
-       when keep_alive (startVm False uuid)
+       when keep_alive (startVm uuid)
        return keep_alive
 
 -- Update /etc/hosts with v4v IPs for special domains, if setting says so
