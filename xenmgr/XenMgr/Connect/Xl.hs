@@ -208,8 +208,7 @@ unpause uuid = do
 
 getXlProcess :: Uuid -> IO String
 getXlProcess uuid = do
-    let conv_uuid = TT.replace "_" "-" (show uuid)
-    (ec,str_pid,_) <- readProcessWithExitCode "pgrep" ["-f", conv_uuid] ""
+    (ec,str_pid,_) <- readProcessWithExitCode "pgrep" ["-f", "^xl create " ++ configPath uuid ++ " -p"] ""
     case ec of
         ExitSuccess -> return $ TT.strip str_pid
         _           -> return ""

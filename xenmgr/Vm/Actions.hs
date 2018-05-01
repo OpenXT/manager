@@ -23,6 +23,7 @@ module Vm.Actions
           , trashUnusedServiceVms
           , createVm, CreateVmPms(..), defaultCreateVmPms
           , removeVm
+          , restartVm
           , startVm
           , startVmInternal
           , rebootVm
@@ -227,7 +228,7 @@ startServiceVm uuid = xmContext >>= \xm -> liftRpc $
                          else liftIO $ do
                            xsWrite (vmSuspendImageStatePath uuid) "start-no-snapshot"
 
-                      runXM xm (startVm False uuid)
+                      runXM xm (startVm uuid)
           True  -> info $ "service vm " ++ show uuid ++ " already running"
     where
       snapshot_request xm file =
@@ -243,7 +244,7 @@ startServiceVm uuid = xmContext >>= \xm -> liftRpc $
                   info $ "DONE taking memory image snapshot for service vm " ++ show uuid
                   liftIO $ xsWrite (vmSuspendImageStatePath uuid) "snapshot-done"
                   -- double start, TODO: maybe wont be necessary
-                  runXM xm (startVm False uuid)
+                  runXM xm (startVm uuid)
                   -- finished waiting on this watch
                   return True
 
@@ -479,8 +480,14 @@ getVhdReferences vhd = concat <$> (mapM (diskVhdReferences vhd) =<< getVms) wher
   diskVhdReferences vhd vm = zip (repeat vm) . filter (references vhd) . M.elems <$> getDisks vm where
     references vhd disk = diskPath disk == vhd
 
-startVm :: Bool -> Uuid -> XM ()
-startVm is_reboot uuid = do
+startVm :: Uuid -> XM ()
+startVm uuid = _startVm False uuid
+
+restartVm :: Uuid -> XM ()
+restartVm uuid = _startVm True uuid
+
+_startVm :: Bool -> Uuid -> XM ()
+_startVm is_reboot uuid = do
   withPreCreationState uuid $ do
     ran <- liftRpc $ runEventScript HardFail uuid getVmRunInsteadofStart [uuidStr uuid]
     when (not ran) $ startVmInternal uuid is_reboot
@@ -603,7 +610,7 @@ startupDependencies uuid
         do dependentVms <- liftRpc $ getVmDependencies uuid
            unless (null dependentVms) $
                 info $ "vm dependencies: " ++ show dependentVms
-           mapM_ (startVm False) =<< (liftRpc $ filterM (fmap not . isRunning) dependentVms)
+           mapM_ startVm =<< (liftRpc $ filterM (fmap not . isRunning) dependentVms)
 
 startupExtractKernel :: Uuid -> XM Bool
 startupExtractKernel uuid
