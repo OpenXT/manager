@@ -695,7 +695,6 @@ unswizzleMac mac = let bytes = macToBytes mac
                        h     = (head bytes) .&. 253
                     in bytesToMac $ h : tail bytes
 
-data Display = VNC | Other
 -- Next section: information about PCI Passthrough Devices
 pciSpecs :: VmConfig -> Rpc [PciSpec]
 pciSpecs cfg = do
