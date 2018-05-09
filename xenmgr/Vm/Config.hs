@@ -561,7 +561,6 @@ getXlConfig cfg =
 
                  return $ [ "uuid='" ++ (show uuid) ++ "'"
                           , "vnc=0"
-                          , "vga='stdvga'"
                           , "crypto_key_dir='" ++ (vmcfgCryptoKeyDirs cfg) ++ "'"
                           , "xci_cpuid_signature=" ++ (if vmcfgXciCpuidSignature cfg then "1" else "0")
                           , "pci_permissive=1"
@@ -752,6 +751,7 @@ miscSpecs cfg = do
     timer_mode_ <- timer_mode
     nested_ <- nested
     dm_override_ <- liftRpc dm_override
+    dm_display_ <- liftRpc dm_display
     extra_hvms <- readConfigPropertyDef uuid vmExtraHvms []
     acpi_table_ <- liftIO $ acpi_table
 
@@ -766,6 +766,7 @@ miscSpecs cfg = do
         ++ timer_mode_
         ++ nested_
         ++ dm_override_
+        ++ dm_display_
         ++ acpi_table_
     where
       uuid = vmcfgUuid cfg
@@ -818,6 +819,14 @@ miscSpecs cfg = do
                ++ x (vmcfgRestrictDisplayRes   cfg) "restrictdisplayres="
                where x cond s = if cond then [s++"1"] else [s++"0"]
 
+      dm_display =
+        do
+           disp <- readConfigPropertyDef uuid vmDisplay ""
+           case disp of
+             "nogfx" -> return ["vga='none'", "nographic=1"]
+             "none"  -> return ["vga='stdvga'"]
+             ""      -> return ["vga='stdvga'"]
+             d       -> return ["vga='stdvga'", "dm_display='" ++ d ++ "'"]
       -- Other config keys taken directly from .config subtree which we delegate directly
       -- to xenvm
       passToXenvmProperties =
@@ -827,7 +836,6 @@ miscSpecs cfg = do
           , ("apic"            , vmApic)
           , ("viridian"        , vmViridian) --set to 'default'
           , ("nx"              , vmNx)
-          , ("dm_display"      , vmDisplay) --this should now be set to surfman or none
           , ("boot"            , vmBoot)
           , ("extra"           , vmCmdLine)
           , ("vcpus"           , vmVcpus)
@@ -862,7 +870,6 @@ miscSpecs cfg = do
                                                            "" -> []
                                                            _  -> name ++ "=" ++ (wrapQuotes v)
                                              "seclabel" -> name ++ "=" ++ (wrapQuotes v)
-                                             "dm_display" -> name ++ "=" ++ (wrapQuotes v)
                                              "boot"     -> name ++ "=" ++ (wrapQuotes v)
                                              "stubdom_cmdline" -> name ++ "=" ++ (wrapQuotes v)
                                              _          -> name ++ "=" ++ v) <$>
