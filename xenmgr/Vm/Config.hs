@@ -553,8 +553,8 @@ getXlConfig cfg =
                  let nameStr = if name == "" then [] else [("name='"++ name ++ "'")]
                  let buildType = case hvm of
                                    True  -> "hvm"
-                                   False -> "generic"
-                 let builder = ["builder='" ++ buildType ++ "'"]
+                                   False -> "pv"
+                 let builder = ["type='" ++ buildType ++ "'"]
                  let dm_args = case hvm of
                                  True  -> ["device_model_version='qemu-xen'"]
                                  False -> []
@@ -781,8 +781,10 @@ miscSpecs cfg = do
       hpet = (i <$> readConfigPropertyDef uuid vmHpet vmHpetDefault) >>= \ v -> return ["hpet=" ++ show v]
              where i True = 1
                    i _    = 0
-      timer_mode = readConfigPropertyDef uuid vmTimerMode vmTimerModeDefault >>= 
-                   \ v -> return ["timer_mode=" ++ (show v)]
+      timer_mode = do
+        hvm <- readConfigPropertyDef uuid vmHvm False
+        mode <- readConfigPropertyDef uuid vmTimerMode vmTimerModeDefault
+        if hvm then return ["timer_mode=" ++ (show mode)] else return []
       nested = readConfigPropertyDef uuid vmNestedHvm False >>=
                    \ v -> if v then return ["nested=true"] else return []
 
