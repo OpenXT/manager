@@ -42,7 +42,7 @@ readPartTable dev
     tableStart ls = case dropWhile (not . tableHdr) ls of
       [] -> Nothing
       (_:xs) -> Just xs
-    tableHdr = (== ["Device","Boot","Start","End","Blocks","Id","System"]) . words
+    tableHdr = (== ["Device","Boot","Start","End","Sectors","Size","Id","Type"]) . words
     table = Just . catMaybes . map partLine
     partLine l = Partition <$> num ws <*> start ws
                  where ws = words l
