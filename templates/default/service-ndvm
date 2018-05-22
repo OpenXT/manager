@@ -46,8 +46,8 @@
     "v4v": "true",
     "memory": "192",
     "display": "none",
-    "cmdline": "root=\/dev\/xvda1 iommu=soft xencons=hvc0",
-    "kernel-extract": "\/boot\/bzImage",
+    "cmdline": "root=\/dev\/xvda2 iommu=soft console=hvc0",
+    "kernel-extract": "0,1:\/bzImage",
     "flask-label": "system_u:system_r:ndvm_t",
     "pci": {
       "0": {
@@ -65,14 +65,14 @@
         "type": "vhd",
         "mode": "r",
         "shared": "true",
-        "device": "xvda1",
+        "device": "xvda",
         "devtype": "disk"
       },
       "1": {
         "path": "\/storage\/ndvm\/ndvm-swap.vhd",
         "type": "vhd",
         "mode": "w",
-        "device": "xvda2",
+        "device": "xvdb",
         "devtype": "disk"
       }
     },
