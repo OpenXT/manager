@@ -28,6 +28,7 @@ module Vm.Monitor
     , getMonitorError
     , vmStateWatch
     , vmStateSubmit
+    , stateChangeInt
     )
     where
 
@@ -61,6 +62,7 @@ type RtcOffset = String
 
 data VmEvent
    = VmStateChange !VmState
+   | VmStateChangeInt !VmState
    | VmAcpiStateChange !AcpiState
    | VmRtcChange !RtcOffset
    | VmRpcAgentStart | VmRpcAgentStop
@@ -274,8 +276,11 @@ remWatches ws = liftIO $ mapM_ killVmWatch ws
 stateWatch :: (VmEvent -> IO ()) -> IO VmWatch
 stateWatch submit = newVmWatch "/state" (submit VmStateUpdate)
 
-vmStateSubmit :: VmMonitor -> IO ()
-vmStateSubmit m = (vmm_submit m) VmStateUpdate
+vmStateSubmit :: VmMonitor -> AcpiState -> IO ()
+vmStateSubmit m acpi = (vmm_submit m) (VmAcpiStateChange acpi)
+
+stateChangeInt :: VmMonitor -> VmState -> IO ()
+stateChangeInt m s = (vmm_submit m) (VmStateChangeInt s)
 
 watchesForVm :: (VmEvent -> IO ()) -> [IO VmWatch]
 watchesForVm submit =
