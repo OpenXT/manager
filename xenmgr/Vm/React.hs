@@ -80,7 +80,7 @@ monitorAndReactVm uuid
               xm_context <- xmContext
               monitor <- liftRpc $ newVmMonitor uuid
               c <- xmCreateAndRegisterVmContext uuid monitor
-              processVmEvent <- vmEventProcessor
+              processVmEvent <- vmEventProcessor monitor
               liftRpc $ vmStateWatch monitor
               liftRpc . void $ react monitor (\hid e -> runVm c $ processVmEvent hid e)
 
@@ -145,8 +145,8 @@ detectPvAddonsR =
 detectBsgDevStatusR =
   whenE VmBsgDevNodeChange checkBsgDevStatus
 
-detectStateChange =
-  whenE VmStateUpdate notifyVmStateUpdate
+detectStateChange mon =
+  whenE VmStateUpdate (notifyVmStateUpdate mon)
 
 detectAcpiChange =
   whenE VmAcpiUpdate reactVmAcpiUpdate
@@ -167,7 +167,8 @@ measuresR xm_context = mkReact f where
 bookkeepShutdownReasonR set_shr
   =           whenE (VmStateChange PreCreate) ( set_shr CreationFailure )
     `mappend` whenE (VmStateChange Created)   ( set_shr Halt )
-    `mappend` whenE (VmStateChange Rebooted)  ( set_shr Reboot )
+    `mappend` whenE (VmStateChangeInt Shutdown)  ( set_shr Halt )
+    `mappend` whenE (VmStateChangeInt Rebooted)  ( set_shr Reboot )
     `mappend` whenE (VmStateChange Rebooting)  ( set_shr Restarting )
     `mappend` whenE (VmAcpiStateChange 4)     ( set_shr Hibernate )
     `mappend` whenE (VmAcpiStateChange 5)     ( set_shr AcpiPoweroff )
@@ -176,7 +177,6 @@ lifecycleR xm get_shr
   =
               whenE (VmStateChange Running)         ( whenRunning xm )
     `mappend` whenE (VmStateChange Shutdown)        ( whenShutdown xm =<< get_shr )
-    `mappend` whenE (VmStateChange Rebooted)        ( whenRebooted xm )
     `mappend` whenE (VmAcpiStateChange 3)           ( whenAsleep )
     `mappend` whenE (VmAcpiStateChange 4)           ( whenHibernated )
 
@@ -239,8 +239,8 @@ uuidRpc f = vmUuid >>= \uuid -> liftRpc (f uuid)
 uuidIO :: (Uuid -> IO a) -> Vm a
 uuidIO f = vmUuid >>= \uuid -> liftIO (f uuid)
 
-vmEventProcessor :: XM (HandlerID -> VmEvent -> Vm ())
-vmEventProcessor
+vmEventProcessor :: VmMonitor -> XM (HandlerID -> VmEvent -> Vm ())
+vmEventProcessor monitor
     = do shut_r <- liftIO $ newMVar CreationFailure
          let set_shut_r reason = liftIO . void $ swapMVar shut_r reason
              get_shut_r        = liftIO $ readMVar shut_r
@@ -259,7 +259,7 @@ vmEventProcessor
                `mappend` powerlinkR xm get_shut_r
                `mappend` runEventScriptR
                `mappend` notifyExternalR
-               `mappend` detectStateChange
+               `mappend` detectStateChange monitor
                `mappend` detectAcpiChange
          return $
                 \hid e -> sequence_ $ [err (f e) | f <- r]
@@ -316,35 +316,23 @@ whenShutdown xm reason = do
     -- sent cd lock state notifications
     liftRpc $ mapM_ notifyCdDeviceAssignmentChanged =<< liftIO getHostBSGDevices
     maybeCleanupSnapshots
-    runXM xm (maybeKeepVmAlive uuid)
-    return ()
+    if reason == Reboot
+      then do
+        uuidRpc (backgroundRpc . runXM xm . restartVm)
+      else do
+        runXM xm (maybeKeepVmAlive uuid)
+        return ()
     where
       removeAlsa domid = liftIO $ do
         let alsafile = "/var/run/alsa-vm-" ++ show domid ++ ".conf"
         info $ "remove alsa file " ++ alsafile
         whenM (doesFileExist alsafile) (removeFile alsafile)
-
---Reboot has been slightly reworked. The domain is brought down by xl and
---restarted, XenMgr simply performs its regular duties on domain creation,
---synchronizing at the "Creating Devices" and "Created" states.
-whenRebooted xm = do
-    uuid <- vmUuid
-    uuidRpc unapplyVmFirewallRules
-    liftIO $ removeVmEnvIso uuid
-    domidStr <- liftIO $ xsRead ("/xenmgr/vms/" ++ show uuid ++ "/domid")
-    case join (fmap maybeRead domidStr) of
-      Just domid -> do
-        vkb_enabled <- getVmVkbd uuid
-        when vkb_enabled $ liftRpc $ cleanupVkbd uuid domid
-      _ -> return ()
-    uuidRpc (backgroundRpc . runXM xm . startVm)
-  where
-    backgroundRpc f =
-      do c <- rpcGetContext
-         liftIO . void . forkIO $ (err =<< rpc c f)
-        where
-          err (Left e) = warn (show e)
-          err _ = return ()
+      backgroundRpc f =
+        do c <- rpcGetContext
+           liftIO . void . forkIO $ (err =<< rpc c f)
+          where
+            err (Left e) = warn (show e)
+            err _ = return ()
 
 whenAsleep = do
     maybeWake
@@ -517,27 +505,33 @@ reactVmAcpiUpdate = do
                                                return () 
                                        else return () 
           Nothing   -> return () 
-    
+   
 -- This is a new notify function to support state updates coming from xl
 -- Instead of implementing dbus support in xl, state updates are written to a
 -- xenstore node which XenMgr watches, which then fires off a dbus message, upon
 -- which any state change code is handled normally.
-notifyVmStateUpdate :: Vm ()
-notifyVmStateUpdate = do
+notifyVmStateUpdate :: VmMonitor -> Vm ()
+notifyVmStateUpdate monitor = do
     uuid <- vmUuid
     maybe_state <- liftIO $ xsRead ("/state/" ++ show uuid ++ "/state")
+    liftIO $ maybeSubmit maybe_state monitor
     liftRpc $ notifyComCitrixXenclientXenmgrNotify
       xenmgrObjectPath
       (uuidStr uuid)
       (st maybe_state)
-    case maybe_state of
-      Just state -> do liftIO $ xsWrite ("/state/" ++ show uuid ++ "/xenmgr-state") (fromString state)
-      Nothing -> return ()
     where
+    maybeSubmit s m =
+      case s of
+        Just "rebooted" -> stateChangeInt m Rebooted 
+        Just "shutdown" -> stateChangeInt m Shutdown
+        Just _          -> return ()
+        Nothing         -> return ()
     st s =
       case s of
-        Just state -> (fromString "vm:state:" ++ state)
-        Nothing -> (fromString "")
+        --match rebooted first, anything else after, and Nothing last
+        Just "rebooted" -> (fromString "vm:state:shutdown")
+        Just state      -> (fromString "vm:state:" ++ state) 
+        Nothing         -> (fromString "")
 
 notifyVmAcpiState :: AcpiState -> Vm ()
 notifyVmAcpiState acpi = do
