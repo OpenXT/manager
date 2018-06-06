@@ -28,7 +28,6 @@ module Vm.Templates
     , enumTemplateTags
     , enumUiTemplates
     , enumServiceVmTags
-    , enumServiceVmTemplates
     , enumChildServiceVmTags
     , getUuidInTemplate
     , getSlotInTemplate
@@ -140,9 +139,6 @@ enumChildServiceVmTags =
       get_tag f = case takeBaseName f of
                     'c':'h':'i':'l':'d':'-':tag -> Just tag
                     _ -> Nothing
-
-enumServiceVmTemplates :: IO [ConfigTemplate]
-enumServiceVmTemplates = mapM getServiceVmTemplate =<< enumServiceVmTags
 
 data StoredKey = StoredKey String String
 --
