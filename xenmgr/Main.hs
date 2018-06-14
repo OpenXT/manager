@@ -302,7 +302,7 @@ initServiceVms = liftRpc $ do
   -- XC-8598 removing unused service vms causes nilfvm upgrade issues
   -- wouldn't be a problem if nilfvm wasn't tied to template, but it unnecessarily is atm
   -- trashUnusedServiceVms
-  tags  <- liftIO enumServiceVmTags
+  tags  <- enumServiceVmTags
   uuids <- priorityOrdering =<< filterM useServiceVm =<< filterM getVmStartOnBoot =<< catMaybes <$> mapM configureServiceVm tags
 
   -- initial network backend node seems to be necessary IF there's no service domain providing network backend

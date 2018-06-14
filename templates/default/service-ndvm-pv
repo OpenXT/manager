@@ -1,0 +1,81 @@
+{
+  "uuid": "00000000-0000-0000-0000-000000000002",
+  "type": "ndvm",
+  "name": "Network",
+  "slot": "-1",
+  "hidden": "true",
+  "start_on_boot": "true",
+  "start_on_boot_priority": "10",
+  "provides-network-backend": "true",
+  "provides-default-network-backend": "true",
+  "shutdown-priority": "-15",
+  "hidden-in-ui": "false",
+  "measured": "true",
+  "s3-mode": "restart",
+  "domstore-read-access": "true",
+  "domstore-write-access": "true",
+  "image_path": "plugins/serviceimages/citrix.png",
+  "icbinn-path": "\/config\/certs\/Network",
+  "boot-sentinel": "booted",
+  "v4v-firewall-rules": {
+    "0": "0:12222 -> myself:2222",
+    "1": "myself -> 0:5555",
+    "2": "0:15555 -> myself:5555",
+    "3": "myself -> 0:4878"
+  },
+  "rpc-firewall-rules": {
+      "0": "allow destination org.freedesktop.DBus interface org.freedesktop.DBus",
+      "1": "allow destination com.citrix.xenclient.xenmgr interface org.freedesktop.DBus.Properties member Get",
+      "2": "allow destination com.citrix.xenclient.networkdaemon"
+  },
+  "policies": {
+    "audio-access": "false",
+    "audio-rec": "false",
+    "cd-access": "false",
+    "cd-rec": "false",
+    "modify-vm-settings": "false"
+  },
+  "config": {
+    "notify": "dbus",
+    "debug": "true",
+    "pae": "true",
+    "acpi": "true",
+    "hvm": "false",
+    "apic": "true",
+    "nx": "true",
+    "v4v": "true",
+    "memory": "192",
+    "display": "none",
+    "cmdline": "root=\/dev\/xvda2 iommu=soft console=hvc0",
+    "kernel-extract": "0,1:\/bzImage",
+    "flask-label": "system_u:system_r:ndvm_t",
+    "pci": {
+      "0": {
+        "class": "0x0200",
+        "force-slot": "false"
+      },
+      "1": {
+        "class": "0x0280",
+        "force-slot": "false"
+      }
+    },
+    "disk": {
+      "0": {
+        "path": "\/storage\/ndvm\/ndvm.vhd",
+        "type": "vhd",
+        "mode": "r",
+        "shared": "true",
+        "device": "xvda",
+        "devtype": "disk"
+      },
+      "1": {
+        "path": "\/storage\/ndvm\/ndvm-swap.vhd",
+        "type": "vhd",
+        "mode": "w",
+        "device": "xvdb",
+        "devtype": "disk"
+      }
+    },
+    "qemu-dm-path": ""
+  }
+}

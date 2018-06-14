@@ -151,8 +151,13 @@ appSetSvmAutoStartDelay d = dbWrite "/xenmgr/svm-autostart-delay" d
 -- defaults to true
 appOverwriteServiceVmSettings :: String -> Rpc Bool
 appOverwriteServiceVmSettings tag =
-    do dbMaybeRead ("/xenmgr/overwrite-" ++ tag ++ "-settings") >>= f where f Nothing  = return True
-                                                                            f (Just v) = return v
+    do dbMaybeRead ("/xenmgr/overwrite-" ++ _tag ++ "-settings") >>= f
+    where f Nothing  = return True
+          f (Just v) = return v
+          _tag = case tag of
+                   'n':'d':'v':'m':m -> "ndvm"
+                   _                 -> tag
+
 appSetOverwriteServiceVmSettings :: String -> Bool -> Rpc ()
 appSetOverwriteServiceVmSettings tag value = dbWrite ("/xenmgr/overwrite-" ++ tag ++ "-settings") value
 
