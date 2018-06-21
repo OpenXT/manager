@@ -283,6 +283,7 @@ maybeCleanupSnapshots = do
     let disks = vmcfgDisks config
     info $ "cleanupSnapshots disks = " ++ (show disks)
     sequence $ map removeIfExists $ map (++".snap.tmp.vhd") $ map diskPath disks
+    sequence $ map removeIfExists $ map (  (++",aes-xts-plain,256.key") . head . (split '.') ) $ map diskPath disks
     return ()
   where
     removeIfExists path = do
