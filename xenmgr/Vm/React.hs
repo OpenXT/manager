@@ -283,8 +283,11 @@ maybeCleanupSnapshots = do
     let disks = vmcfgDisks config
     info $ "cleanupSnapshots disks = " ++ (show disks)
     sequence $ map removeIfExists $ map (++".snap.tmp.vhd") $ map diskPath disks
+    sequence $ map removeIfExists $ map keyPath $ map diskPath disks
     return ()
   where
+    keyPath path = let keyname = head $ split '.' $ last $ split '/' path in
+                   "/config/platform-crypto-keys/" ++ keyname ++ ",aes-xts-plain,256.key"
     removeIfExists path = do
                             let name = ("snap_"++) $ last $ split '/' path
                             let path_actual = intercalate "/" ((init $ split '/' path) ++ [name])
