@@ -629,8 +629,8 @@ diskSpec uuid d  = do
     cdType stubdom d =
       case (enumMarshall $ diskDeviceType d) of
           "cdrom" -> if stubdom then "backendtype=tap" else "backendtype=phy"
-          _       -> "backendtype=tap"
-    fileToRaw typ = if typ == "file" then "raw" else typ
+          _       -> if (enumMarshall $ diskType d) == "phy" then "backendtype=phy" else "backendtype=tap"
+    fileToRaw typ = if typ == "file" || typ == "phy" then "raw" else typ
 
 -- Next section: information about Network Interfaces
 nicSpecs :: VmConfig -> Rpc [NicSpec]
