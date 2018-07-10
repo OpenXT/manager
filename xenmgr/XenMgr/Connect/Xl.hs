@@ -286,14 +286,14 @@ suspendToFile :: Uuid -> FilePath -> IO ()
 suspendToFile uuid file =
     do
       domid    <- getDomainId uuid
-      exitCode <- system ("xl save " ++ domid ++ " " ++ file)
+      exitCode <- system ("xl save " ++ domid ++ " " ++ file ++ " " ++ configPath uuid)
       bailIfError exitCode "Error suspending to file."
 
 resumeFromFile :: Uuid -> FilePath -> Bool -> Bool -> IO ()
 resumeFromFile uuid file delete paused =
     do
       let p = if paused then "-p" else ""
-      _ <- system ("xl restore " ++ p ++ file)
+      _ <- system ("xl restore " ++ p ++ " " ++ configPath uuid ++ " " ++ file)
       if delete then removeFile file else return ()
 
 --Ask xl directly for the domid
