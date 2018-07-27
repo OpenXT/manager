@@ -14,7 +14,7 @@
   },
   "config": {
     "notify": "dbus",
-    "hvm": "false",
+    "virt-type": "pv",
     "pae": "true",
     "acpi": "true",
     "apic": "true",
