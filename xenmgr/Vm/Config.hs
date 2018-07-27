@@ -524,6 +524,9 @@ diagnose cfg
     | vmcfgGraphics cfg == HDX, not (vmcfgPvAddons cfg) = [ "VM has HDX enabled, but PV addons are not installed" ]
     | otherwise = [ ]
 
+isHvm :: VmConfig -> Bool
+isHvm cfg = vmcfgVirtType cfg == HVM
+
 ------------------------------------------
 -- Create a config file for running Xl
 ------------------------------------------
@@ -556,17 +559,14 @@ getXlConfig cfg =
     uuid = vmcfgUuid cfg
     -- First section of xenvm config file
     prelude = do Just uuid <- readConfigProperty uuid vmUuidP :: Rpc (Maybe Uuid)
-                 hvm <- readConfigPropertyDef uuid vmHvm False
                  name <- readConfigPropertyDef uuid vmName ""
+                 let virt = vmcfgVirtType cfg
                  let kernel = maybe [] (\path -> ["kernel='"++path++"'"]) (vmcfgKernelPath cfg)
                  let nameStr = if name == "" then [] else [("name='"++ name ++ "'")]
-                 let buildType = case hvm of
-                                   True  -> "hvm"
-                                   False -> "pv"
-                 let builder = ["type='" ++ buildType ++ "'"]
-                 let dm_args = case hvm of
-                                 True  -> ["device_model_version='qemu-xen'"]
-                                 False -> []
+                 let builder = ["type='" ++ ( virtStr virt ) ++ "'"]
+                 let dm_args = case virt of
+                                 HVM -> ["device_model_version='qemu-xen'"]
+                                 _   -> []
 
                  return $ [ "uuid='" ++ (show uuid) ++ "'"
                           , "vnc=0"
@@ -581,6 +581,11 @@ getXlConfig cfg =
                             ++ kernel
                             ++ builder
                             ++ dm_args
+            where
+                virtStr virt = case virt of
+                                 HVM -> "hvm"
+                                 PVH -> "pvh"
+                                 PV  -> "pv"
 
 -- Next section: information about disk drives
 allDisks = vmcfgDisks
@@ -783,17 +788,15 @@ miscSpecs cfg = do
         readConfigProperty uuid vmTimeOffset
       -- 16 meg if not specified
       videoram  = do
-        hvm <- readConfigPropertyDef uuid vmHvm False
-        let defaultVideoram = if hvm then 16 else 0
+        let defaultVideoram = if isHvm cfg then 16 else 0
         (\ram -> ["videoram="++ram]) . fromMaybe (show defaultVideoram) <$>
           readConfigProperty uuid vmVideoram
       hpet = (i <$> readConfigPropertyDef uuid vmHpet vmHpetDefault) >>= \ v -> return ["hpet=" ++ show v]
              where i True = 1
                    i _    = 0
       timer_mode = do
-        hvm <- readConfigPropertyDef uuid vmHvm False
         mode <- readConfigPropertyDef uuid vmTimerMode vmTimerModeDefault
-        if hvm then return ["timer_mode=" ++ (show mode)] else return []
+        if isHvm cfg then return ["timer_mode=" ++ (show mode)] else return []
       nested = readConfigPropertyDef uuid vmNestedHvm False >>=
                    \ v -> if v then return ["nested=true"] else return []
 
@@ -812,12 +815,8 @@ miscSpecs cfg = do
               | otherwise              = return ["device_model_stubdomain_override=1"]
 
       -- Specifies path to qemu binary
-      dm_override =
-        do
-           hvm <- readConfigPropertyDef uuid vmHvm False
-           case hvm of
-             False     -> return []
-             otherwise -> return ["device_model_override='" ++ (vmcfgQemuDmPath cfg) ++ "'"]
+      dm_override | isHvm cfg = return ["device_model_override='" ++ (vmcfgQemuDmPath cfg) ++ "'"]
+                  | otherwise = return []
 
       usb_opts | not (vmcfgUsbEnabled cfg) = return ["usb=0"]
                | otherwise                 = return []
@@ -838,8 +837,7 @@ miscSpecs cfg = do
       -- Other config keys taken directly from .config subtree which we delegate directly
       -- to xenvm
       passToXenvmProperties =
-          [ ("hvm"             , vmHvm)
-          , ("pae"             , vmPae)
+          [ ("pae"             , vmPae)
           , ("acpi"            , vmAcpi)
           , ("apic"            , vmApic)
           , ("viridian"        , vmViridian) --set to 'default'
