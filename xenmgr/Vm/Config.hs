@@ -700,9 +700,15 @@ nicSpec cfg amt eth0Mac nic networkDomID =
                 | Just mac <- eth0Mac, amt == True  = ["mac=" ++ unswizzleMac mac]
       -- Otherwise we do not touch the VM mac and let xenvm choose
                 | otherwise                         = [ ]
-      nicType   = if (vmcfgStubdom cfg) then ["type=ioemu"] else ["type=vif"]
-      modelType | Just model <- nicdefModel nic = if (vmcfgStubdom cfg) then ["model="++model] else []
-                | otherwise                     = if (vmcfgStubdom cfg) then ["model=e1000"] else []
+
+      nicType   | stubdomNic cfg == True  = ["type=ioemu"]
+                | otherwise               = ["type=vif"]
+
+      modelType | stubdomNic cfg == False       = []
+                | Just model <- nicdefModel nic = ["model="++model]
+                | otherwise                     = ["model=e1000"]
+
+      stubdomNic cfg = isHvm cfg && vmcfgStubdom cfg
 
 unswizzleMac :: Mac -> Mac
 unswizzleMac mac = let bytes = macToBytes mac
