@@ -38,6 +38,7 @@ module Vm.Config (
 
                   -- list of interesting config properties
                 , vmUuidP, vmName, vmDescription, vmType, vmSlot, vmImagePath, vmPvAddons, vmPvAddonsVersion
+                , vmVirtType
                 , vmStartOnBoot, vmStartOnBootPriority, vmKeepAlive, vmProvidesNetworkBackend, vmTimeOffset
                 , vmAmtPt, vmCryptoUser, vmCryptoKeyDirs, vmStartup
                 , vmNotify, vmHvm, vmPae, vmAcpi, vmApic, vmViridian, vmNx, vmSound, vmMemory, vmHap
@@ -113,6 +114,7 @@ import XenMgr.Rpc
 import XenMgr.Config
 
 import Rpc.Autogen.XenmgrConst
+import Rpc.Autogen.XenmgrVmConst
 
 ------------------------
 -- Configuration Tree --
@@ -142,6 +144,11 @@ instance Marshall VmType where
 instance Marshall XbDeviceID where
   dbRead p = XbDeviceID <$> dbRead p
   dbWrite p (XbDeviceID v) = dbWrite p v
+
+instance EnumMarshall VirtType where
+    enumMarshallMap = [ (PVH , eVIRT_TYPE_PVH )
+                      , (HVM , eVIRT_TYPE_HVM )
+                      , (PV  , eVIRT_TYPE_PV  ) ]
 
 instance EnumMarshall DiskDeviceType where
     enumMarshallMap = [ (DiskDeviceTypeDisk , "disk" )
@@ -188,6 +195,7 @@ instance EnumMarshall S4Mode where
       , (S4Restart, eS4_MODE_RESTART)
       , (S4Snapshot, eS4_MODE_SNAPSHOT) ]
 
+instance Marshall VirtType         where {dbRead = dbReadEnum; dbWrite = dbWriteEnum}
 instance Marshall DiskMode         where {dbRead = dbReadEnum; dbWrite = dbWriteEnum}
 instance Marshall DiskType         where {dbRead = dbReadEnum; dbWrite = dbWriteEnum}
 instance Marshall DiskSnapshotMode where {dbRead = dbReadEnum; dbWrite = dbWriteEnum}
@@ -415,6 +423,7 @@ vmCryptoKeyDirs = property "crypto-key-dirs"
 -- Ones in CONFIG subtree
 vmNotify = property "config.notify"
 vmHvm = property "config.hvm"
+vmVirtType = property "config.virt-type"
 vmPae = property "config.pae"
 vmAcpi = property "config.acpi"
 vmApic = property "config.apic"

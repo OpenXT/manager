@@ -29,6 +29,7 @@ module Vm.Types (
                , XcVersion(..)
                , S3Mode(..)
                , S4Mode(..)
+               , VirtType(..)
                , osFromStr, osToStr
 
                , module Vm.Uuid
@@ -93,10 +94,13 @@ data XcVersion = XcVersion String deriving (Eq,Ord)
 data S3Mode = S3Pv | S3Ignore | S3Restart | S3Snapshot deriving (Eq,Show)
 data S4Mode = S4Pv | S4Ignore | S4Restart | S4Snapshot deriving (Eq,Show)
 
+data VirtType = PV | PVH | HVM deriving (Eq,Show)
+
 -- Vm config type.
 data VmConfig = VmConfig {
       vmcfgUuid :: Uuid
     , vmcfgName :: Maybe String
+    , vmcfgVirtType :: VirtType
     , vmcfgQemuDmPath :: FilePath
     , vmcfgQemuDmTimeout :: Int
     , vmcfgKernelPath :: Maybe String

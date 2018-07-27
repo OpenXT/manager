@@ -70,6 +70,7 @@ module Vm.Queries
                , getVmIconBytes
                , getSeamlessVms
                  -- property accessors
+               , getVmVirtType
                , getVmType, getVmGraphics, getMaxVgpus
                , getVmWiredNetwork, getVmWirelessNetwork, getVmGpu, getVmCd, getVmMac, getVmAmtPt, getVmPorticaEnabled, getVmPorticaInstalled
                , getVmSeamlessTraffic, getVmAutostartPending, getVmHibernated, getVmMemoryStaticMax
@@ -253,6 +254,7 @@ getVmConfig uuid resolve_backend_uuids =
        auto_passthrough <- future $ getVmUsbAutoPassthrough uuid
        v <- future $ getHostXcVersion
        name <- future $ domain_name
+       virt_type <- future $ getVmVirtType uuid
        mem <- future $ getVmMemory uuid
        memmin <- future $ getVmMemoryMin uuid
        memmax <- future $ getVmMemoryStaticMax uuid
@@ -264,6 +266,7 @@ getVmConfig uuid resolve_backend_uuids =
            force $ VmConfig
                      <$> pure uuid
                      <*> name
+                     <*> virt_type
                      <*> qemu
                      <*> qemu_timeout
                      <*> kernel
@@ -348,6 +351,14 @@ getVmsBy f = getVms >>= filterM f
 
 getVmType :: (MonadRpc e m) => Uuid -> m VmType
 getVmType uuid = readConfigPropertyDef uuid vmType Svm
+
+getVmVirtType :: (MonadRpc e m) => Uuid -> m VirtType
+getVmVirtType uuid = readConfigPropertyDef uuid vmVirtType PV
+
+toVirtType :: String -> VirtType
+toVirtType "hvm" = HVM
+toVirtType "pvh" = PVH
+toVirtType _     = PV
 
 getVmKernelPath :: (MonadRpc e m) => Uuid -> m (Maybe FilePath)
 getVmKernelPath uuid = do

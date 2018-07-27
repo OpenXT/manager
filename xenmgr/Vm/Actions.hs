@@ -72,6 +72,7 @@ module Vm.Actions
           , setVmImagePath, setVmSlot, setVmPvAddons, setVmPvAddonsVersion
           , setVmTimeOffset, setVmCryptoUser, setVmCryptoKeyDirs, setVmAutoS3Wake
           , setVmNotify, setVmHvm, setVmPae, setVmApic, setVmAcpi, setVmViridian, setVmNx, setVmSound, setVmDisplay
+          , setVmVirtType
           , setVmBoot, setVmCmdLine, setVmKernel, setVmInitrd, setVmAcpiTable, setVmVcpus, setVmCoresPerSocket
           , setVmKernelExtract
           , setVmInitrdExtract
@@ -1775,6 +1776,7 @@ setVmAutoS3Wake uuid a = saveConfigProperty uuid vmAutoS3Wake ( a :: Bool )
 
 setVmNotify uuid v = saveConfigProperty uuid vmNotify (v::String)
 setVmHvm uuid v = saveConfigProperty uuid vmHvm (v::Bool)
+setVmVirtType uuid v = saveConfigProperty uuid vmVirtType (v::VirtType)
 setVmPae uuid v = saveConfigProperty uuid vmPae (v::Bool)
 setVmApic uuid v = saveConfigProperty uuid vmApic (v::Bool)
 setVmAcpi uuid v = saveConfigProperty uuid vmAcpi (v::Bool)
