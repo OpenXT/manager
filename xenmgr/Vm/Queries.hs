@@ -79,7 +79,7 @@ module Vm.Queries
                , getVmMemoryTarget, getVmStartOnBoot, getVmHiddenInSwitcher, getVmHiddenInUi, getVmMemory, getVmName
                , getVmImagePath, getVmSlot, getVmPvAddons, getVmPvAddonsVersion
                , getVmTimeOffset, getVmCryptoUser, getVmCryptoKeyDirs, getVmAutoS3Wake
-               , getVmNotify, getVmHvm, getVmPae, getVmApic, getVmAcpi, getVmViridian, getVmNx, getVmSound, getVmDisplay
+               , getVmNotify, getVmPae, getVmApic, getVmAcpi, getVmViridian, getVmNx, getVmSound, getVmDisplay
                , getVmBoot, getVmCmdLine, getVmKernel, getVmInitrd, getVmAcpiTable, getVmVcpus, getVmCoresPerSocket
                , getVmKernelPath
                , getVmKernelExtract
@@ -223,6 +223,12 @@ getMaxVgpus = vgpu <$> querySurfmanVgpuMode
     where vgpu Nothing  = 0
           vgpu (Just v) = vgpuMaxVGpus v
 
+isHVM :: VirtType -> Bool
+isHVM vt = vt == HVM
+
+isPV :: VirtType -> Bool
+isPV vt = vt == PV
+
 -- prepare the vm config
 getVmConfig :: Uuid -> Bool -> Rpc VmConfig
 getVmConfig uuid resolve_backend_uuids =
@@ -237,7 +243,7 @@ getVmConfig uuid resolve_backend_uuids =
        qemu <- future $ getVmQemuDmPath uuid
        qemu_timeout <- future $ getVmQemuDmTimeout uuid
        excl_cd <- future $ policyQueryCdExclusive
-       vgpu <- future $ ifM (getVmHvm uuid) querySurfmanVgpuMode (return Nothing)
+       vgpu <- future $ ifM (isHVM <$> getVmVirtType uuid) querySurfmanVgpuMode (return Nothing)
        gfx <- future $ getVmGraphics uuid
        oem_acpi <- future $ getVmOemAcpiFeatures uuid
        pv_addons <- future $ getVmPvAddons uuid
@@ -362,8 +368,8 @@ toVirtType _     = PV
 
 getVmKernelPath :: (MonadRpc e m) => Uuid -> m (Maybe FilePath)
 getVmKernelPath uuid = do
-  hvm <- getVmHvm uuid
-  if hvm then return Nothing else do
+  vt <- getVmVirtType uuid
+  if isHVM vt then return Nothing else do
     p <- getVmKernel uuid
     if p /= "" then return (Just p) else return (Just $ "/tmp/kernel-"++show uuid)
 
@@ -558,7 +564,7 @@ getVmAcpiState uuid = do
     -- derived from magic ball
 
     -- xen 4.1: hypercall to get acpi state doesn't work on pv domains nor shutdown vms anymore
-    pv <- not <$> getVmHvm uuid
+    pv <- isPV <$> getVmVirtType uuid
     running <- isRunning uuid
     ll_acpi_state <- if pv
                         then return 0
@@ -956,7 +962,6 @@ getVmAutoS3Wake :: Uuid -> Rpc Bool
 getVmAutoS3Wake uuid = readConfigPropertyDef uuid vmAutoS3Wake False
 
 getVmNotify uuid = readConfigPropertyDef uuid vmNotify ""
-getVmHvm uuid = readConfigPropertyDef uuid vmHvm False
 getVmPae uuid = readConfigPropertyDef uuid vmPae False
 getVmApic uuid = readConfigPropertyDef uuid vmApic False
 getVmAcpi uuid = readConfigPropertyDef uuid vmAcpi False
