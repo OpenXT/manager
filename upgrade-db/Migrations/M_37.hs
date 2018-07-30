@@ -1,0 +1,1 @@
+-- Migration 37 does not exist in stable-8
