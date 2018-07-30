@@ -25,9 +25,7 @@
     "display": "none",
     "cmdline": "root=\/dev\/xvda1 xencons=hvc0",
     "kernel-extract": "\/boot\/bzImage",
-    "extra-xenvm": {
-      "0": "flask-label=system_u:system_r:syncvm_t"
-    },
+    "flask-label": "system_u:system_r:syncvm_t",
     "nic": {
       "0": {
         "id": "0",
