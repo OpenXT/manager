@@ -817,8 +817,8 @@ miscSpecs cfg = do
       sound = maybeToList . fmap (("soundhw='"++) <$> (++"'")) <$> readConfigProperty uuid vmSound
 
       -- Tells xl to use a stubdom or not
-      stubdom | not (vmcfgStubdom cfg) = return []
-              | otherwise              = return ["device_model_stubdomain_override=1"]
+      stubdom | isHvm cfg && vmcfgStubdom cfg = return ["device_model_stubdomain_override=1"]
+              | otherwise                     = return []
 
       -- Specifies path to qemu binary
       dm_override | isHvm cfg = return ["device_model_override='" ++ (vmcfgQemuDmPath cfg) ++ "'"]
