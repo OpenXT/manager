@@ -80,6 +80,7 @@ module Vm.Config (
                 , vmTimerMode, vmTimerModeDefault
                 , vmNestedHvm
                 , vmSerial
+                , vmBios
                 ) where
 
 import Control.Arrow
@@ -454,6 +455,7 @@ vmNestedHvm = property "config.nestedhvm"
 vmSerial = property "config.serial"
 vmStubdomMemory = property "config.stubdom-memory"
 vmStubdomCmdline = property "config.stubdom-cmdline"
+vmBios = property "config.bios"
 
 -- Composite ones and lists
 vmExtraHvms    = property "config.extra-hvm"
@@ -847,6 +849,7 @@ miscSpecs cfg = do
           , ("stubdom_memory"  , vmStubdomMemory)   --OXT-1220: iomem and ioports should be reworked to support specifying multiple
           , ("iomem"           , vmPassthroughMmio) --ranges at a finer granularity. Few ways to implement, likely as a db-node with
           , ("ioports"         , vmPassthroughIo)   --each range as an entry beneath it, which is read and parsed during xl cfg generation.
+          , ("bios"            , vmBios)
           ]                                         --Remove this comment block when implemented.
 
       -- xl config handles certain options different than others (eg. quotes, brackets)
@@ -870,6 +873,7 @@ miscSpecs cfg = do
                                                            _  -> name ++ "=" ++ (wrapQuotes v)
                                              "seclabel" -> name ++ "=" ++ (wrapQuotes v)
                                              "boot"     -> name ++ "=" ++ (wrapQuotes v)
+                                             "bios"     -> name ++ "=" ++ (wrapQuotes v)
                                              "stubdom_cmdline" -> name ++ "=" ++ (wrapQuotes v)
                                              _          -> name ++ "=" ++ v) <$>
                                 readConfigProperty uuid prop

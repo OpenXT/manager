@@ -651,6 +651,11 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmSetSerial = restrict' $ setVmSerial uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetSerial = setVmSerial uuid
 
+  , comCitrixXenclientXenmgrVmGetBios = getVmBios uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetBios = getVmBios uuid
+  , comCitrixXenclientXenmgrVmSetBios = restrict' $ setVmBios uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetBios = setVmBios uuid
+
   } where
     stom "" = Nothing
     stom x  = Just x
