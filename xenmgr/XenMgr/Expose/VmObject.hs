@@ -189,8 +189,10 @@ implementationFor xm uuid = self where
 
   , comCitrixXenclientXenmgrVmUnrestrictedGetNotify = getVmNotify uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetNotify = setVmNotify uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedGetHvm = getVmHvm uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetHvm = \v -> setVmHvm uuid v
+  , comCitrixXenclientXenmgrVmGetVirtType = enumMarshall <$> getVmVirtType uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetVirtType = enumMarshall <$> getVmVirtType uuid
+  , comCitrixXenclientXenmgrVmSetVirtType = restrict' $ setVmVirtType uuid . enumMarshallReverse_
+  , comCitrixXenclientXenmgrVmUnrestrictedSetVirtType = setVmVirtType uuid . enumMarshallReverse_
   , comCitrixXenclientXenmgrVmUnrestrictedGetPae = getVmPae uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetPae = \v -> setVmPae uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetApic = getVmApic uuid
@@ -390,8 +392,6 @@ implementationFor xm uuid = self where
 
   , comCitrixXenclientXenmgrVmGetNotify = getVmNotify uuid
   , comCitrixXenclientXenmgrVmSetNotify = \v -> restrict >> setVmNotify uuid v
-  , comCitrixXenclientXenmgrVmGetHvm = getVmHvm uuid
-  , comCitrixXenclientXenmgrVmSetHvm = \v -> restrict >> setVmHvm uuid v
   , comCitrixXenclientXenmgrVmGetPae = getVmPae uuid
   , comCitrixXenclientXenmgrVmSetPae = \v -> restrict >> setVmPae uuid v
   , comCitrixXenclientXenmgrVmGetApic = getVmApic uuid

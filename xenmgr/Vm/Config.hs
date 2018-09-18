@@ -38,6 +38,7 @@ module Vm.Config (
 
                   -- list of interesting config properties
                 , vmUuidP, vmName, vmDescription, vmType, vmSlot, vmImagePath, vmPvAddons, vmPvAddonsVersion
+                , vmVirtType
                 , vmStartOnBoot, vmStartOnBootPriority, vmKeepAlive, vmProvidesNetworkBackend, vmTimeOffset
                 , vmAmtPt, vmCryptoUser, vmCryptoKeyDirs, vmStartup
                 , vmNotify, vmHvm, vmPae, vmAcpi, vmApic, vmViridian, vmNx, vmSound, vmMemory, vmHap
@@ -113,6 +114,7 @@ import XenMgr.Rpc
 import XenMgr.Config
 
 import Rpc.Autogen.XenmgrConst
+import Rpc.Autogen.XenmgrVmConst
 
 ------------------------
 -- Configuration Tree --
@@ -142,6 +144,11 @@ instance Marshall VmType where
 instance Marshall XbDeviceID where
   dbRead p = XbDeviceID <$> dbRead p
   dbWrite p (XbDeviceID v) = dbWrite p v
+
+instance EnumMarshall VirtType where
+    enumMarshallMap = [ (PVH , eVIRT_TYPE_PVH )
+                      , (HVM , eVIRT_TYPE_HVM )
+                      , (PV  , eVIRT_TYPE_PV  ) ]
 
 instance EnumMarshall DiskDeviceType where
     enumMarshallMap = [ (DiskDeviceTypeDisk , "disk" )
@@ -188,6 +195,7 @@ instance EnumMarshall S4Mode where
       , (S4Restart, eS4_MODE_RESTART)
       , (S4Snapshot, eS4_MODE_SNAPSHOT) ]
 
+instance Marshall VirtType         where {dbRead = dbReadEnum; dbWrite = dbWriteEnum}
 instance Marshall DiskMode         where {dbRead = dbReadEnum; dbWrite = dbWriteEnum}
 instance Marshall DiskType         where {dbRead = dbReadEnum; dbWrite = dbWriteEnum}
 instance Marshall DiskSnapshotMode where {dbRead = dbReadEnum; dbWrite = dbWriteEnum}
@@ -415,6 +423,7 @@ vmCryptoKeyDirs = property "crypto-key-dirs"
 -- Ones in CONFIG subtree
 vmNotify = property "config.notify"
 vmHvm = property "config.hvm"
+vmVirtType = property "config.virt-type"
 vmPae = property "config.pae"
 vmAcpi = property "config.acpi"
 vmApic = property "config.apic"
@@ -515,6 +524,9 @@ diagnose cfg
     | vmcfgGraphics cfg == HDX, not (vmcfgPvAddons cfg) = [ "VM has HDX enabled, but PV addons are not installed" ]
     | otherwise = [ ]
 
+isHvm :: VmConfig -> Bool
+isHvm cfg = vmcfgVirtType cfg == HVM
+
 ------------------------------------------
 -- Create a config file for running Xl
 ------------------------------------------
@@ -547,17 +559,14 @@ getXlConfig cfg =
     uuid = vmcfgUuid cfg
     -- First section of xenvm config file
     prelude = do Just uuid <- readConfigProperty uuid vmUuidP :: Rpc (Maybe Uuid)
-                 hvm <- readConfigPropertyDef uuid vmHvm False
                  name <- readConfigPropertyDef uuid vmName ""
+                 let virt = vmcfgVirtType cfg
                  let kernel = maybe [] (\path -> ["kernel='"++path++"'"]) (vmcfgKernelPath cfg)
                  let nameStr = if name == "" then [] else [("name='"++ name ++ "'")]
-                 let buildType = case hvm of
-                                   True  -> "hvm"
-                                   False -> "pv"
-                 let builder = ["type='" ++ buildType ++ "'"]
-                 let dm_args = case hvm of
-                                 True  -> ["device_model_version='qemu-xen'"]
-                                 False -> []
+                 let builder = ["type='" ++ ( virtStr virt ) ++ "'"]
+                 let dm_args = case virt of
+                                 HVM -> ["device_model_version='qemu-xen'"]
+                                 _   -> []
 
                  return $ [ "uuid='" ++ (show uuid) ++ "'"
                           , "vnc=0"
@@ -572,6 +581,11 @@ getXlConfig cfg =
                             ++ kernel
                             ++ builder
                             ++ dm_args
+            where
+                virtStr virt = case virt of
+                                 HVM -> "hvm"
+                                 PVH -> "pvh"
+                                 PV  -> "pv"
 
 -- Next section: information about disk drives
 allDisks = vmcfgDisks
@@ -686,9 +700,15 @@ nicSpec cfg amt eth0Mac nic networkDomID =
                 | Just mac <- eth0Mac, amt == True  = ["mac=" ++ unswizzleMac mac]
       -- Otherwise we do not touch the VM mac and let xenvm choose
                 | otherwise                         = [ ]
-      nicType   = if (vmcfgStubdom cfg) then ["type=ioemu"] else ["type=vif"]
-      modelType | Just model <- nicdefModel nic = if (vmcfgStubdom cfg) then ["model="++model] else []
-                | otherwise                     = if (vmcfgStubdom cfg) then ["model=e1000"] else []
+
+      nicType   | stubdomNic cfg == True  = ["type=ioemu"]
+                | otherwise               = ["type=vif"]
+
+      modelType | stubdomNic cfg == False       = []
+                | Just model <- nicdefModel nic = ["model="++model]
+                | otherwise                     = ["model=e1000"]
+
+      stubdomNic cfg = isHvm cfg && vmcfgStubdom cfg
 
 unswizzleMac :: Mac -> Mac
 unswizzleMac mac = let bytes = macToBytes mac
@@ -774,17 +794,15 @@ miscSpecs cfg = do
         readConfigProperty uuid vmTimeOffset
       -- 16 meg if not specified
       videoram  = do
-        hvm <- readConfigPropertyDef uuid vmHvm False
-        let defaultVideoram = if hvm then 16 else 0
+        let defaultVideoram = if isHvm cfg then 16 else 0
         (\ram -> ["videoram="++ram]) . fromMaybe (show defaultVideoram) <$>
           readConfigProperty uuid vmVideoram
       hpet = (i <$> readConfigPropertyDef uuid vmHpet vmHpetDefault) >>= \ v -> return ["hpet=" ++ show v]
              where i True = 1
                    i _    = 0
       timer_mode = do
-        hvm <- readConfigPropertyDef uuid vmHvm False
         mode <- readConfigPropertyDef uuid vmTimerMode vmTimerModeDefault
-        if hvm then return ["timer_mode=" ++ (show mode)] else return []
+        if isHvm cfg then return ["timer_mode=" ++ (show mode)] else return []
       nested = readConfigPropertyDef uuid vmNestedHvm False >>=
                    \ v -> if v then return ["nested=true"] else return []
 
@@ -799,16 +817,12 @@ miscSpecs cfg = do
       sound = maybeToList . fmap (("soundhw='"++) <$> (++"'")) <$> readConfigProperty uuid vmSound
 
       -- Tells xl to use a stubdom or not
-      stubdom | not (vmcfgStubdom cfg) = return []
-              | otherwise              = return ["device_model_stubdomain_override=1"]
+      stubdom | isHvm cfg && vmcfgStubdom cfg = return ["device_model_stubdomain_override=1"]
+              | otherwise                     = return []
 
       -- Specifies path to qemu binary
-      dm_override =
-        do
-           hvm <- readConfigPropertyDef uuid vmHvm False
-           case hvm of
-             False     -> return []
-             otherwise -> return ["device_model_override='" ++ (vmcfgQemuDmPath cfg) ++ "'"]
+      dm_override | isHvm cfg = return ["device_model_override='" ++ (vmcfgQemuDmPath cfg) ++ "'"]
+                  | otherwise = return []
 
       usb_opts | not (vmcfgUsbEnabled cfg) = return ["usb=0"]
                | otherwise                 = return []
@@ -829,8 +843,7 @@ miscSpecs cfg = do
       -- Other config keys taken directly from .config subtree which we delegate directly
       -- to xenvm
       passToXenvmProperties =
-          [ ("hvm"             , vmHvm)
-          , ("pae"             , vmPae)
+          [ ("pae"             , vmPae)
           , ("acpi"            , vmAcpi)
           , ("apic"            , vmApic)
           , ("viridian"        , vmViridian) --set to 'default'

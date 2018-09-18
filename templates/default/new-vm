@@ -13,7 +13,7 @@
   "stubdom": "true",
   "config": {
     "notify": "dbus",
-    "hvm": "true",
+    "virt-type": "hvm",
     "pae": "true",
     "acpi": "true",
     "apic": "true",

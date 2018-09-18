@@ -38,7 +38,7 @@
     "debug": "true",
     "pae": "true",
     "acpi": "true",
-    "hvm": "true",
+    "virt-type": "hvm",
     "apic": "true",
     "nx": "true",
     "v4v": "true",
