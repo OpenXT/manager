@@ -115,6 +115,7 @@ module Vm.Actions
           , setVmTimerMode
           , setVmNestedHvm
           , setVmSerial
+          , setVmBios
           , setVmAutolockCdDrives
           , cleanupV4VDevice
           , EventHookFailMode(..)
@@ -1876,6 +1877,7 @@ setVmHpet uuid v = saveConfigProperty uuid vmHpet (v::Bool)
 setVmTimerMode uuid v = saveConfigProperty uuid vmTimerMode (v::String)
 setVmNestedHvm uuid v = saveConfigProperty uuid vmNestedHvm (v::Bool)
 setVmSerial uuid v = saveConfigProperty uuid vmSerial (v::String)
+setVmBios uuid v = saveConfigProperty uuid vmBios (v::String)
 
 -- set autolock flag on the vm xenstore tree, per cd device
 -- cd devices which have sticky bit are not subject to autolock ever
