@@ -792,7 +792,7 @@ miscSpecs cfg = do
     where
       uuid = vmcfgUuid cfg
       -- omit if not specified
-      timeOffset = maybeToList . fmap ("time-offset="++) <$>
+      timeOffset = maybeToList . fmap ("rtc_timeoffset="++) <$>
         readConfigProperty uuid vmTimeOffset
       -- 16 meg if not specified
       videoram  = do
