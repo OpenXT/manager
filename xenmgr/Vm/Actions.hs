@@ -919,8 +919,6 @@ bootVm config reboot
           exportVmSwitcherInfo uuid
           stubdom <- getVmStubdom uuid
           when stubdom $ updateStubDomainID uuid
-          stubdom_memory <- getVmStubdomMemory uuid
-          stubdom_cmdline <- getVmStubdomCmdline uuid
           applyVmFirewallRules uuid
           whenDomainID_ uuid $ \domid -> do
             liftIO $ xsWrite (domainXSPath domid ++ "/v4v-firewall-ready") "1"
