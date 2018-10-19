@@ -461,8 +461,11 @@ getVmUsbAutoPassthrough uuid = readConfigPropertyDef uuid vmUsbAutoPassthrough T
 getVmUsbControl :: Uuid -> Rpc Bool
 getVmUsbControl uuid = readConfigPropertyDef uuid vmUsbControl False
 
-getVmStubdom :: Uuid -> Rpc Bool
-getVmStubdom uuid = readConfigPropertyDef uuid vmStubdom False
+getVmStubdom :: (MonadRpc e m) => Uuid -> m Bool
+getVmStubdom uuid = do
+  vt <- getVmVirtType uuid
+  stub <- readConfigPropertyDef uuid vmStubdom False
+  return $ isHVM vt && stub
 
 getVmStubdomMemory :: Uuid -> Rpc Int
 getVmStubdomMemory uuid = readConfigPropertyDef uuid vmStubdomMemory 96
