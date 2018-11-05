@@ -386,12 +386,14 @@ hostCheckFreeStorage = do
 haveSystemAmtPt :: Rpc Bool
 haveSystemAmtPt = dbReadWithDefault False "system-amt-pt-active"
 
--- Check if this is laptop by testing the chassis type string
-isLaptop :: IO Bool
-isLaptop =
-    do hi <- readHostInfo
-       let chassis = map toLower . strip $ hostChassisType hi
-       return (chassis == "laptop" || chassis == "notebook" || chassis == "portable")
+-- Check if this is laptop by testing the chassis type string against list of
+-- known keywords.
+isLaptopStr :: String -> Bool
+isLaptopStr chassisTypeStr =
+    let keywords = [ "laptop", "notebook", "portable" ]
+        chassisStrs = lines $ strip $ map toLower chassisTypeStr
+    in
+        foldl (||) False $ map (`elem` keywords) chassisStrs
 
 -- Check if host contains PCI devices required to turn AMT on
 isAMTCapable :: IO Bool
@@ -457,9 +459,7 @@ readHostInfo = do
     eth0Addr       <- future $ maybe "" id <$> eth0Mac
     wifiAddr       <- future $ maybe "" id <$> wlan0Mac
     amt_cap        <- future $ isAMTCapable
-    chassisType <- getHostChassisType
-    let chassis = map toLower . strip $ chassisType
-        is_laptop = (chassis == "laptop" || chassis == "notebook" || chassis == "portable")
+    chassisType    <- getHostChassisType
     force $ HostInfo <$>
           vendor
       <*> model
@@ -472,7 +472,7 @@ readHostInfo = do
       <*> wifiAddr
       <*> wifiModel
       <*> pure chassisType
-      <*> pure is_laptop
+      <*> pure (isLaptopStr chassisType)
       <*> amt_cap
     where
       fetch s regex = case s `matchG` regex of []    -> ""
