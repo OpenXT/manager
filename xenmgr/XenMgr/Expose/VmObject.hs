@@ -123,10 +123,13 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmListV4vFirewallRules = _list_v4v_firewall_rules uuid
   , comCitrixXenclientXenmgrVmAddV4vFirewallRule = _add_v4v_firewall_rule uuid
   , comCitrixXenclientXenmgrVmDeleteV4vFirewallRule = _delete_v4v_firewall_rule uuid
+  , comCitrixXenclientXenmgrVmSetVirtType = restrict' $ setVmVirtType uuid . enumMarshallReverse_
+  , comCitrixXenclientXenmgrVmGetVirtType = enumMarshall <$> getVmVirtType uuid
 
   , comCitrixXenclientXenmgrVmListNetFirewallRules = _list_firewall_rules uuid
   , comCitrixXenclientXenmgrVmAddNetFirewallRule = _add_firewall_rule uuid
   , comCitrixXenclientXenmgrVmDeleteNetFirewallRule = _delete_firewall_rule uuid
+
   -- bucketload of properties - unrestricted version
   ---------------------------
   , comCitrixXenclientXenmgrVmUnrestrictedGetState = runvm _state_str
@@ -139,6 +142,8 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedGetDescription = getVmDescription uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetDescription = \v -> setVmDescription uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetUuid = return $ show uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetSeamlessId = getVmSeamlessId uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetSeamlessId = \v -> setVmSeamlessId uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetSlot = fromIntegral <$> getVmSlot uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetSlot = \s -> runXM xm $ setVmSlot uuid (fromIntegral s)
   , comCitrixXenclientXenmgrVmUnrestrictedGetPvAddons = getVmPvAddons uuid
@@ -147,6 +152,8 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedSetPvAddonsVersion = setVmPvAddonsVersion uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetStartOnBoot = getVmStartOnBoot uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetStartOnBoot = setVmStartOnBoot uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetStartFromSuspendImage = getVmStartFromSuspendImage uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetStartFromSuspendImage = \v -> setVmStartFromSuspendImage uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetTimeOffset = fromIntegral <$> getVmTimeOffset uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetTimeOffset = \o -> setVmTimeOffset uuid (fromIntegral o)
   , comCitrixXenclientXenmgrVmUnrestrictedGetCryptoUser = getVmCryptoUser uuid
@@ -155,6 +162,9 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedSetCryptoKeyDirs = \v -> setVmCryptoKeyDirs uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetAutoS3Wake = getVmAutoS3Wake uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetAutoS3Wake = setVmAutoS3Wake uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetOs = osToStr <$> getVmOs uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetOs = \v -> case osFromStr v of Just os -> setVmOs uuid os
+                                                                            _ -> error "unknown os"
   , comCitrixXenclientXenmgrVmUnrestrictedGetImagePath = getVmImagePath uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetImagePath = setVmImagePath uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetWiredNetwork = fromMaybe "" . fmap networkToStr <$> getVmWiredNetwork uuid
@@ -189,9 +199,7 @@ implementationFor xm uuid = self where
 
   , comCitrixXenclientXenmgrVmUnrestrictedGetNotify = getVmNotify uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetNotify = setVmNotify uuid
-  , comCitrixXenclientXenmgrVmGetVirtType = enumMarshall <$> getVmVirtType uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetVirtType = enumMarshall <$> getVmVirtType uuid
-  , comCitrixXenclientXenmgrVmSetVirtType = restrict' $ setVmVirtType uuid . enumMarshallReverse_
   , comCitrixXenclientXenmgrVmUnrestrictedSetVirtType = setVmVirtType uuid . enumMarshallReverse_
   , comCitrixXenclientXenmgrVmUnrestrictedGetPae = getVmPae uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetPae = \v -> setVmPae uuid v
@@ -233,6 +241,8 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedSetPassthroughIo = setVmPassthroughIo uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetFlaskLabel = getVmFlaskLabel uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetFlaskLabel = setVmFlaskLabel uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetCpuid = getVmCpuid uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetCpuid = \v -> setVmCpuid uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetStartOnBootPriority = fromIntegral <$> getVmStartOnBootPriority uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetStartOnBootPriority = \v -> setVmStartOnBootPriority uuid (fromIntegral v)
   , comCitrixXenclientXenmgrVmUnrestrictedGetKeepAlive = getVmKeepAlive uuid
@@ -249,33 +259,6 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedSetExtraXenvm = \v -> setVmExtraXenvm uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetExtraHvm = getVmExtraHvm uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetExtraHvm = \v -> setVmExtraHvm uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetSeamlessId = getVmSeamlessId uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetSeamlessId = \v -> setVmSeamlessId uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetStartFromSuspendImage = getVmStartFromSuspendImage uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetStartFromSuspendImage = \v -> setVmStartFromSuspendImage uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetQemuDmPath = getVmQemuDmPath uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetQemuDmPath = \v -> setVmQemuDmPath uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetQemuDmTimeout = fromIntegral <$> getVmQemuDmTimeout uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetQemuDmTimeout = \v -> setVmQemuDmTimeout uuid (fromIntegral v)
-  , comCitrixXenclientXenmgrVmUnrestrictedGetTrackDependencies = getVmTrackDependencies uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetTrackDependencies = \v -> setVmTrackDependencies uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetDependencies = getVmDependencies uuid >>= return . map vmObjPath
-
-  , comCitrixXenclientXenmgrVmUnrestrictedGetSeamlessMouseLeft = fromIntegral <$> getVmSeamlessMouseLeft uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedGetSeamlessMouseRight = fromIntegral <$> getVmSeamlessMouseRight uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedGetOs = osToStr <$> getVmOs uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetOs = \v -> case osFromStr v of Just os -> setVmOs uuid os
-                                                                            _ -> error "unknown os"
-  , comCitrixXenclientXenmgrVmUnrestrictedGetOemAcpiFeatures = getVmOemAcpiFeatures uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetOemAcpiFeatures = \v -> setVmOemAcpiFeatures uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetControlPlatformPowerState = getVmControlPlatformPowerState uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetControlPlatformPowerState = \v -> setVmControlPlatformPowerState uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetUsbControl = getVmUsbControl uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetUsbControl = \v -> setVmUsbControl uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetUsbEnabled = getVmUsbEnabled uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetUsbEnabled = \v -> setVmUsbEnabled uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetUsbAutoPassthrough = getVmUsbAutoPassthrough uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetUsbAutoPassthrough = \v -> setVmUsbAutoPassthrough uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetUsbGrabDevices = getVmUsbGrabDevices uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetUsbGrabDevices = \v -> setVmUsbGrabDevices uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetStubdom = getVmStubdom uuid
@@ -284,8 +267,6 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedSetStubdomMemory = \v -> setVmStubdomMemory uuid (fromIntegral v)
   , comCitrixXenclientXenmgrVmUnrestrictedGetStubdomCmdline = getVmStubdomCmdline uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetStubdomCmdline = \v -> setVmStubdomCmdline uuid v
-  , comCitrixXenclientXenmgrVmUnrestrictedGetCpuid = getVmCpuid uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetCpuid = \v -> setVmCpuid uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedGetGreedyPcibackBind = getVmGreedyPcibackBind uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetGreedyPcibackBind = \v -> setVmGreedyPcibackBind uuid v
 
@@ -325,7 +306,6 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedGetDomstoreReadAccess = getDomstoreReadAccess uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetDomstoreWriteAccess = setDomstoreWriteAccess uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetDomstoreWriteAccess = getDomstoreWriteAccess uuid
-
     -- bucketload of properties -- restricted version
     -------------------------------------------------
   , comCitrixXenclientXenmgrVmGetState = runvm _state_str
