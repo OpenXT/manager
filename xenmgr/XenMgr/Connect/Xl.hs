@@ -462,7 +462,7 @@ state uuid =
         maybe_state <- xsRead ("/state/" ++ show uuid ++ "/state")
         case maybe_state of
           Just state -> do
-                          info $ "active vms, state = " ++ show state
+                          info $ "active vm " ++ show uuid ++ " state = " ++ show state
                           return $ stateFromStr state
           Nothing    -> return $ stateFromStr "shutdown"
 
