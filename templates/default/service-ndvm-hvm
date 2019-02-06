@@ -23,7 +23,8 @@
     "1": "myself -> 0:5555",
     "2": "0:15555 -> myself:5555",
     "3": "myself -> 0:4878",
-    "4": "my-stubdom -> 0:5100"
+    "4": "my-stubdom -> 0:5100",
+    "5": "myself -> 0:5556"
   },
   "rpc-firewall-rules": {
       "0": "allow destination org.freedesktop.DBus interface org.freedesktop.DBus",
