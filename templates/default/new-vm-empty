@@ -15,6 +15,7 @@
     "display": "none",
     "boot": "cd",
     "flask-label": "system_u:system_r:hvm_guest_t",
+    "hdtype": "ahci",
     "vcpus": "1"
   }
 }
