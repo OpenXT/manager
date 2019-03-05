@@ -320,7 +320,7 @@ pickDiskVirtPath uuid = nextFreeVirtPath . M.elems <$> getDisks uuid
 nextFreeVirtPath :: [Disk] -> String
 nextFreeVirtPath disks = head . filter (not_taken disks) $ candidates
   where
-    candidates = [ "hda", "hdb", "hdc", "hdd" ] ++ map (\s -> "xvd" ++ [s]) ['a'..'z']
+    candidates = map (\s -> "hd" ++ [s]) ['a'..'z']
     not_taken disks virtp = not $ virtp `elem` (map diskDevice disks)
 
 envIsoDir :: FilePath
