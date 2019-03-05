@@ -806,7 +806,7 @@ miscSpecs cfg = do
         mode <- readConfigPropertyDef uuid vmTimerMode vmTimerModeDefault
         if isHvm cfg then return ["timer_mode=" ++ (show mode)] else return []
       nested = readConfigPropertyDef uuid vmNestedHvm False >>=
-                   \ v -> if v then return ["nested=true"] else return []
+                   \ v -> if v then return ["nestedhvm=1"] else return []
 
       acpi_table = do
           case (vmcfgAcpi cfg) of
