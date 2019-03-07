@@ -185,6 +185,7 @@ shutdown uuid =
                       case exitCode of
                         ExitSuccess   -> return ()
                         _             -> do xsWrite ("/local/domain/" ++ domid ++ "/control/hvm-shutdown") "poweroff"
+                                            _ <- system ("xl trigger " ++ domid ++ " power")
                                             _ <- system ("xl shutdown -F -w " ++ domid)
                                             return ()
         Nothing -> do system ("xl shutdown -c -w " ++ domid)
