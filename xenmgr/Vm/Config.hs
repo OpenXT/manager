@@ -82,6 +82,7 @@ module Vm.Config (
                 , vmNestedHvm
                 , vmSerial
                 , vmBios
+                , vmHdType
                 ) where
 
 import Control.Arrow
@@ -465,6 +466,7 @@ vmSerial = property "config.serial"
 vmStubdomMemory = property "config.stubdom-memory"
 vmStubdomCmdline = property "config.stubdom-cmdline"
 vmBios = property "config.bios"
+vmHdType = property "config.hdtype"
 
 -- Composite ones and lists
 vmExtraHvms    = property "config.extra-hvm"
@@ -562,6 +564,7 @@ getXlConfig cfg =
     -- First section of xenvm config file
     prelude = do Just uuid <- readConfigProperty uuid vmUuidP :: Rpc (Maybe Uuid)
                  name <- readConfigPropertyDef uuid vmName ""
+                 hd_type <- readConfigPropertyDef uuid vmHdType "ide"
                  let virt = vmcfgVirtType cfg
                  let kernel = maybe [] (\path -> ["kernel='"++path++"'"]) (vmcfgKernelPath cfg)
                  let nameStr = if name == "" then [] else [("name='"++ name ++ "'")]
@@ -569,6 +572,7 @@ getXlConfig cfg =
                  let dm_args = case virt of
                                  HVM -> ["device_model_version='qemu-xen'"]
                                  _   -> []
+                 let hdtype = ["hdtype='" ++ hd_type ++ "'"]
 
                  return $ [ "uuid='" ++ (show uuid) ++ "'"
                           , "vnc=0"
@@ -583,6 +587,7 @@ getXlConfig cfg =
                             ++ kernel
                             ++ builder
                             ++ dm_args
+                            ++ hdtype
             where
                 virtStr virt = case virt of
                                  HVM -> "hvm"
@@ -638,14 +643,20 @@ bsgSpec cfg = do
 diskSpec :: Uuid -> Disk -> Rpc DiskSpec
 diskSpec uuid d  = do
   stubdom <- readConfigPropertyDef uuid vmStubdom False
+  hd_type <- readConfigPropertyDef uuid vmHdType "ide"
   return $ printf "'%s,%s,%s,%s,%s,%s'"
-             (diskPath d) (fileToRaw (enumMarshall $ diskType d)) (cdType stubdom d) (diskDevice d) (enumMarshall $ diskMode d) (if ((enumMarshall $ diskDeviceType d) == "cdrom") then (enumMarshall $ diskDeviceType d) else "")
+             (diskPath d) (fileToRaw (enumMarshall $ diskType d)) (cdType stubdom d) (adjDiskDevice d hd_type) (enumMarshall $ diskMode d) (if ((enumMarshall $ diskDeviceType d) == "cdrom") then (enumMarshall $ diskDeviceType d) else "")
   where
     cdType stubdom d =
       case (enumMarshall $ diskDeviceType d) of
           "cdrom" -> if stubdom then "backendtype=tap" else "backendtype=phy"
           _       -> if (enumMarshall $ diskType d) == "phy" then "backendtype=phy" else "backendtype=tap"
     fileToRaw typ = if typ == "file" || typ == "phy" then "raw" else typ
+    -- convert hdX -> xvdX if hdtype is 'ahci'
+    adjDiskDevice d hd_type =
+      case hd_type of
+          "ahci" -> "xvd" ++ [(last $ diskDevice d)]
+          _      -> diskDevice d
 
 -- Next section: information about Network Interfaces
 nicSpecs :: VmConfig -> Rpc [NicSpec]

@@ -46,6 +46,7 @@
     "display": "nogfx",
     "boot": "c",
     "flask-label": "system_u:system_r:ndvm_t",
+    "hdtype": "ide",
     "disk": {
       "0": {
         "path": "\/storage\/ndvm\/ndvm.vhd",

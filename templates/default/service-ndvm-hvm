@@ -60,6 +60,7 @@
         "force-slot": "false"
       }
     },
+    "hdtype": "ide",
     "disk": {
       "0": {
         "path": "\/storage\/ndvm\/ndvm.vhd",

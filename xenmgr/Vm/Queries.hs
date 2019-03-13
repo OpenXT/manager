@@ -125,6 +125,7 @@ module Vm.Queries
                , getVmNestedHvm
                , getVmSerial
                , getVmBios
+               , getVmHdType
                ) where
 
 import Data.String
@@ -320,7 +321,7 @@ pickDiskVirtPath uuid = nextFreeVirtPath . M.elems <$> getDisks uuid
 nextFreeVirtPath :: [Disk] -> String
 nextFreeVirtPath disks = head . filter (not_taken disks) $ candidates
   where
-    candidates = [ "hda", "hdb", "hdc", "hdd" ] ++ map (\s -> "xvd" ++ [s]) ['a'..'z']
+    candidates = map (\s -> "hd" ++ [s]) ['a'..'z']
     not_taken disks virtp = not $ virtp `elem` (map diskDevice disks)
 
 envIsoDir :: FilePath
@@ -1051,3 +1052,4 @@ getVmTimerMode uuid = readConfigPropertyDef uuid vmTimerMode vmTimerModeDefault
 getVmNestedHvm uuid = readConfigPropertyDef uuid vmNestedHvm False
 getVmSerial uuid = readConfigPropertyDef uuid vmSerial ""
 getVmBios uuid = readConfigPropertyDef uuid vmBios "seabios"
+getVmHdType uuid = readConfigPropertyDef uuid vmHdType "ide"
