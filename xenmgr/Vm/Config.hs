@@ -874,6 +874,7 @@ miscSpecs cfg = do
           , ("iomem"           , vmPassthroughMmio) --ranges at a finer granularity. Few ways to implement, likely as a db-node with
           , ("ioports"         , vmPassthroughIo)   --each range as an entry beneath it, which is read and parsed during xl cfg generation.
           , ("bios"            , vmBios)
+          , ("initrd"          , vmInitrd)
           ]                                         --Remove this comment block when implemented.
 
       -- xl config handles certain options different than others (eg. quotes, brackets)
@@ -899,6 +900,7 @@ miscSpecs cfg = do
                                              "boot"     -> name ++ "=" ++ (wrapQuotes v)
                                              "bios"     -> name ++ "=" ++ (wrapQuotes v)
                                              "stubdom_cmdline" -> name ++ "=" ++ (wrapQuotes v)
+                                             "initrd"   -> name ++ "=" ++ (wrapQuotes v)
                                              _          -> name ++ "=" ++ v) <$>
                                 readConfigProperty uuid prop
 
