@@ -55,16 +55,16 @@ type PartitionNum = Int
 finally' = flip E.finally
 
 mount :: FilePath -> FilePath -> Bool -> IO ()
-mount dev dir ro = void $ readProcessOrDie "mount" ["-o", opts, dev, dir] "" where
-  opts = intercalate "," . filter (not.null) $ [ro_opt]
-  ro_opt | ro = "ro"
-         | otherwise = ""
+mount dev dir ro = void $ readProcessOrDie "mount" (mountopts ++ [dev, dir]) "" where
+  mountopts = if ro then ["-o", "ro"] else []
 
 umount :: FilePath -> IO ()
 umount dir = void $ readProcessOrDie "umount" [dir] ""
 
 --Updated syntax for new tap-ctl style
-tapCreate ty extraEnv ro path = chomp <$> readProcessOrDieWithEnv extraEnv "tap-ctl" ( ["create"] ++ ["-a", ty++":"++path] ) ""
+tapCreate ty extraEnv ro path = chomp <$> readProcessOrDieWithEnv extraEnv "tap-ctl" ( ["create"] ++ ["-a", ty++":"++path] ++ ro_opt ) "" where
+  ro_opt | ro = ["-R"]
+         | otherwise = []
 tapCreateVhd = tapCreate "vhd"
 tapCreateVdi = tapCreate "vdi"
 tapCreateAio = tapCreate "aio"
