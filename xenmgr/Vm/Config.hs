@@ -655,7 +655,7 @@ diskSpec uuid d  = do
     -- convert hdX -> xvdX if hdtype is 'ahci'
     adjDiskDevice d hd_type =
       case hd_type of
-          "ahci" -> "xvd" ++ [(last $ diskDevice d)]
+          "ahci" -> if ((enumMarshall $ diskDeviceType d) == "cdrom") then (diskDevice d) else ("xvd" ++ [(last $ diskDevice d)])
           _      -> diskDevice d
 
 -- Next section: information about Network Interfaces
