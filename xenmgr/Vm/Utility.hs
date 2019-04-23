@@ -94,7 +94,8 @@ withMountedDisk extraEnv diskT ro phys_path part action
          finally' (destroy_dev diskT dev) $
            do lo <- locreate dev
               finally' (loremove lo) $
-                do mount (lo ++ lopart part) temp_dir ro
+                do loop <- lopart lo part
+                   mount loop temp_dir ro
                    finally' (umount temp_dir) $ action temp_dir
   where
     create_dev DiskImage = return phys_path
@@ -107,11 +108,18 @@ withMountedDisk extraEnv diskT ro phys_path part action
     destroy_dev t dev | t `elem` [VirtualHardDisk, ExternalVdi, Aio] = tapDestroy dev
     destroy_dev _ _ = return ()
 
-    lopart (Just part) = "p" ++ show part
-    lopart Nothing     = ""
-
 locreate dev = chomp <$> readProcessOrDie "losetup" ["--find", "--show", "--partscan", dev] ""
 loremove dev = readProcessOrDie "losetup" ["--detach", dev] ""
+
+lopart :: FilePath -> Maybe PartitionNum -> IO FilePath
+lopart lo Nothing = return lo
+lopart lo (Just pnum) = do
+    ex <- doesFileExist path
+    case ex of
+      True -> return path
+      _    -> error $ "partition " ++ show pnum ++ " not found in " ++ show lo
+    where
+      path = lo ++ "p" ++ show pnum
 
 deslash ('/':xs) = xs
 deslash xs = xs
