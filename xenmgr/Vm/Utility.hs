@@ -38,7 +38,6 @@ import Directory
 import Tools.Misc
 import Tools.Process
 import Tools.Text
-import Tools.PartTable
 import Tools.Log
 
 import Vm.DmTypes
@@ -113,14 +112,6 @@ withMountedDisk extraEnv diskT ro phys_path part action
 
 locreate dev = chomp <$> readProcessOrDie "losetup" ["--find", "--show", "--partscan", dev] ""
 loremove dev = readProcessOrDie "losetup" ["--detach", dev] ""
-
-mountOffset :: FilePath -> Maybe PartitionNum -> IO Int64
-mountOffset dev Nothing = return 0
-mountOffset dev (Just pnum) =
-  do ptable <- fromMaybe (error $ "failed to read parition table of " ++ dev) <$> readPartTable dev
-     case filter (\p -> partNum p == pnum) ptable of
-       [] -> error $ "partition " ++ show pnum ++ " not found in " ++ show dev
-       (x:_) -> return $ partStart x
 
 deslash ('/':xs) = xs
 deslash xs = xs
