@@ -108,8 +108,12 @@ withMountedDisk extraEnv diskT ro phys_path part action
     destroy_dev t dev | t `elem` [VirtualHardDisk, ExternalVdi, Aio] = tapDestroy dev
     destroy_dev _ _ = return ()
 
-locreate dev = chomp <$> readProcessOrDie "losetup" ["--find", "--show", "--partscan", dev] ""
-loremove dev = readProcessOrDie "losetup" ["--detach", dev] ""
+    loremove dev = readProcessOrDie "losetup" ["--detach", dev] ""
+    locreate dev = chomp <$> readProcessOrDie "losetup" (args ++ [dev]) ""
+
+    args = ["--find", "--show" ] ++ partscan part
+    partscan Nothing = []
+    partscan (Just pnum) = ["--partscan"]
 
 lopart :: FilePath -> Maybe PartitionNum -> IO FilePath
 lopart lo Nothing = return lo
