@@ -153,7 +153,8 @@ moveBackend t frontdomid id backdomid = do
              case (nicNet /= "") of
                  True   -> do liftIO $ Xl.removeNic uuid id backdomid
                               vifConnect uuid id nicNet frontdomid backdomid 30
-                 False  -> return ()
+                 False  -> do liftIO $ Xl.setNicBackendDom uuid id backdomid
+                              return ()
       -- Try to hook up the vif to the backend, retrying for specified timeout in seconds
       -- Rpc calls are also wrapped in their own retry block in case dbus isn't ready in the ndvm
       vifConnect uuid id nicNet frontdomid backdomid timeout =
