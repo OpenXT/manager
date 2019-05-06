@@ -151,7 +151,7 @@ import System.IO
 import System.Timeout
 import Data.Time
 import Directory
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import qualified Data.Foldable
 
 import Tools.Log
@@ -549,6 +549,7 @@ startVmInternal uuid is_reboot = do
       = startupCheckVmState uuid
           `followby` startupCheckHostStates uuid
           `followby` startupDependencies uuid
+          `followby` startupCheckDiskPaths uuid
           `followby` startupExtractKernel uuid
           `followby` startupMeasureVm uuid
     stage2 config
@@ -584,6 +585,18 @@ startupCheckHostStates uuid
       msg reason     = warn ("ignoring request to start VM " ++ show uuid ++ " because of " ++ reason)
       badRunLevel  l = msg ("current runlevel: " ++ show l) >> return False
       badHostState s = msg ("current host state: " ++ show s) >> return False
+
+startupCheckDiskPaths :: Uuid -> XM Bool
+startupCheckDiskPaths uuid
+  = do disks <- M.assocs <$> liftRpc (getDisks uuid)
+       mapM_ checkPath disks
+       return True
+    where
+      checkPath (ele, disk) = do
+        e <- liftIO $ doesFileExist $ diskPath disk
+        if e
+            then return True
+            else error $ printf "Bad Physical Path for disk %s (%s)" (show ele) (diskPath disk)
 
 startupMeasureVm :: Uuid -> XM Bool
 startupMeasureVm uuid
