@@ -126,7 +126,7 @@ augmentRule (client, Just uuid, pmap) rule@Rule { match = match } = do
               Nothing -> do
                 -- query current property value via xenmgr access
                 v <- testVm (vmPath uuid) pname
-                info $ "assuming (" ++ show uuid ++ "," ++ pname ++ ") = " ++ show v
+                debug $ "assuming (" ++ show uuid ++ "," ++ pname ++ ") = " ++ show v
                 return ( Map.insert (uuid,pname) (cons v) pm
                        , cons v )
       

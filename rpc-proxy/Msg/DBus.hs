@@ -97,6 +97,8 @@ incomingData sock =
     ) `E.catch` err
   where
     err :: E.SomeException -> IO LazyBS.ByteString
-    err x = do warn $ printf "%s on %s" (show x) (show sock)
+    err x = do _err $ E.fromException x
                return LazyBS.empty
-
+    _err (Just (EOF s)) = debug $ printf "%s on %s" (show (EOF s)) (show sock)
+    _err (Just ex) = warn $ printf "%s on %s" (show ex) (show sock)
+    _err Nothing = return ()
