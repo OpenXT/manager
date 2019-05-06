@@ -181,14 +181,14 @@ conversation dispatcher counter settings rulesCache (client_ch,client_source) an
         null_buf <- recv client_ch 1
         when ( BS.head null_buf /= 0 )
           $ E.throw (AuthError client_ch "expected null byte")
-        info "null byte received from incoming transport - setting up conversation"
+        debug "null byte received from incoming transport - setting up conversation"
         (forward_ch, forward_domid) <-
           makeOutgoingTransport (outgoingChannel settings)
         debug $ "outgoing transport: " ++ show forward_ch
         info  $ "authenticating client " ++ show client_ch ++ " " ++ show client_source
         manualAuthenticate (client_ch,client_source) forward_ch (authDomainUuid settings)
         --
-        info $ printf "auth done for %s" (show client_ch)
+        debug $ printf "auth done for %s" (show client_ch)
         return (forward_ch, forward_domid)
 
     -- message transform pipeline (includes firewall & some specific message spoofing)
@@ -254,7 +254,7 @@ manualAuthenticate :: (Channel,ArtefactSource) -> Channel -> Bool -> IO ()
 manualAuthenticate (client, ArtefactSource client_domid client_uuid _) server auth_domain_uuid =
     -- null byte at start
     ( do send_all server $ BS.pack [0]
-         info "auth: null byte sent to server"
+         debug "auth: null byte sent to server"
          loop False
     ) `E.catch` shutdown
   where
@@ -299,7 +299,7 @@ manualAuthenticate (client, ArtefactSource client_domid client_uuid _) server au
 autoAuthenticate :: (Channel, ArtefactSource) -> Channel -> IO ()
 autoAuthenticate (client, ArtefactSource client_domid client_uuid _) server
   = ( do send_all server $ BS.pack [0]
-         info "auto-auth: null byte sent to server"
+         debug "auto-auth: null byte sent to server"
          send_all server $ authMethodDomID client_domid
          authReadLine server
          send_all server "BEGIN\r\n"
@@ -320,7 +320,7 @@ forward :: ( MsgConvert m a Msg
            -> Transform
            -> m ()
 forward counter route@(Route from to) xform =
-    do info $ printf "starting forwarding %s" route_str
+    do debug $ printf "starting forwarding %s" route_str
        liftIO $ incCounter counter
        bounce $ Bouncer route xform
        liftIO stop
@@ -334,7 +334,7 @@ forward counter route@(Route from to) xform =
            stop
 
     stop =
-        do info $ printf "stopping forwarding %s" route_str
+        do debug $ printf "stopping forwarding %s" route_str
            shutdownRecv to `E.catch` ignore
            close from `E.catch` ignore
            decCounter counter

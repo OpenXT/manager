@@ -148,8 +148,11 @@ incomingData sock =
     ) `E.catch` err
   where
     err :: E.SomeException -> IO BL.ByteString
-    err x = do warn $ printf "%s on %s" (show x) (show sock)
+    err x = do _err $ E.fromException x
                return BL.empty
+    _err (Just (EOF s)) = do debug $ printf "%s on %s" (show (EOF s)) (show sock)
+    _err (Just ex) = do warn $ printf "%s on %s" (show ex) (show sock)
+    _err Nothing = do return ()
 
 jmsgToJson :: JMsg -> JSValue
 jmsgToJson (JMsgReq m) = jreqToJson m
