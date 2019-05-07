@@ -38,7 +38,6 @@ import Directory
 import Tools.Misc
 import Tools.Process
 import Tools.Text
-import Tools.PartTable
 import Tools.Log
 
 import Vm.DmTypes
@@ -55,15 +54,11 @@ type PartitionNum = Int
 
 finally' = flip E.finally
 
-mount :: FilePath -> FilePath -> Int64 -> Bool -> Bool -> IO ()
-mount dev dir off loop ro = void $ readProcessOrDie "mount" ["-o", opts, dev, dir] "" where
-  opts = intercalate "," . filter (not.null) $ [ro_opt,off_opt,loop_opt]
+mount :: FilePath -> FilePath -> Bool -> IO ()
+mount dev dir ro = void $ readProcessOrDie "mount" ["-o", opts, dev, dir] "" where
+  opts = intercalate "," . filter (not.null) $ [ro_opt]
   ro_opt | ro = "ro"
          | otherwise = ""
-  off_opt | off == 0 = ""
-          | otherwise = "offset=" ++ show off
-  loop_opt | not loop = ""
-           | otherwise = "loop"
 
 umount :: FilePath -> IO ()
 umount dir = void $ readProcessOrDie "umount" [dir] ""
@@ -97,9 +92,11 @@ withMountedDisk extraEnv diskT ro phys_path part action
   = withTempDirectory "/tmp" $ \temp_dir ->
       do dev <- create_dev diskT
          finally' (destroy_dev diskT dev) $
-           do off <- mountOffset dev part
-              mount dev temp_dir off (loop diskT) ro
-              finally' (umount temp_dir) $ action temp_dir
+           do lo <- locreate dev
+              finally' (loremove lo) $
+                do loop <- lopart lo part
+                   mount loop temp_dir ro
+                   finally' (umount temp_dir) $ action temp_dir
   where
     create_dev DiskImage = return phys_path
     create_dev PhysicalDevice = return phys_path
@@ -111,16 +108,22 @@ withMountedDisk extraEnv diskT ro phys_path part action
     destroy_dev t dev | t `elem` [VirtualHardDisk, ExternalVdi, Aio] = tapDestroy dev
     destroy_dev _ _ = return ()
 
-    loop DiskImage = True
-    loop _ = False
+    loremove dev = readProcessOrDie "losetup" ["--detach", dev] ""
+    locreate dev = chomp <$> readProcessOrDie "losetup" (args ++ [dev]) ""
 
-mountOffset :: FilePath -> Maybe PartitionNum -> IO Int64
-mountOffset dev Nothing = return 0
-mountOffset dev (Just pnum) =
-  do ptable <- fromMaybe (error $ "failed to read parition table of " ++ dev) <$> readPartTable dev
-     case filter (\p -> partNum p == pnum) ptable of
-       [] -> error $ "partition " ++ show pnum ++ " not found in " ++ show dev
-       (x:_) -> return $ partStart x
+    args = ["--find", "--show" ] ++ partscan part
+    partscan Nothing = []
+    partscan (Just pnum) = ["--partscan"]
+
+lopart :: FilePath -> Maybe PartitionNum -> IO FilePath
+lopart lo Nothing = return lo
+lopart lo (Just pnum) = do
+    ex <- doesFileExist path
+    case ex of
+      True -> return path
+      _    -> error $ "partition " ++ show pnum ++ " not found in " ++ show lo
+    where
+      path = lo ++ "p" ++ show pnum
 
 deslash ('/':xs) = xs
 deslash xs = xs
