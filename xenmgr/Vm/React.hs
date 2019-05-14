@@ -159,7 +159,7 @@ measuresR xm_context = mkReact f where
   f (VmMeasurementFailure fpath expected actual)
     = do action <- liftRpc getMeasureFailAction
          let msg = printf "measuring of file %s FAILED. Expected checksum: %x actual %x. Performing %s" fpath expected actual (show action)
-         liftIO (warn msg >> writeFile "/dev/xvc0" (msg++"\n"))
+         liftIO (warn msg >> writeFile "/dev/hvc0" (msg++"\n"))
          runXM xm_context (executePmAction action)
   f _
     = return ()
