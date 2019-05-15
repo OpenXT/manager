@@ -84,7 +84,8 @@ module Vm.Queries
                , getVmKernelPath
                , getVmKernelExtract
                , getVmInitrdExtract
-               , getVmVideoram, getVmPassthroughMmio, getVmPassthroughIo, getVmFlaskLabel
+               , getVmVideoram, getVmPassthroughMmio, getVmPassthroughIo
+               , getVmFlaskLabel, getVmInitFlaskLabel, getVmStubdomFlaskLabel
                , getVmAcpiState, getVmHap, getVmDescription, getVmMeasured
                , getVmExtraXenvm, getVmExtraHvm
                , getVmStartOnBootPriority, getVmKeepAlive, getVmProvidesNetworkBackend
@@ -987,6 +988,8 @@ getVmVideoram uuid = readConfigPropertyDef uuid vmVideoram (0::Int)
 getVmPassthroughMmio uuid = readConfigPropertyDef uuid vmPassthroughMmio ""
 getVmPassthroughIo uuid = readConfigPropertyDef uuid vmPassthroughIo ""
 getVmFlaskLabel uuid = readConfigPropertyDef uuid vmFlaskLabel ""
+getVmInitFlaskLabel uuid = readConfigPropertyDef uuid vmInitFlaskLabel ""
+getVmStubdomFlaskLabel uuid = readConfigPropertyDef uuid vmStubdomFlaskLabel ""
 getVmHap uuid = readConfigPropertyDef uuid vmHap False
 getVmDescription uuid = readConfigPropertyDef uuid vmDescription ""
 getVmStartOnBootPriority uuid = readConfigPropertyDef uuid vmStartOnBootPriority (0::Int)
