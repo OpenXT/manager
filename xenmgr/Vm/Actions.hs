@@ -78,7 +78,8 @@ module Vm.Actions
           , setVmInitrdExtract
           , setVmMemoryStaticMax
           , setVmMemoryMin
-          , setVmVideoram, setVmPassthroughMmio, setVmPassthroughIo, setVmFlaskLabel
+          , setVmVideoram, setVmPassthroughMmio, setVmPassthroughIo
+          , setVmFlaskLabel, setVmInitFlaskLabel, setVmStubdomFlaskLabel
           , setVmAmtPt, setVmHap, setVmDescription
           , setVmExtraXenvm, setVmExtraHvm
           , setVmStartOnBootPriority, setVmKeepAlive, setVmProvidesNetworkBackend
@@ -1809,6 +1810,8 @@ setVmVideoram uuid v = saveConfigProperty uuid vmVideoram (v::Int)
 setVmPassthroughMmio uuid v = saveConfigProperty uuid vmPassthroughMmio (v::String)
 setVmPassthroughIo uuid v = saveConfigProperty uuid vmPassthroughIo (v::String)
 setVmFlaskLabel uuid v = saveConfigProperty uuid vmFlaskLabel (v::String)
+setVmInitFlaskLabel uuid v = saveConfigProperty uuid vmInitFlaskLabel (v::String)
+setVmStubdomFlaskLabel uuid v = saveConfigProperty uuid vmStubdomFlaskLabel (v::String)
 setVmHap uuid v = saveConfigProperty uuid vmHap (v::Bool)
 setVmDescription uuid v = saveConfigProperty uuid vmDescription (v::String)
 setVmStartOnBootPriority uuid v = saveConfigProperty uuid vmStartOnBootPriority (v::Int)
