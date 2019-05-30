@@ -208,7 +208,8 @@ powerlinkR xm get_shr =
                             liftIO (Xl.resumeFromSleep (vm_uuid vm))
                             return ()
       shutdown vm      = do reason <- runVm vm get_shr
-                            when ( reason /= Restarting ) $
+                            debug $ "Power Link: shutdown hook reason " ++ show reason
+                            when ( reason == Halt ) $
                               info "Power Link: shutdown" >> hostShutdown
 
 logStatesR = mkReact f where
