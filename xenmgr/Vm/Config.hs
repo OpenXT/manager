@@ -650,7 +650,7 @@ diskSpec uuid d  = do
     cdType stubdom d =
       case (enumMarshall $ diskDeviceType d) of
           "cdrom" -> if stubdom then "backendtype=tap" else "backendtype=phy"
-          _       -> if (enumMarshall $ diskType d) == "phy" then "backendtype=phy" else "backendtype=tap"
+          _       -> if (enumMarshall $ diskType d) == "phy" && stubdom == False then "backendtype=phy" else "backendtype=tap"
     fileToRaw typ = if typ == "file" || typ == "phy" then "raw" else typ
     -- convert hdX -> xvdX if hdtype is 'ahci'
     adjDiskDevice d hd_type =
