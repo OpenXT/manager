@@ -302,7 +302,10 @@ runEventScript failmode vm get_hooks args =
          return ()
     exec path =
       -- stderr redirected to warn, stdout to info
-      runInteractiveProcess path args Nothing Nothing >>= \ (_, stdout, stderr, h) ->
+      createProcess (proc path args){ std_in = CreatePipe,
+                                      std_out = CreatePipe,
+                                      std_err = CreatePipe,
+                                      close_fds = True } >>= \ (_, Just stdout, Just stderr, h) ->
           do hSetBuffering stdout NoBuffering
              hSetBuffering stderr NoBuffering
              contents_mv <- newEmptyMVar
