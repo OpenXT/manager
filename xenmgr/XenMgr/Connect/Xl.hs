@@ -209,7 +209,7 @@ unpause uuid = do
 
 getXlProcess :: Uuid -> IO String
 getXlProcess uuid = do
-    (ec,str_pid,_) <- readProcessWithExitCode "pgrep" ["-f", "^xl create " ++ configPath uuid ++ " -p"] ""
+    (ec,str_pid,_) <- readProcessWithExitCode_closeFds "pgrep" ["-f", "^xl create " ++ configPath uuid ++ " -p"] ""
     case ec of
         ExitSuccess -> return $ TT.strip str_pid
         _           -> return ""
@@ -242,7 +242,8 @@ start uuid =
         then do
           case state of
             Shutdown -> do
-                          (_, _, Just err, handle) <- createProcess (proc "xl" ["create", configPath uuid, "-p"]){std_err = CreatePipe}
+                          (_, _, Just err, handle) <- createProcess (proc "xl" ["create", configPath uuid, "-p"]){std_err = CreatePipe,
+                                  close_fds = True}
                           ec <- waitForProcess handle
                           stderr <- hGetContents err
                           case ec of
@@ -310,7 +311,7 @@ getDomainId uuid = do
 changeCd :: Uuid -> String -> IO ()
 changeCd uuid path = do
     domid <- getDomainId uuid
-    (exitCode, _, _)  <- readProcessWithExitCode "xl" ["cd-insert", domid, "hdc", path] []
+    (exitCode, _, _)  <- readProcessWithExitCode_closeFds "xl" ["cd-insert", domid, "hdc", path] []
     bailIfError exitCode "Error changing cd."
 
 --Return the frontend xenstore path of the nic device (or Nothing)
@@ -379,7 +380,7 @@ addNic uuid nic net back_domid = do
     stubdomid <- (liftIO $ xsRead ("/xenmgr/vms/" ++ show uuid ++ "/stubdomid"))
     let typ = isJust stubdomid
     let wireless = L.isInfixOf "wifi" net
-    (ec,stdout,_)<- readProcessWithExitCode "xl" ["network-attach", domid, printf "bridge=%s" net, printf "backend=%s" (show back_domid),
+    (ec,stdout,_)<- readProcessWithExitCode_closeFds "xl" ["network-attach", domid, printf "bridge=%s" net, printf "backend=%s" (show back_domid),
             if typ then "type=ioemu" else "type=vif", if wireless then "wireless=1" else "wireless=0", printf "devid=%s" (show nic)] []
     return ()
 
