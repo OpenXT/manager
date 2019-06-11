@@ -574,7 +574,7 @@ getXlConfig cfg =
                  let dm_args = case virt of
                                  HVM -> ["device_model_version='qemu-xen'"]
                                  _   -> []
-                 let hdtype = ["hdtype='" ++ hd_type ++ "'"]
+                 let hdtype = ["hdtype='" ++ (if vmcfgOs cfg == Linux && isHvm cfg then "ide" else hd_type) ++ "'"]
 
                  return $ [ "uuid='" ++ (show uuid) ++ "'"
                           , "vnc=0"
