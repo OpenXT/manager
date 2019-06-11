@@ -26,7 +26,7 @@
     "display": "none",
     "boot": "cd",
     "flask-label": "system_u:system_r:hvm_guest_t",
-    "hdtype": "ahci",
+    "hdtype": "ide",
     "disk": {
       "0": {
         "path": "\/storage\/isos\/xc-tools.iso",
