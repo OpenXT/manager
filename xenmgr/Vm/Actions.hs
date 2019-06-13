@@ -107,7 +107,7 @@ module Vm.Actions
           , setVmProvidesDefaultNetworkBackend
           , setVmVkbd
           , setVmVfb
-          , setVmV4V
+          , setVmArgo
           , setVmRestrictDisplayDepth
           , setVmRestrictDisplayRes
           , setVmPreserveOnReboot
@@ -119,7 +119,7 @@ module Vm.Actions
           , setVmBios
           , setVmAutolockCdDrives
           , setVmHdType
-          , cleanupV4VDevice
+          , cleanupArgoDevice
           , EventHookFailMode(..)
           ) where
 
@@ -180,7 +180,7 @@ import Vm.Monitor
 import Vm.State
 import Vm.DomainCore
 import {-# SOURCE #-} Vm.React
-import qualified Vm.V4VFirewall as Firewall
+import qualified Vm.ArgoFirewall as Firewall
 import Vm.Balloon
 import XenMgr.Rpc
 import qualified XenMgr.Connect.Xl as Xl
@@ -745,29 +745,29 @@ withPreCreationState uuid f =
                                  xmRunVm uuid $ vmEvalEvent (VmStateChange Shutdown)
                                throwError e)
 
---Write the xenstore nodes for the backend and the frontend for the v4v device
+--Write the xenstore nodes for the backend and the frontend for the argo device
 --set states to Unknown and Initializing respectively, like xenvm used to do
 xsp domid = "/local/domain/" ++ show domid
 xsp_dom0  = "/local/domain/0"
-v4vBack domid = "/backend/v4v/" ++ show domid ++ "/0"
+argoBack domid = "/backend/argo/" ++ show domid ++ "/0"
 vfbBack domid = "/backend/vfb/" ++ show domid ++ "/0"
 
-setupV4VDevice uuid =
+setupArgoDevice uuid =
   whenDomainID_ uuid $ \domid -> liftIO $ do
-    xsWrite (xsp domid ++ "/device/v4v/0/backend") ("/local/domain/0/backend/v4v/" ++ show domid ++ "/0")
-    xsWrite (xsp domid ++ "/device/v4v/0/backend-id") "0"
-    xsWrite (xsp domid ++ "/device/v4v/0/state") "1"
-    xsChmod (xsp domid ++ "/device/v4v/0/backend") ("n"++show domid++",r0")
-    xsChmod (xsp domid ++ "/device/v4v/0/backend-id") ("n"++show domid++",r0")
-    xsChmod (xsp domid ++ "/device/v4v/0/state") ("n"++show domid++",r0")
+    xsWrite (xsp domid ++ "/device/argo/0/backend") ("/local/domain/0/backend/argo/" ++ show domid ++ "/0")
+    xsWrite (xsp domid ++ "/device/argo/0/backend-id") "0"
+    xsWrite (xsp domid ++ "/device/argo/0/state") "1"
+    xsChmod (xsp domid ++ "/device/argo/0/backend") ("n"++show domid++",r0")
+    xsChmod (xsp domid ++ "/device/argo/0/backend-id") ("n"++show domid++",r0")
+    xsChmod (xsp domid ++ "/device/argo/0/state") ("n"++show domid++",r0")
 
 
-    xsWrite (xsp_dom0 ++ (v4vBack domid) ++ "/frontend") (xsp domid ++ "/device/v4v/0")
-    xsWrite (xsp_dom0 ++ (v4vBack domid) ++ "/frontend-id") $ show domid
-    xsWrite (xsp_dom0 ++ (v4vBack domid) ++ "/state") "0"
+    xsWrite (xsp_dom0 ++ (argoBack domid) ++ "/frontend") (xsp domid ++ "/device/argo/0")
+    xsWrite (xsp_dom0 ++ (argoBack domid) ++ "/frontend-id") $ show domid
+    xsWrite (xsp_dom0 ++ (argoBack domid) ++ "/state") "0"
 
-cleanupV4VDevice domid = liftIO $ do
-    xsRm (xsp_dom0 ++ "/backend/v4v/" ++ show domid)
+cleanupArgoDevice domid = liftIO $ do
+    xsRm (xsp_dom0 ++ "/backend/argo/" ++ show domid)
    
 setupAcpiNode uuid = 
   whenDomainID_ uuid $ \domid -> do
@@ -931,7 +931,7 @@ bootVm config reboot
         waitForVmInternalState uuid CreatingDevices Running 30
 
         --Move these tasks up earlier in the guest boot process. Prevents the need
-        --for XL to implement a handshake with xenmgr for v4v firewall rules. Also speeds up
+        --for XL to implement a handshake with xenmgr for argo firewall rules. Also speeds up
         --the boot process
         liftRpc $ do
           exportVmSwitcherInfo uuid
@@ -939,7 +939,7 @@ bootVm config reboot
           when stubdom $ updateStubDomainID uuid
           applyVmFirewallRules uuid
           whenDomainID_ uuid $ \domid -> do
-            liftIO $ xsWrite (domainXSPath domid ++ "/v4v-firewall-ready") "1"
+            liftIO $ xsWrite (domainXSPath domid ++ "/argo-firewall-ready") "1"
 
         waitForVmInternalState uuid Created Running 30
         -- BEFORE DEVICE MODEL
@@ -947,9 +947,9 @@ bootVm config reboot
         liftRpc $ do 
           twiddlePermissions uuid
           setupCDDrives uuid
-          --No longer passing v4v in the config, keep in db.
-          v4v_enabled <- getVmV4V uuid
-          when v4v_enabled $ setupV4VDevice uuid
+          --No longer passing argo in the config, keep in db.
+          argo_enabled <- getVmArgo uuid
+          when argo_enabled $ setupArgoDevice uuid
 
           --setupBiosStrings uuid
           setupAcpiNode uuid
@@ -1239,7 +1239,7 @@ getEffectiveVmFirewallRules uuid =
 
 doVmFirewallRules :: Rpc () -> Rpc ([Firewall.ActiveVm], [Firewall.ActiveVm]) -> Rpc ()
 doVmFirewallRules message which =
-    whenM appGetV4VFirewall $ do
+    whenM appGetArgoFirewall $ do
         message
         (vms, vms') <- which
         seamlessVms <- getSeamlessVms
@@ -1258,13 +1258,13 @@ doVmFirewallRules message which =
         liftIO $ Firewall.applyChangeset changeset
 
 applyVmFirewallRules :: Uuid -> Rpc ()
-applyVmFirewallRules uuid = doVmFirewallRules (info $ "applying v4v firewall rules due to " ++ show uuid) $
+applyVmFirewallRules uuid = doVmFirewallRules (info $ "applying argo firewall rules due to " ++ show uuid) $
                             do active <- activeVms
                                return (filter (\vm -> Firewall.vmUuid vm /= uuid) active,
                                        active)
 
 unapplyVmFirewallRules :: Uuid -> Rpc ()
-unapplyVmFirewallRules uuid = doVmFirewallRules (info $ "unapplying v4v firewall rules due to " ++ show uuid) $
+unapplyVmFirewallRules uuid = doVmFirewallRules (info $ "unapplying argo firewall rules due to " ++ show uuid) $
                               do active <- activeVms
                                  myself <- getActiveVm uuid
                                  return (nub $ active ++ maybeToList myself
@@ -1886,7 +1886,7 @@ setVmDownloadProgress uuid v = do
 setVmReady uuid v = saveConfigProperty uuid vmReady (v::Bool)
 setVmVkbd uuid v = saveConfigProperty uuid vmVkbd (v::Bool)
 setVmVfb uuid v = saveConfigProperty uuid vmVfb (v::Bool)
-setVmV4V uuid v = saveConfigProperty uuid vmV4v (v::Bool)
+setVmArgo uuid v = saveConfigProperty uuid vmArgo (v::Bool)
 setVmRestrictDisplayDepth uuid v = saveConfigProperty uuid vmRestrictDisplayDepth (v::Bool)
 setVmRestrictDisplayRes uuid v = saveConfigProperty uuid vmRestrictDisplayRes (v::Bool)
 setVmPreserveOnReboot uuid v = saveConfigProperty uuid vmPreserveOnReboot (v::Bool)

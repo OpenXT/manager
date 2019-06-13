@@ -17,6 +17,6 @@
 #
 
 bin_PROGRAMS = xc_agent
-xc_agent_SOURCES = minidbus.c minidbus-dispatch.c v4v.c agent.c main.c
-xc_agent_LDFLAGS = $(AM_LDFLAGS) $(LIBV4V_LIB)
+xc_agent_SOURCES = minidbus.c minidbus-dispatch.c argo.c agent.c main.c
+xc_agent_LDFLAGS = $(AM_LDFLAGS) $(LIBARGO_LIB)
 

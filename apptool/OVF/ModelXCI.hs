@@ -84,7 +84,7 @@ data XCIVm
      , xciVmUuid :: Maybe Uuid
      , xciVmTemplate :: Maybe String
      , xciVmPropertyOverride :: [XCIPropertyOverride]
-     , xciVmV4VRules :: [String]
+     , xciVmArgoRules :: [String]
      , xciVmRpcRules :: [String]
      , xciVmPtRules :: [PtRule]
      , xciVmDB :: [DBEntry]

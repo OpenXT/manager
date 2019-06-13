@@ -52,7 +52,7 @@ import Vm.Monad
 import Vm.State
 import Vm.ProductProperty
 
-import qualified Vm.V4VFirewall as Firewall
+import qualified Vm.ArgoFirewall as Firewall
 import qualified XenMgr.Connect.Xl as Xl
 import XenMgr.Errors
 import qualified XenMgr.Expose.VmDiskObject as VmDiskObj
@@ -120,9 +120,9 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmGetDomstoreKey     = _get_domstore_key uuid
   , comCitrixXenclientXenmgrVmSetDomstoreKey     = _set_domstore_key uuid
   , comCitrixXenclientXenmgrVmCreateChildServiceVm = runXM xm . _create_child_service_vm uuid
-  , comCitrixXenclientXenmgrVmListV4vFirewallRules = _list_v4v_firewall_rules uuid
-  , comCitrixXenclientXenmgrVmAddV4vFirewallRule = _add_v4v_firewall_rule uuid
-  , comCitrixXenclientXenmgrVmDeleteV4vFirewallRule = _delete_v4v_firewall_rule uuid
+  , comCitrixXenclientXenmgrVmListArgoFirewallRules = _list_argo_firewall_rules uuid
+  , comCitrixXenclientXenmgrVmAddArgoFirewallRule = _add_argo_firewall_rule uuid
+  , comCitrixXenclientXenmgrVmDeleteArgoFirewallRule = _delete_argo_firewall_rule uuid
 
   , comCitrixXenclientXenmgrVmListNetFirewallRules = _list_firewall_rules uuid
   , comCitrixXenclientXenmgrVmAddNetFirewallRule = _add_firewall_rule uuid
@@ -609,10 +609,10 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmSetVfb = restrict' $ setVmVfb uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetVfb = setVmVfb uuid
 
-  , comCitrixXenclientXenmgrVmGetV4v = getVmV4V uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedGetV4v = getVmV4V uuid
-  , comCitrixXenclientXenmgrVmSetV4v = restrict' $ setVmV4V uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetV4v = setVmV4V uuid
+  , comCitrixXenclientXenmgrVmGetArgo = getVmArgo uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetArgo = getVmArgo uuid
+  , comCitrixXenclientXenmgrVmSetArgo = restrict' $ setVmArgo uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetArgo = setVmArgo uuid
 
   , comCitrixXenclientXenmgrVmGetRestrictDisplayDepth = getVmRestrictDisplayDepth uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetRestrictDisplayDepth = getVmRestrictDisplayDepth uuid
@@ -811,17 +811,17 @@ _create_child_service_vm parent_uuid template =
           liftRpc $ notifyVmCreated service
           return $ vmObjPath service
 
-_list_v4v_firewall_rules :: Uuid -> Rpc [String]
-_list_v4v_firewall_rules uuid = map Firewall.ruleToString <$> getVmFirewallRules uuid
+_list_argo_firewall_rules :: Uuid -> Rpc [String]
+_list_argo_firewall_rules uuid = map Firewall.ruleToString <$> getVmFirewallRules uuid
 
-_add_v4v_firewall_rule :: Uuid -> String -> Rpc ()
-_add_v4v_firewall_rule uuid rule_str =
+_add_argo_firewall_rule :: Uuid -> String -> Rpc ()
+_add_argo_firewall_rule uuid rule_str =
     case Firewall.parseRule rule_str of
       Nothing -> failRuleParseError
       Just r  -> addVmFirewallRule uuid r
 
-_delete_v4v_firewall_rule :: Uuid -> String -> Rpc ()
-_delete_v4v_firewall_rule uuid rule_str =
+_delete_argo_firewall_rule :: Uuid -> String -> Rpc ()
+_delete_argo_firewall_rule uuid rule_str =
     case Firewall.parseRule rule_str of
       Nothing -> failRuleParseError
       Just r  -> deleteVmFirewallRule uuid r

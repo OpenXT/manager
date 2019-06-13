@@ -23,43 +23,43 @@ AM_INIT_AUTOMAKE([1.10 no-define])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_CC
 
-AC_CHECK_HEADERS([xen/v4v.h], [], AC_MSG_ERROR([v4v module headers missing.]))
+AC_CHECK_HEADERS([xen/argo.h], [], AC_MSG_ERROR([argo module headers missing.]))
 
-AC_ARG_WITH([libv4v],
-            AC_HELP_STRING([--with-libv4v=PATH], [Path to prefix where libv4v was installed.]),
-            [LIBV4V_PREFIX=$with_libv4v], [])
+AC_ARG_WITH([libargo],
+            AC_HELP_STRING([--with-libargo=PATH], [Path to prefix where libargo was installed.]),
+            [LIBARGO_PREFIX=$with_libargo], [])
 
-case "x$LIBV4V_PREFIX" in
+case "x$LIBARGO_PREFIX" in
     x|xno|xyes)
-        LIBV4V_INC=""
-        LIBV4V_LIB="-lv4v"
-        LIBV4V_LDFLAGS=""
+        LIBARGO_INC=""
+        LIBARGO_LIB="-largo"
+        LIBARGO_LDFLAGS=""
         ;;
     *)
-        LIBV4V_INC="-I${LIBV4V_PREFIX}/include"
-        LIBV4V_LDFLAGS="-L${LIBV4V_PREFIX}/lib"
-        LIBV4V_LIB="-lv4v"
+        LIBARGO_INC="-I${LIBARGO_PREFIX}/include"
+        LIBARGO_LDFLAGS="-L${LIBARGO_PREFIX}/lib"
+        LIBARGO_LIB="-largo"
         ;;
 esac
 
-AC_SUBST(LIBV4V_INC)
-AC_SUBST(LIBV4V_LIB)
+AC_SUBST(LIBARGO_INC)
+AC_SUBST(LIBARGO_LIB)
 
-have_libv4v=true
+have_libargo=true
 
 ORIG_LDFLAGS="${LDFLAGS}"
 ORIG_CPPFLAGS="${CPPFLAGS}"
-    LDFLAGS="${LDFLAGS} ${LIBV4V_LDFLAGS}"
-    LIBS="${LIBV4V_LIB}"
-    CPPFLAGS="${CPPFLAGS} ${LIBV4V_INC}"
-    AC_CHECK_HEADERS([libv4v.h], [], [have_libv4v=false])
-    AC_CHECK_FUNC(v4v_socket, [], [have_libv4v=false])
-    AC_CHECK_FUNC(v4v_connect, [], [have_libv4v=false])
+    LDFLAGS="${LDFLAGS} ${LIBARGO_LDFLAGS}"
+    LIBS="${LIBARGO_LIB}"
+    CPPFLAGS="${CPPFLAGS} ${LIBARGO_INC}"
+    AC_CHECK_HEADERS([libargo.h], [], [have_libargo=false])
+    AC_CHECK_FUNC(argo_socket, [], [have_libargo=false])
+    AC_CHECK_FUNC(argo_connect, [], [have_libargo=false])
 LDFLAGS="${ORIG_LDFLAGS}"
 CPPFLAGS="${ORIG_CPPFLAGS}"
 
-if test "x$have_libv4v" = "xfalse"; then
-    AC_MSG_ERROR([libv4v is missing])
+if test "x$have_libargo" = "xfalse"; then
+    AC_MSG_ERROR([libargo is missing])
 fi
 
 AC_CONFIG_FILES([Makefile])

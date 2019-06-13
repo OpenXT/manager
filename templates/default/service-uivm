@@ -12,7 +12,7 @@
   "hidden-in-ui": "true",
   "measured": "true",
   "icbinn-path": "\/config\/certs",
-  "v4v-firewall-rules": {
+  "argo-firewall-rules": {
     "0": "myself -> 0:80",
     "1": "myself -> 0:8080",
     "2": "myself -> 0:5555",
@@ -68,7 +68,7 @@
     "nx": "true",
     "vkbd" : "true",
     "vfb" : "true",
-    "v4v" : "true",
+    "argo" : "true",
     "memory-min": "192",
     "memory": "256",
     "display": "none",

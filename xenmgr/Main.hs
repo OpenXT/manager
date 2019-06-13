@@ -50,7 +50,7 @@ import Tools.IfM
 import Tools.File
 
 import Vm.Templates
-import qualified Vm.V4VFirewall as Firewall
+import qualified Vm.ArgoFirewall as Firewall
 import Vm.React
 import XenMgr.Db
 import XenMgr.Config
@@ -352,9 +352,9 @@ initXenMgr opts = do
     info "exposing dbus interfaces..."
     exposeStuff
 
-    fire <- liftRpc appGetV4VFirewall
+    fire <- liftRpc appGetArgoFirewall
     when fire $ do
-      info "starting v4v firewall"
+      info "starting argo firewall"
       liftIO . Firewall.reworkRules . rpc context $ do
                       getVms >>= filterM isRunning >>= mapM_ applyVmFirewallRules
       return ()

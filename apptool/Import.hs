@@ -214,7 +214,7 @@ importVirtualSystem images sys =
      mapM_ (importDBEntry vm uuid) $ vsDB sys
      mapM_ (importDomStoreFile uuid) $ vsDomStoreFiles sys
      mapM_ (importEnvFile uuid) $ vsEnvFiles sys
-     mapM (withXenmgrVm vm comCitrixXenclientXenmgrVmAddV4vFirewallRule) (vsV4VFirewall sys)
+     mapM (withXenmgrVm vm comCitrixXenclientXenmgrVmAddArgoFirewallRule) (vsArgoFirewall sys)
      -- FIXME: change to use xenmgr api when its there
      when (not $ null $ vsRpcFirewall sys) $
        dbWrite ("/vm/" ++ show uuid ++ "/rpc-firewall-rules") (vsRpcFirewall sys)
