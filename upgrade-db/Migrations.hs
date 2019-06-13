@@ -60,6 +60,7 @@ import qualified Migrations.M_36
 import qualified Migrations.M_37
 import qualified Migrations.M_38
 import qualified Migrations.M_39
+import qualified Migrations.M_40
 
 migrations :: [Migration]
 migrations = [ Migrations.M_1.migration
@@ -101,6 +102,7 @@ migrations = [ Migrations.M_1.migration
              , Migrations.M_37.migration
              , Migrations.M_38.migration
              , Migrations.M_39.migration
+             , Migrations.M_40.migration
              ]
 
 getMigrationFromVer :: Int -> Migration

@@ -42,7 +42,7 @@ import Network.DBus
 import Network.DBus.Actions (serializeSignature)
 import Network.DBus.Introspect
 
-import qualified DBusV4V as V
+import qualified DBusArgo as A
 
 str = DBusString . PackedString . C.pack
 
@@ -98,10 +98,10 @@ withConnection :: Flags -> (DBusConnection -> IO a) -> IO a
 withConnection flags f =
   f =<< establish bus authenticateWithRealUID
   where
-    bus | domid flags >= 0 = V.domainSystemBus (domid flags)
+    bus | domid flags >= 0 = A.domainSystemBus (domid flags)
         | session flags    = busGetSession
         | otherwise        = busGetSystem
-    domainBus domid = V.domainSystemBus domid
+    domainBus domid = A.domainSystemBus domid
 
 findInterface :: Object -> Text -> Maybe Interface
 findInterface obj name = find test (objInterfaces obj) where

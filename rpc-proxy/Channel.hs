@@ -35,7 +35,7 @@ import qualified Network.WebSocket as W
 import Text.Printf
 import System.Posix
 
-import qualified Tools.V4V as V4
+import qualified Tools.Argo as AR
 import Tools.Log
 import Tools.Serial
 import Tools.IfM
@@ -50,7 +50,7 @@ import Data.ByteString.Unsafe ( unsafeUseAsCStringLen )
 
 data Channel
    = StdSocket !NS.Socket Closed
-   | V4VSocket !Fd Closed
+   | ArgoSocket !Fd Closed
    | FdChann   !Fd Closed
    | WebSocketCh !W.WebSocket Channel Closed
 
@@ -58,17 +58,17 @@ type Closed = MVar Bool
 
 instance Show Channel where
     show (StdSocket s _) = show s
-    show (V4VSocket f _) = printf "<v4v: %s>" (show f)
+    show (ArgoSocket f _) = printf "<argo: %s>" (show f)
     show (FdChann fd _) = printf "<fd: %s>" (show fd)
     show (WebSocketCh _ ch _) = printf "<websocket: %s>" (show ch)
 
 makeIncomingTransport :: IncomingChannel -> IO Channel
-makeIncomingTransport (FromV4V port) =
-    do sock <- V4.socket NS.Stream
-       V4.bind sock (V4.Addr port invalidDomID) invalidDomID
-       V4.listen sock 5
+makeIncomingTransport (FromArgo port) =
+    do sock <- AR.socket NS.Stream
+       AR.bind sock (AR.Addr port invalidDomID) invalidDomID
+       AR.listen sock 5
        closed <- newMVar False
-       return $ V4VSocket sock closed
+       return $ ArgoSocket sock closed
 makeIncomingTransport (FromTCP port) =
     do sock <- NS.socket NS.AF_INET NS.Stream NS.defaultProtocol
        NS.bindSocket sock (NS.SockAddrInet (fromIntegral port) NS.iNADDR_ANY)
@@ -93,13 +93,13 @@ wrapInWebSocket ch
                 <*> newMVar False
 
 makeOutgoingTransport :: OutgoingChannel -> IO (Channel,DomID)
-makeOutgoingTransport (ToV4V port dom) =
-    do sock <- V4.socket NS.Stream
+makeOutgoingTransport (ToArgo port dom) =
+    do sock <- AR.socket NS.Stream
        domid <- case dom of ByID   id -> return id
                             ByUuid u  -> resolv u =<< domidOfUuid u
-       V4.connect sock (V4.Addr port (fromIntegral domid))
+       AR.connect sock (AR.Addr port (fromIntegral domid))
        closed <- newMVar False
-       return (V4VSocket sock closed, domid)
+       return (ArgoSocket sock closed, domid)
     where
       resolv _ (Just domid) = return domid
       resolv uuid Nothing = E.throw (NoUuid uuid)
@@ -112,11 +112,11 @@ makeOutgoingTransport (ToSerial path) =
     (,currentDomain) <$> (FdChann <$> openSerial path <*> newMVar False)
 
 accept :: Channel -> IO (Channel, DomID)
-accept (V4VSocket s _) =
-    do (s',addr) <- V4.accept s
-       info $ printf "incoming connection from domain %d, port 0x%0x, fd is %s" (V4.addrDomID addr) (V4.addrPort addr) (show s')
+accept (ArgoSocket s _) =
+    do (s',addr) <- AR.accept s
+       info $ printf "incoming connection from domain %d, port 0x%0x, fd is %s" (AR.addrDomID addr) (AR.addrPort addr) (show s')
        closed <- newMVar False
-       return (V4VSocket s' closed, fromIntegral $ V4.addrDomID addr)
+       return (ArgoSocket s' closed, fromIntegral $ AR.addrDomID addr)
 accept (StdSocket s _) =
     do (s',addr) <- NS.accept s
        info $ printf "incoming connection from socket %s" (show s')
@@ -130,7 +130,7 @@ handshake (WebSocketCh s _ _) = W.handshake s
 handshake _ = return ()
 
 recv :: Channel -> Int -> IO ByteString
-recv x@(V4VSocket fd _) sz = V4.recv fd sz 0
+recv x@(ArgoSocket fd _) sz = AR.recv fd sz 0
 recv x@(StdSocket s  _) sz = NSB.recv s sz
 recv x@(FdChann fd _) sz =
     do threadWaitRead fd
@@ -142,7 +142,7 @@ recv (WebSocketCh s _ _) sz =
     frame (Just (t,d)) = B.concat ( BL.toChunks d )
 
 send :: Channel -> ByteString -> IO Int
-send (V4VSocket fd _) buf = V4.send fd buf 0
+send (ArgoSocket fd _) buf = AR.send fd buf 0
 send (StdSocket s  _) buf = NSB.send s buf
 send x@(FdChann fd _) buf = liftM fromIntegral .
     unsafeUseAsCStringLen buf $ \(ptr,sz) ->
@@ -167,7 +167,7 @@ shutdownRecv (StdSocket s closed) = NS.shutdown s NS.ShutdownReceive
 shutdownRecv _ = return ()
 
 close :: Channel -> IO ()
-close (V4VSocket s closed) = perhaps closed (V4.close s)
+close (ArgoSocket s closed) = perhaps closed (AR.close s)
 close (StdSocket s closed) = perhaps closed (NS.sClose s)
 close (FdChann fd closed) = perhaps closed (closeFd fd)
 close (WebSocketCh s ch closed) = perhaps closed $ {- E.finally (W.shutdown s) -} (close ch)

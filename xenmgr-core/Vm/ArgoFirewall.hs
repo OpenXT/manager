@@ -17,7 +17,7 @@
 --
 
 {-# LANGUAGE ScopedTypeVariables,PatternGuards #-}
-module Vm.V4VFirewall
+module Vm.ArgoFirewall
        ( DomainMatch (..)
        , PortMatch (..)
        , Endpoint (..)
@@ -91,7 +91,7 @@ instance Marshall Rule where
     dbRead  p   = do
       str <- dbRead p
       case parseRule str of
-        Nothing -> error $ "failed to parse v4v firewall rule at " ++ show p
+        Nothing -> error $ "failed to parse argo firewall rule at " ++ show p
         Just r  -> return r
 
 -- low level rule actually applied to viptables
@@ -208,11 +208,11 @@ applyChangeset = mapM_ apply_change where
 
 applyActiveRule :: ActiveRule -> IO ()
 applyActiveRule r = let cmd = "viptables -I 1 " ++ viptablesParams r in
-                    info ("+v4v-rule " ++ cmd) >> safeSpawnShell cmd >> return ()
+                    info ("+argo-rule " ++ cmd) >> safeSpawnShell cmd >> return ()
 
 unapplyActiveRule :: ActiveRule -> IO ()
 unapplyActiveRule r = let cmd = "viptables -D " ++ viptablesParams r in
-                      info ("-v4v-rule " ++ cmd) >> safeSpawnShell cmd >> return ()
+                      info ("-argo-rule " ++ cmd) >> safeSpawnShell cmd >> return ()
 
 -- start firewall in deny all mode
 startToDenyAll :: IO ()
@@ -227,7 +227,7 @@ reworkRules action = do
     safeSpawnShell "viptables -A -j ACCEPT"
     r <- action
     safeSpawnShell "viptables -D -j ACCEPT"
-    -- allow dom0 -> dom0 (bl**dy v4vproxy)
+    -- allow dom0 -> dom0 (bl**dy argoproxy)
     safeSpawnShell "viptables -A --dom-in 0 --dom-out 0 -j ACCEPT"
     safeSpawnShell "viptables -A -j REJECT"
     return r

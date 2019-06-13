@@ -27,7 +27,7 @@ module VirtualSystem
        , DBEntry (..)
        , DBValue (..)
        , DBSection (..)
-       , V4VFirewallRule
+       , ArgoFirewallRule
        , RpcFirewallRule
        , DomStoreFile (..)
        , NIC (..)
@@ -67,7 +67,7 @@ data VirtualSystem
      , vsDisks :: [Disk]
      , vsNICs :: [NIC]
      , vsPciPt :: [PtRule]
-     , vsV4VFirewall :: [V4VFirewallRule]
+     , vsArgoFirewall :: [ArgoFirewallRule]
      , vsRpcFirewall :: [RpcFirewallRule]
      , vsDB :: [DBEntry]
      , vsEnvFiles :: [EnvFile]
@@ -94,7 +94,7 @@ newtype TemplateID = TemplateID String deriving (Eq,Show)
 
 instance Show VirtualSystemID where show (VirtualSystemID s) = s
 
-type V4VFirewallRule = String
+type ArgoFirewallRule = String
 type RpcFirewallRule = String
 
 data NIC

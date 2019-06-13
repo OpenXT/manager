@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <xen/v4v.h>
+#include <xen/argo.h>
 
 #define DEFAULT_HOST_DOMID 0
 #define DEFAULT_HOST_PORT  5556
@@ -113,11 +113,11 @@ static int io_write(void *priv, const void *buf, uint32_t count)
     return 0;
 }
 
-static int init_v4v_dbus_io(domid_t domid, uint32_t port, dbus_io *io)
+static int init_argo_dbus_io(domid_t domid, uint32_t port, dbus_io *io)
 {
     int fd;
 
-    fd = open_v4v_socket(domid, port);
+    fd = open_argo_socket(domid, port);
     if (fd < 0) {
         return fd;
     }
@@ -284,8 +284,8 @@ int main(int argc, char **argv)
         return usage(argv[0]);
     }
 
-    if ( init_v4v_dbus_io(host, port, &io) < 0 ) {
-        fprintf(stderr, "FAILED to init dbus over v4v\n");
+    if ( init_argo_dbus_io(host, port, &io) < 0 ) {
+        fprintf(stderr, "FAILED to init dbus over argo\n");
         exit( 1 );
     }
     if ( negotiate_connection(&io, queue) < 0 ) {

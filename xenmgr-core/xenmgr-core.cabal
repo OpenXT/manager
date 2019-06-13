@@ -27,7 +27,7 @@ library
 
   exposed-modules:
     Vm.Uuid
-    Vm.V4VFirewall
+    Vm.ArgoFirewall
     Vm.ProductProperty
   other-modules:
 
