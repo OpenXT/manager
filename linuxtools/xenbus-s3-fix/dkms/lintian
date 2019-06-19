@@ -1,4 +1,4 @@
-v4v-dkms: extended-description-is-empty
-v4v-dkms: changelog-file-missing-in-native-package
-v4v-dkms: copyright-file-is-symlink
-v4v-dkms: copyright-without-copyright-notice
+argo-dkms: extended-description-is-empty
+argo-dkms: changelog-file-missing-in-native-package
+argo-dkms: copyright-file-is-symlink
+argo-dkms: copyright-without-copyright-notice

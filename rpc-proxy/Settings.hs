@@ -53,12 +53,12 @@ data Settings = Settings { incomingChannel :: IncomingChannel
 data ChannelFormat = Json | Raw
 
 data IncomingChannel = FromUnixSocket FilePath
-                     | FromV4V Port
+                     | FromArgo Port
                      | FromTCP Port
                      | FromSerial FilePath
 
 data OutgoingChannel = ToUnixSocket FilePath
-                     | ToV4V Port DomainAddr
+                     | ToArgo Port DomainAddr
                      | ToSerial FilePath
 
 data DomainAddr = ByID DomID
@@ -67,7 +67,7 @@ data DomainAddr = ByID DomID
 type Port = Int
 
 defaultSettings :: Settings
-defaultSettings = Settings { incomingChannel = FromV4V 5555
+defaultSettings = Settings { incomingChannel = FromArgo 5555
                            , incomingForcedDomID = Nothing
                            , agentServiceName = Nothing
                            , outgoingChannel = ToUnixSocket "/var/run/dbus/system_bus_socket"
@@ -89,28 +89,28 @@ parseIncomingChannelConf :: String -> IncomingChannel
 parseIncomingChannelConf s =
     case split ':' s of
       ["unix", file] -> FromUnixSocket file
-      ["v4v", port_str] -> FromV4V (read port_str)
+      ["argo", port_str] -> FromArgo (read port_str)
       ["tcp", port_str] -> FromTCP (read port_str)
       ["serial", serial_path] -> FromSerial serial_path
-      _ -> error "expected incoming channel spec is unix:file, v4v:port, tcp:port, or serial:device_path"
+      _ -> error "expected incoming channel spec is unix:file, argo:port, tcp:port, or serial:device_path"
 
 parseOutgoingChannelConf :: String -> OutgoingChannel
 parseOutgoingChannelConf s =
     case split ':' s of
       ["unix", file]                     -> ToUnixSocket file
       ["serial", serial_path]            -> ToSerial serial_path
-      ["v4v-domid", port_str, domid_str] -> ToV4V (read port_str) (ByID $ read domid_str)
-      ["v4v-uuid", port_str, uuid_str]   -> ToV4V (read port_str) (ByUuid $ fromString uuid_str)
-      _ -> error "expected outgoing channel spec is unix:file, v4v-domid:port:domid or v4v-uuid:port:uuid"
+      ["argo-domid", port_str, domid_str] -> ToArgo (read port_str) (ByID $ read domid_str)
+      ["argo-uuid", port_str, uuid_str]   -> ToArgo (read port_str) (ByUuid $ fromString uuid_str)
+      _ -> error "expected outgoing channel spec is unix:file, argo-domid:port:domid or argo-uuid:port:uuid"
 
 options :: [OptDescr Flag]
 options =
     [ Option "il" ["incoming-channel","listen-channel"]
                  (ReqArg (\x s -> s { incomingChannel = parseIncomingChannelConf x }) "CHANNEL")
-                 "listen for dbus connections on given channel (unix:file, v4v:port, tcp:port, or serial:device_path)"
+                 "listen for dbus connections on given channel (unix:file, argo:port, tcp:port, or serial:device_path)"
     , Option "of" ["outgoing-channel","forward-channel"]
                  (ReqArg (\x s -> s { outgoingChannel = parseOutgoingChannelConf x }) "CHANNEL")
-                 "forward dbus connections to given channel (unix:file, v4v-domid:port:domid, v4v-uuid:port:uuid or serial:device_path)"
+                 "forward dbus connections to given channel (unix:file, argo-domid:port:domid, argo-uuid:port:uuid or serial:device_path)"
     , Option "d" ["incoming-domid"]
              (ReqArg (\x s -> s { incomingForcedDomID = Just (read x) }) "DOMID")
              "force the identity of incoming connections to be of given DOMID"

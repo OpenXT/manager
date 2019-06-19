@@ -32,14 +32,14 @@
 	</xci:Disk>
 	
 	<xci:VirtualMachine xci:ovfId="uivm" xci:uuid="00000000-0000-0000-0000-000000000001">
-	  <xci:V4VFirewall>
-	    <xci:V4VRule>myself -> 0:80</xci:V4VRule>
-	    <xci:V4VRule>myself -> 0:8080</xci:V4VRule>
-	    <xci:V4VRule>myself -> 0:5555</xci:V4VRule>
-	    <xci:V4VRule>myself -> dom-type=ndvm:5555</xci:V4VRule>
-	    <xci:V4VRule>myself -> 0:2222</xci:V4VRule>
-	    <xci:V4VRule>0 -> myself:2222</xci:V4VRule>
-	  </xci:V4VFirewall>
+	  <xci:ArgoFirewall>
+	    <xci:ArgoRule>myself -> 0:80</xci:ArgoRule>
+	    <xci:ArgoRule>myself -> 0:8080</xci:ArgoRule>
+	    <xci:ArgoRule>myself -> 0:5555</xci:ArgoRule>
+	    <xci:ArgoRule>myself -> dom-type=ndvm:5555</xci:ArgoRule>
+	    <xci:ArgoRule>myself -> 0:2222</xci:ArgoRule>
+	    <xci:ArgoRule>0 -> myself:2222</xci:ArgoRule>
+	  </xci:ArgoFirewall>
 
 	  <xci:RpcFirewall>
 	    <xci:RpcRule>allow destination org.freedesktop.DBus interface org.freedesktop.DBus</xci:RpcRule>

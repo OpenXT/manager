@@ -5,7 +5,7 @@
   "hidden-in-ui": "true",
   "start_on_boot": "true",
   "measured": "true",
-  "v4v-firewall-rules": {
+  "argo-firewall-rules": {
     "0": "myself -> 0:2222",
     "1": "0 -> myself:2222",
     "2": "myself -> 0:5556",
@@ -20,7 +20,7 @@
     "apic": "true",
     "hap": "false",
     "nx": "true",
-    "v4v": "true",
+    "argo": "true",
     "memory": "256",
     "display": "none",
     "cmdline": "root=\/dev\/xvda1 xencons=hvc0",

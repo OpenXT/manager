@@ -51,7 +51,7 @@ import qualified OVF.ModelXCI as Ovf
 import qualified OVF.AllocationUnit as Ovf
 import Idl
 import ParseDBus
-import Vm.V4VFirewall ( parseRule, Rule )
+import Vm.ArgoFirewall ( parseRule, Rule )
 
 import qualified Data.ByteString.UTF8 as UTF8
 import qualified Network.DBus as DBus
@@ -71,7 +71,7 @@ data OVFConvertError
    | MissingDiskHostResource Ovf.StorageItem
    | InvalidURI String
    | InvalidHostResourceURIScheme String
-   | InvalidV4VRule String
+   | InvalidArgoRule String
    | InvalidHostResource String
    | PropertyConvertError PropertyConvertError
      deriving Show
@@ -128,7 +128,7 @@ convertContent xci files disks networks content = conv content where
 convertSystem :: Ovf.XCIAppliance -> Maybe Ovf.XCIVm -> [Ovf.FileRef] -> [Ovf.Disk] -> [Ovf.Network] -> Ovf.VirtualSystem -> Convert VirtualSystem
 convertSystem xciapp xcivm files disks networks sys = do
   let overrides = fromMaybe [] (Ovf.xciVmPropertyOverride <$> xcivm)
-      v4v_rules = fromMaybe [] (Ovf.xciVmV4VRules <$> xcivm)
+      argo_rules = fromMaybe [] (Ovf.xciVmArgoRules <$> xcivm)
       rpc_rules = fromMaybe [] (Ovf.xciVmRpcRules <$> xcivm)
       ds_files  = fromMaybe [] (Ovf.xciVmDomStoreFiles <$> xcivm)
       db_entries= fromMaybe [] (Ovf.xciVmDB <$> xcivm)
@@ -142,7 +142,7 @@ convertSystem xciapp xcivm files disks networks sys = do
   envFiles <- mapM (convertEnvFile files) (Ovf.systemEnvFiles sys)
   
   props_ <- convertPropertyOverrides overrides =<< ( vmIdl <$> idl )
-  v4vrules_ <- mapM convertV4VRule v4v_rules
+  argorules_ <- mapM convertArgoRule argo_rules
   rpc_rules_ <- mapM convertRpcRule rpc_rules
   domStoreFiles <- mapM (convertDomStoreFile files) ds_files
 
@@ -162,7 +162,7 @@ convertSystem xciapp xcivm files disks networks sys = do
     , vsDisks = disks_
     , vsNICs = nics_
     , vsPciPt = pt_rules
-    , vsV4VFirewall = v4vrules_
+    , vsArgoFirewall = argorules_
     , vsRpcFirewall = rpc_rules_
     , vsDB = db_entries
     , vsEnvFiles = envFiles
@@ -205,8 +205,8 @@ convertOVFProductPropertyType = f where
   f Ovf.PPT_Real32 = PPT_Real32
   f Ovf.PPT_Real64 = PPT_Real64
 
-convertV4VRule r = case isJust (parseRule r) of
-  False -> throwError (InvalidV4VRule r)
+convertArgoRule r = case isJust (parseRule r) of
+  False -> throwError (InvalidArgoRule r)
   True -> return r
 
 -- FIXME: validate rpc firewall rules!

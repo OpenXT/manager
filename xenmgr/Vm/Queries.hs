@@ -116,7 +116,7 @@ module Vm.Queries
                , getVmProvidesDefaultNetworkBackend
                , getVmVkbd
                , getVmVfb
-               , getVmV4V
+               , getVmArgo
                , getVmRestrictDisplayDepth
                , getVmRestrictDisplayRes
                , getVmPreserveOnReboot
@@ -154,7 +154,7 @@ import Vm.Pci
 import Vm.DepGraph
 import Vm.Policies
 import Vm.ProductProperty
-import qualified Vm.V4VFirewall as Firewall
+import qualified Vm.ArgoFirewall as Firewall
 import Tools.Misc
 import Tools.Process
 import Tools.Text
@@ -1043,7 +1043,7 @@ getVmDownloadProgress uuid = fromMaybe (0::Int) <$> dbRead ("/vm/"++show uuid++"
 getVmReady uuid = readConfigPropertyDef uuid vmReady True
 getVmVkbd uuid = readConfigPropertyDef uuid vmVkbd False
 getVmVfb uuid = readConfigPropertyDef uuid vmVfb False
-getVmV4V uuid = readConfigPropertyDef uuid vmV4v False
+getVmArgo uuid = readConfigPropertyDef uuid vmArgo False
 getVmRestrictDisplayDepth uuid = readConfigPropertyDef uuid vmRestrictDisplayDepth False
 getVmRestrictDisplayRes uuid = readConfigPropertyDef uuid vmRestrictDisplayRes False
 getVmPreserveOnReboot uuid = readConfigPropertyDef uuid vmPreserveOnReboot False

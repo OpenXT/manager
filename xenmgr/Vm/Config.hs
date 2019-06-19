@@ -66,7 +66,7 @@ module Vm.Config (
                 , vmXciCpuidSignature
                 , vmS3Mode
                 , vmS4Mode
-                , vmVsnd, vmVkbd, vmVfb, vmV4v
+                , vmVsnd, vmVkbd, vmVfb, vmArgo
                 , vmRealm
                 , vmSyncUuid
                 , vmIcbinnPath
@@ -458,7 +458,7 @@ vmQemuDmTimeout = property "config.qemu-dm-timeout"
 vmVsnd = property "config.vsnd"
 vmVkbd = property "config.vkbd"
 vmVfb = property "config.vfb"
-vmV4v = property "config.v4v"
+vmArgo = property "config.argo"
 vmHpet = property "config.hpet"
 vmHpetDefault = True
 vmTimerMode = property "config.timer-mode"
@@ -481,7 +481,7 @@ vmExtraHvm num = property $ "config.extra-hvm." ++ show num
 vmDisk num     = property $ "config.disk." ++ show num
 vmNic  num     = property $ "config.nic."  ++ show num
 vmPci  num     = property $ "config.pci."  ++ show num
-vmFirewallRules= property "v4v-firewall-rules"
+vmFirewallRules= property "argo-firewall-rules"
 
 -- Read and Save a single property
 -- example usage, to save a list of disks : saveP uuid vmDisks [disk1, disk2, disk3]..
@@ -636,7 +636,7 @@ bsgSpec cfg = do
               (True, True)  -> printf "'%s:%s,raw,atapi-pt,devtype=cdrom,access=rw'" atapiType bsg_str
               -- readonly access to cdrom
               (True, False) -> printf "'%s:%s,raw,atapi-pt,devtype=cdrom,access=ro'" atapiType bsg_str
-        atapiType = if (vmcfgStubdom cfg) then "atapi-pt-v4v" else "atapi-pt-local"
+        atapiType = if (vmcfgStubdom cfg) then "atapi-pt-argo" else "atapi-pt-local"
     return cdromParams
     where
       uuid = vmcfgUuid cfg

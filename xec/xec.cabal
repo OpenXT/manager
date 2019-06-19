@@ -21,7 +21,7 @@ Executable xec
     hsyslog,
     network,
     containers,
-    xchv4v
+    xchargo
 
   Main-Is: xec.hs
   if flag(static)

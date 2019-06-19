@@ -33,7 +33,7 @@ Executable rpc-proxy
     monad-control,
     lifted-base,
     xchutils,
-    xchv4v,
+    xchargo,
     transformers,
     transformers-base,
     xchwebsocket,

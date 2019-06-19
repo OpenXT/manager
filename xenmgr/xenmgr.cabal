@@ -29,7 +29,7 @@ Executable xenmgr
     zlib,
     xch-rpc,
     xchutils,
-    xchv4v,
+    xchargo,
     xchxenstore,
     xchdb,
     xenmgr-core
