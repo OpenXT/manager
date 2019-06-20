@@ -46,7 +46,7 @@ import Tools.Text
 devicesXSPath :: DomainID -> XSPath
 devicesXSPath domid = printf "%s/device" (domainXSPath domid)
 
-data DmDevType = VBD | VIF | VWIF | VKBD | V4V
+data DmDevType = VBD | VIF | VWIF | VKBD | ARGO
                  deriving ( Eq, Show )
 
 data DmFront = DmFront { dmfType :: DmDevType
@@ -88,7 +88,7 @@ frontXSPath t domid =
               VIF  -> "vif"
               VWIF -> "vwif"
               VKBD -> "vkbd"
-              V4V  -> "v4v"
+              ARGO  -> "argo"
 
 backXSPath :: DmDevType -> DomainID -> DomainID -> XSPath
 backXSPath t frontdomid backdomid =
@@ -98,7 +98,7 @@ backXSPath t frontdomid backdomid =
               VIF  -> "vif"
               VWIF -> "vwif"
               VKBD -> "vkbd"
-              V4V  -> "v4v"
+              ARGO  -> "argo"
 
 getFrontDevices :: DmDevType -> DomainID -> IO [DmFront]
 getFrontDevices t domid =

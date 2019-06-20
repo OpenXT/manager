@@ -17,7 +17,7 @@
 --
 
 {-# LANGUAGE CPP,ForeignFunctionInterface #-}
-module Tools.V4V ( Addr (..)
+module Tools.Argo ( Addr (..)
                  , DomID
                  , SocketType (..)
                  , socket, close, bind, connect, listen, accept, send, recv
@@ -46,62 +46,62 @@ type DomID = Int
 data Addr = Addr { addrPort  :: !Int
                  , addrDomID :: !DomID } deriving Show
 
-#include <libv4v.h>
+#include <libargo.h>
 
 #let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
 
 instance Storable Addr where
-    alignment _ = #{alignment v4v_addr_t}
-    sizeOf    _ = #{size v4v_addr_t}
-    peek p      = do port  <- #{peek v4v_addr_t, port} p
-                     domid <- ((.&.) 0xFFFF) <$> #{peek v4v_addr_t, domain} p
+    alignment _ = #{alignment xen_argo_addr_t}
+    sizeOf    _ = #{size xen_argo_addr_t}
+    peek p      = do port  <- #{peek xen_argo_addr_t, port} p
+                     domid <- ((.&.) 0xFFFF) <$> #{peek xen_argo_addr_t, domain} p
                      return $ Addr port domid
-    poke p v    = do #{poke v4v_addr_t, port} p (addrPort v)
-                     #{poke v4v_addr_t, domain} p (addrDomID v)
+    poke p v    = do #{poke xen_argo_addr_t, port} p (addrPort v)
+                     #{poke xen_argo_addr_t, domain} p (addrDomID v)
 
--- subset of libv4v.h
-foreign import ccall "libv4v.h v4v_socket" c_v4v_socket    :: CInt -> IO CInt
-foreign import ccall "libv4v.h v4v_close" c_v4v_close      :: CInt -> IO CInt
-foreign import ccall "libv4v.h v4v_bind" c_v4v_bind        :: CInt -> Ptr Addr -> CInt -> IO CInt
-foreign import ccall "libv4v.h v4v_connect" c_v4v_connect  :: CInt -> Ptr Addr -> IO CInt
-foreign import ccall "libv4v.h v4v_listen" c_v4v_listen    :: CInt -> CInt -> IO CInt
-foreign import ccall "libv4v.h v4v_accept" c_v4v_accept    :: CInt -> Ptr Addr -> IO CInt
-foreign import ccall "libv4v.h v4v_send" c_v4v_send        :: CInt -> Ptr Word8 -> CUInt -> CInt -> IO CInt
-foreign import ccall "libv4v.h v4v_recv" c_v4v_recv        :: CInt -> Ptr Word8 -> CUInt -> CInt -> IO CInt
+-- subset of libargo.h
+foreign import ccall "libargo.h argo_socket" c_argo_socket    :: CInt -> IO CInt
+foreign import ccall "libargo.h argo_close" c_argo_close      :: CInt -> IO CInt
+foreign import ccall "libargo.h argo_bind" c_argo_bind        :: CInt -> Ptr Addr -> CInt -> IO CInt
+foreign import ccall "libargo.h argo_connect" c_argo_connect  :: CInt -> Ptr Addr -> IO CInt
+foreign import ccall "libargo.h argo_listen" c_argo_listen    :: CInt -> CInt -> IO CInt
+foreign import ccall "libargo.h argo_accept" c_argo_accept    :: CInt -> Ptr Addr -> IO CInt
+foreign import ccall "libargo.h argo_send" c_argo_send        :: CInt -> Ptr Word8 -> CUInt -> CInt -> IO CInt
+foreign import ccall "libargo.h argo_recv" c_argo_recv        :: CInt -> Ptr Word8 -> CUInt -> CInt -> IO CInt
 
 int :: (Integral a, Num b) => a -> b
 int = fromIntegral
 
 socket :: SocketType -> IO Fd
 socket t =
-    do fd <- int <$> throwErrnoIfMinus1 "socket" ( c_v4v_socket (packSocketType t) )
+    do fd <- int <$> throwErrnoIfMinus1 "socket" ( c_argo_socket (packSocketType t) )
        setFdOption fd NonBlockingRead True
        return fd
 
 close :: Fd -> IO ()
-close f = throwErrnoIfMinus1 "close" ( c_v4v_close (int f) ) >> return ()
+close f = throwErrnoIfMinus1 "close" ( c_argo_close (int f) ) >> return ()
 
 bind :: Fd -> Addr -> DomID -> IO ()
 bind f addr partner = do
     with addr $ \addr_p ->
-        throwErrnoIfMinus1 "bind" $ c_v4v_bind (int f) addr_p (int partner)
+        throwErrnoIfMinus1 "bind" $ c_argo_bind (int f) addr_p (int partner)
     return ()
 
 connect :: Fd -> Addr -> IO ()
 connect f addr = do
     with addr $ \addr_p ->
-        throwErrnoIfMinus1 "connect" $ c_v4v_connect (int f) addr_p
+        throwErrnoIfMinus1 "connect" $ c_argo_connect (int f) addr_p
     return ()
 
 listen :: Fd -> Int -> IO ()
 listen f backlog = do
-    throwErrnoIfMinus1 "listen" $ c_v4v_listen (int f) (int backlog)
+    throwErrnoIfMinus1 "listen" $ c_argo_listen (int f) (int backlog)
     return ()
 
 accept :: Fd -> IO (Fd, Addr)
 accept f =
     alloca $ \addr_p ->
-        do f' <- throwErrnoIfMinus1RetryMayBlock "accept" (c_v4v_accept (int f) addr_p) (threadWaitRead f)
+        do f' <- throwErrnoIfMinus1RetryMayBlock "accept" (c_argo_accept (int f) addr_p) (threadWaitRead f)
            setFdOption (int f') NonBlockingRead True
            addr <- peek addr_p
            return (int f', addr)
@@ -111,7 +111,7 @@ send f buf flags =
     fmap int $
          unsafeUseAsCStringLen buf $ \(ptr,sz) ->
              throwErrnoIfMinus1RetryMayBlock "send"
-             ( c_v4v_send (int f) (castPtr ptr) (int sz) (int flags) )
+             ( c_argo_send (int f) (castPtr ptr) (int sz) (int flags) )
              ( threadWaitWrite f )
 
 recv :: Fd -> Int -> Int -> IO B.ByteString
@@ -119,5 +119,5 @@ recv f sz flags =
     createAndTrim sz $ \ptr ->
         fmap int $
              throwErrnoIfMinus1RetryMayBlock "recv"
-             ( c_v4v_recv (int f) (castPtr ptr) (int sz) (int flags) )
+             ( c_argo_recv (int f) (castPtr ptr) (int sz) (int flags) )
              ( threadWaitRead f )

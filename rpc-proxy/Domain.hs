@@ -42,7 +42,7 @@ stubdomTargetDomID domid =
     fmap read <$> xsRead ("/local/domain/" ++ show domid ++ "/target")
 
 invalidDomID :: Int
-invalidDomID = 0x7FFF
+invalidDomID = 0x7FF4
 
 currentDomain :: DomID
 currentDomain = 0

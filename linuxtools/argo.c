@@ -20,30 +20,30 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <stdint.h>
-#include <xen/v4v.h>
-#include <libv4v.h>
+#include <xen/argo.h>
+#include <libargo.h>
 
-int open_v4v_socket(domid_t domid, uint32_t port)
+int open_argo_socket(domid_t domid, uint32_t port)
 {
     int s, r = -1;
-    v4v_addr_t addr_in = {
-        .domain = domid,
-        .port = port
+    xen_argo_addr_t addr_in = {
+        .domain_id = domid,
+        .aport = port
     };
 
-    s = v4v_socket(SOCK_STREAM);
+    s = argo_socket(SOCK_STREAM);
     if (s < 0) {
-        perror("v4v_socket");
+        perror("argo_socket");
         return -1;
     }
 
     while (r) {
-        r = v4v_connect(s, &addr_in);
+        r = argo_connect(s, &addr_in);
         if (r) {
             if ((errno == EINTR) || (errno == EAGAIN)) {
                 continue;
             }
-            perror("v4v_connect");
+            perror("argo_connect");
             close(s);
             return -1;
         }

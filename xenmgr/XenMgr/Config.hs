@@ -28,15 +28,15 @@ module XenMgr.Config
                  , appOverwriteServiceVmSettings
                  , appXcDiagTimeout
                  , appIdleTimeThreshold
-                 , appV4VHostsFile
+                 , appArgoHostsFile
                  , appMultiGpuPt
                  , appSeamlessTrafficDefault
                  , appBypassSha1SumChecks
                  , appGetPlatformCryptoKeyDirs
                  , appGetPlatformFlavour
                  , appGetGuestOnlyNetworking
-                 , appGetV4VFirewall
-                 , appSetV4VFirewall
+                 , appGetArgoFirewall
+                 , appSetArgoFirewall
                  , appSetIsoPath
                  , appSetAutoStart
                  , appSetPvmAutoStartDelay
@@ -44,13 +44,13 @@ module XenMgr.Config
                  , appSetOverwriteServiceVmSettings
                  , appSetXcDiagTimeout
                  , appSetIdleTimeThreshold
-                 , appSetV4VHostsFile
+                 , appSetArgoHostsFile
                  , appSetPlatformCryptoKeyDirs
                  , appConfigurableSaveChangesAcrossReboots
                  , appGetAutolockCdDrives
                  , appSetAutolockCdDrives
                  , appGetEnableSsh, appSetEnableSsh
-                 , appGetEnableV4vSsh, appSetEnableV4vSsh
+                 , appGetEnableArgoSsh, appSetEnableArgoSsh
                  , appGetEnableDom0Networking, appSetEnableDom0Networking
                  , appGetDom0MemTargetMIB, appSetDom0MemTargetMIB
                  , appGetSwitcherEnabled, appSetSwitcherEnabled
@@ -178,12 +178,12 @@ appSetIdleTimeThreshold :: Int -> Rpc ()
 appSetIdleTimeThreshold to = dbWrite "/xenmgr/idle-time-threshold" to
 
 
--- Should we be updating /etc/hosts with v4v addresses. defaults to true
-appV4VHostsFile :: Rpc Bool
-appV4VHostsFile = dbMaybeRead "/xenmgr/v4v-hosts-file" >>= return . fromMaybe True
+-- Should we be updating /etc/hosts with argo addresses. defaults to true
+appArgoHostsFile :: Rpc Bool
+appArgoHostsFile = dbMaybeRead "/xenmgr/argo-hosts-file" >>= return . fromMaybe True
 
-appSetV4VHostsFile :: Bool -> Rpc ()
-appSetV4VHostsFile v = dbWrite "/xenmgr/v4v-hosts-file" v
+appSetArgoHostsFile :: Bool -> Rpc ()
+appSetArgoHostsFile v = dbWrite "/xenmgr/argo-hosts-file" v
 
 -- Should we bypass disk hash checks
 appBypassSha1SumChecks :: Rpc Bool
@@ -213,11 +213,11 @@ appGetGuestOnlyNetworking :: Rpc Bool
 appGetGuestOnlyNetworking =
     dbMaybeRead "/xenmgr/guest-only-networking" >>= return . fromMaybe False
 
-appGetV4VFirewall :: Rpc Bool
-appGetV4VFirewall = dbReadWithDefault True "/xenmgr/v4v-firewall"
+appGetArgoFirewall :: Rpc Bool
+appGetArgoFirewall = dbReadWithDefault True "/xenmgr/argo-firewall"
 
-appSetV4VFirewall :: Bool -> Rpc ()
-appSetV4VFirewall v = dbWrite "/xenmgr/v4v-firewall" v
+appSetArgoFirewall :: Bool -> Rpc ()
+appSetArgoFirewall v = dbWrite "/xenmgr/argo-firewall" v
 
 appConfigurableSaveChangesAcrossReboots :: Rpc Bool
 appConfigurableSaveChangesAcrossReboots = do
@@ -246,21 +246,21 @@ appSetEnableSsh False =
       safeSpawnShell "/etc/init.d/sshd restart"
       return ()
 
-appGetEnableV4vSsh :: Rpc Bool
-appGetEnableV4vSsh = liftIO $ not <$> doesFileExist "/config/etc/ssh/v4v_not_to_be_run"
+appGetEnableArgoSsh :: Rpc Bool
+appGetEnableArgoSsh = liftIO $ not <$> doesFileExist "/config/etc/ssh/argo_not_to_be_run"
 
-appSetEnableV4vSsh :: Bool -> Rpc ()
-appSetEnableV4vSsh True =
+appSetEnableArgoSsh :: Bool -> Rpc ()
+appSetEnableArgoSsh True =
     liftIO $ do
-      exist <- doesFileExist "/config/etc/ssh/v4v_not_to_be_run"
-      if exist then removeFile "/config/etc/ssh/v4v_not_to_be_run" else return ()
-      safeSpawnShell "/etc/init.d/sshd-v4v restart"
+      exist <- doesFileExist "/config/etc/ssh/argo_not_to_be_run"
+      if exist then removeFile "/config/etc/ssh/argo_not_to_be_run" else return ()
+      safeSpawnShell "/etc/init.d/sshd-argo restart"
       return ()
 
-appSetEnableV4vSsh False =
+appSetEnableArgoSsh False =
     liftIO $ do
-      writeFile "/config/etc/ssh/v4v_not_to_be_run" ""
-      safeSpawnShell "/etc/init.d/sshd-v4v restart"
+      writeFile "/config/etc/ssh/argo_not_to_be_run" ""
+      safeSpawnShell "/etc/init.d/sshd-argo restart"
       return ()
 
 appGetEnableDom0Networking :: Rpc Bool

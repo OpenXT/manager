@@ -94,8 +94,8 @@ implementation xm testingCtx =
   , comCitrixXenclientXenmgrConfigSetPvmAutostartDelay = \d -> appSetPvmAutoStartDelay (fromIntegral d) >> cc
   , comCitrixXenclientXenmgrConfigGetSvmAutostartDelay = fromIntegral <$> appSvmAutoStartDelay
   , comCitrixXenclientXenmgrConfigSetSvmAutostartDelay = \d -> appSetSvmAutoStartDelay (fromIntegral d) >> cc
-  , comCitrixXenclientXenmgrConfigGetV4vHostsFile = appV4VHostsFile
-  , comCitrixXenclientXenmgrConfigSetV4vHostsFile = \v -> appSetV4VHostsFile v >> cc
+  , comCitrixXenclientXenmgrConfigGetArgoHostsFile = appArgoHostsFile
+  , comCitrixXenclientXenmgrConfigSetArgoHostsFile = \v -> appSetArgoHostsFile v >> cc
   , comCitrixXenclientXenmgrConfigGetUseNetworkingDomain = return True
   , comCitrixXenclientXenmgrConfigGetBypassSha1sumChecks = appBypassSha1SumChecks
   , comCitrixXenclientXenmgrConfigGetXcDiagTimeout = fromIntegral <$> appXcDiagTimeout
@@ -116,15 +116,15 @@ implementation xm testingCtx =
   , comCitrixXenclientXenmgrConfigGetMeasureFailAction = pmActionToStr <$> getMeasureFailAction
   , comCitrixXenclientXenmgrConfigSetMeasureFailAction = \v -> setMeasureFailAction (pmActionOfStr v) >> cc
 
-  , comCitrixXenclientXenmgrConfigGetV4vFirewall = appGetV4VFirewall
-  , comCitrixXenclientXenmgrConfigSetV4vFirewall = appSetV4VFirewall
+  , comCitrixXenclientXenmgrConfigGetArgoFirewall = appGetArgoFirewall
+  , comCitrixXenclientXenmgrConfigSetArgoFirewall = appSetArgoFirewall
   , comCitrixXenclientXenmgrConfigGetSecondaryGpuPt = appMultiGpuPt
   , comCitrixXenclientXenmgrConfigGetConfigurableSaveChangesAcrossReboots = appConfigurableSaveChangesAcrossReboots
 
   , comCitrixXenclientXenmgrConfigGetEnableSsh = appGetEnableSsh
   , comCitrixXenclientXenmgrConfigSetEnableSsh = appSetEnableSsh
-  , comCitrixXenclientXenmgrConfigGetEnableV4vSsh = appGetEnableV4vSsh
-  , comCitrixXenclientXenmgrConfigSetEnableV4vSsh = appSetEnableV4vSsh
+  , comCitrixXenclientXenmgrConfigGetEnableArgoSsh = appGetEnableArgoSsh
+  , comCitrixXenclientXenmgrConfigSetEnableArgoSsh = appSetEnableArgoSsh
   , comCitrixXenclientXenmgrConfigGetEnableDom0Networking = appGetEnableDom0Networking
   , comCitrixXenclientXenmgrConfigSetEnableDom0Networking = appSetEnableDom0Networking
 

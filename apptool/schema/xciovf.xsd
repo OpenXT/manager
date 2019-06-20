@@ -68,7 +68,7 @@
 	  <xs:sequence minOccurs="0" maxOccurs="unbounded">
 	    <xs:choice>
 	      <xs:element name="PropertyOverride" type="xci:PropertyOverride_Type"/>
-	      <xs:element name="V4VFirewall" type="xci:V4VFirewall_Type"/>
+	      <xs:element name="ArgoFirewall" type="xci:ArgoFirewall_Type"/>
 	      <xs:element name="RpcFirewall" type="xci:RpcFirewall_Type"/>
 	      <xs:element name="PCIPassthrough" type="xci:PCIPassthrough_Type"/>
 	      <xs:element name="NetworkAdapter" type="xci:NetworkAdapter_Type"/>
@@ -93,9 +93,9 @@
 	  </xs:sequence>
 	</xs:complexType>
 
-	<xs:complexType name="V4VFirewall_Type">
+	<xs:complexType name="ArgoFirewall_Type">
 	  <xs:sequence>
-	    <xs:element name="V4VRule" minOccurs="0" maxOccurs="unbounded" type="xs:string"/>
+	    <xs:element name="ArgoRule" minOccurs="0" maxOccurs="unbounded" type="xs:string"/>
 	  </xs:sequence>
 	</xs:complexType>
 

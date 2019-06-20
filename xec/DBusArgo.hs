@@ -18,7 +18,7 @@
 
 {-# LANGUAGE ScopedTypeVariables, CPP #-}
 
-module DBusV4V ( 
+module DBusArgo (
     domainSystemBus
   , remoteDomainBus
   ) where
@@ -38,40 +38,40 @@ import qualified Data.ByteString as B
 import qualified Network.DBus as D
 import qualified Network.DBus.Actions as D
 
-import qualified Tools.V4V as V
+import qualified Tools.Argo as A
 
 domainSystemBus :: Int -> IO D.DBusContext
 remoteDomainBus :: Int -> Int -> IO D.DBusContext
 
 domainSystemBus domain = remoteDomainBus domain 5555
-remoteDomainBus domain v4vPort = do
-  let addr = V.Addr v4vPort domain
+remoteDomainBus domain argoPort = do
+  let addr = A.Addr argoPort domain
   fd <- connect addr
-  D.contextNewWith (v4vTransport fd)
+  D.contextNewWith (argoTransport fd)
   where
-    connect addr = V.socket Stream >>= \f ->
+    connect addr = A.socket Stream >>= \f ->
       -- be careful to close fd on connect error..
                   ( do setFdOption f NonBlockingRead False
-                       V.connect f addr
+                       A.connect f addr
                        setFdOption f NonBlockingRead True
                        return f )
                   `E.catch` connect_error f
-                      where connect_error f (err::E.SomeException) = V.close f >> E.throw err
-    v4vTransport fd
+                      where connect_error f (err::E.SomeException) = A.close f >> E.throw err
+    argoTransport fd
       = D.DBusTransport { D.transportPut  = send fd
                         , D.transportGet  = recv fd
                         , D.transportClose = close fd }
-    send  fd buf       = do sent <- V.send fd buf 0
+    send  fd buf       = do sent <- A.send fd buf 0
                             if sent < (B.length buf)
                                then send fd (B.drop sent buf)
                                else return ()
-      -- seems to be needed because stupid dbus bindings do recv 0 and v4v blocks on that ?
+      -- seems to be needed because stupid dbus bindings do recv 0 and argo blocks on that ?
     recv  fd 0         = return B.empty
     recv  fd sz        = recv_aux fd (fromIntegral sz)
-    recv_aux fd sz     = do chunk <- V.recv fd (fromIntegral $ sz) 0
+    recv_aux fd sz     = do chunk <- A.recv fd (fromIntegral $ sz) 0
                             case B.length chunk of
                                 0           -> return chunk
                                 l | l >= sz -> return chunk
                                 _           -> B.append chunk <$> recv_aux fd (sz - B.length chunk)
 
-    close fd        = V.close fd
+    close fd        = A.close fd

@@ -27,6 +27,6 @@ Executable disksyncmgr
     xch-rpc
   Main-Is: Main.hs
   GHC-Options: -O2 -fwarn-incomplete-patterns -dynamic -threaded -XScopedTypeVariables -XGeneralizedNewtypeDeriving -XPatternGuards
-  Other-Modules: Tools.FileC Tools.XenStoreC Tools.V4V Tools.VhdSyncC
-  Extra-Libraries: xenstore v4v
+  Other-Modules: Tools.FileC Tools.XenStoreC Tools.Argo Tools.VhdSyncC
+  Extra-Libraries: xenstore argo
   C-sources: cbits/xs_helper.c cbits/vhdsync_helper.c

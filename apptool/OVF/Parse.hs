@@ -412,14 +412,14 @@ xciVmA = hasName "xci:VirtualMachine" >>> proc x -> do
   uuid <- maybeA (getAttrValue0 "xci:uuid" >>> arr fromString) -< x
   netdevs <- listA (getChildren >>> xciNetworkAdapterA) -< x
   storagedevs <- listA (getChildren >>> xciStorageDeviceA) -< x
-  v4v <- xciV4VRulesA -< x
+  argo <- xciArgoRulesA -< x
   rpc <- xciRpcRulesA -< x
   pci <- xciPtRulesA -< x
   dbentries <- withDefault' [] xciDBEntriesA -< x
   dsfiles <- withDefault' [] xciDomStoreFilesA -< x
   props <- xciPropertyOverridesA -< x
   returnA -< XCIVm { xciVmId = id, xciVmUuid = uuid, xciVmTemplate = template,
-    xciVmPropertyOverride = props, xciVmV4VRules = v4v, xciVmRpcRules = rpc, xciVmPtRules = pci,
+    xciVmPropertyOverride = props, xciVmArgoRules = argo, xciVmRpcRules = rpc, xciVmPtRules = pci,
     xciVmDB = dbentries, xciVmDomStoreFiles = dsfiles,
     xciVmNetworkAdapters = netdevs, xciVmStorageDevices = storagedevs
   }
@@ -446,11 +446,11 @@ xciPropertyOverrideA = deep (hasName "xci:Property") >>> proc x -> do
   value <- getAttrValue "xci:value" -< x
   returnA -< XCIPropertyOverride key value
 
-xciV4VRulesA :: IOSArrow XmlTree [String]
-xciV4VRulesA = withDefault' [] ( deep (hasName "xci:V4VFirewall") >>> listA xciV4VRuleA )
+xciArgoRulesA :: IOSArrow XmlTree [String]
+xciArgoRulesA = withDefault' [] ( deep (hasName "xci:ArgoFirewall") >>> listA xciArgoRuleA )
 
-xciV4VRuleA :: IOSArrow XmlTree String
-xciV4VRuleA = deep (hasName "xci:V4VRule") /> getText >>> arr strip
+xciArgoRuleA :: IOSArrow XmlTree String
+xciArgoRuleA = deep (hasName "xci:ArgoRule") /> getText >>> arr strip
 
 xciRpcRulesA :: IOSArrow XmlTree [String]
 xciRpcRulesA = withDefault' [] ( deep (hasName "xci:RpcFirewall") >>> listA xciRpcRuleA )
