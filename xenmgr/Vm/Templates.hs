@@ -57,7 +57,7 @@ import Paths_xenmgr
 
 data ConfigTemplate = ConfigTemplate JSValue
 
-ndvmDefaultMode = "pv"
+ndvmDefaultMode = "hvm"
 
 getNdvmMode :: Rpc String
 getNdvmMode =
