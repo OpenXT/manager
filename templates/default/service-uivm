@@ -63,7 +63,7 @@
     "debug": "true",
     "pae": "true",
     "acpi": "true",
-    "virt-type": "pv",
+    "virt-type": "pvh",
     "apic": "true",
     "nx": "true",
     "vkbd" : "true",
