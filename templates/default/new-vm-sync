@@ -23,7 +23,7 @@
     "argo": "true",
     "memory": "256",
     "display": "none",
-    "cmdline": "root=\/dev\/xvda1 xencons=hvc0",
+    "cmdline": "root=\/dev\/xvda1 console=hvc0",
     "kernel-extract": "\/boot\/bzImage",
     "flask-label": "system_u:system_r:syncvm_t",
     "nic": {
