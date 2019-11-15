@@ -811,6 +811,7 @@ miscSpecs cfg = do
     nested_ <- nested
     dm_override_ <- liftRpc dm_override
     dm_display_ <- liftRpc dm_display
+    vkb_ <- vkb
     extra_hvms <- readConfigPropertyDef uuid vmExtraHvms []
     acpi_table_ <- liftIO $ acpi_table
 
@@ -826,6 +827,7 @@ miscSpecs cfg = do
         ++ nested_
         ++ dm_override_
         ++ dm_display_
+        ++ vkb_
         ++ acpi_table_
     where
       uuid = vmcfgUuid cfg
@@ -880,6 +882,11 @@ miscSpecs cfg = do
              "none"  -> return ["vga='stdvga'"]
              ""      -> return ["vga='stdvga'"]
              d       -> return ["vga='stdvga'", "dm_display='" ++ d ++ "'"]
+
+      vkb = readConfigPropertyDef uuid vmVkbd False >>=
+                \ v -> if v then return ["vkb=['backend-type=linux']"]
+                            else return []
+
       -- Other config keys taken directly from .config subtree which we delegate directly
       -- to xenvm
       passToXenvmProperties =
@@ -892,7 +899,6 @@ miscSpecs cfg = do
           , ("extra"           , vmCmdLine)
           , ("vcpus"           , vmVcpus)
           , ("hap"             , vmHap)
-          , ("vkb"             , vmVkbd)
           , ("vfb"             , vmVfb)
           , ("seclabel"        , vmFlaskLabel)
           , ("init_seclabel"   , vmInitFlaskLabel)
