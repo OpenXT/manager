@@ -684,7 +684,12 @@ diskSpec uuid d  = do
   stubdom <- readConfigPropertyDef uuid vmStubdom False
   hd_type <- readConfigPropertyDef uuid vmHdType "ide"
   return $ printf "'%s,%s,%s,%s,%s,%s'"
-             (diskPath d) (fileToRaw (enumMarshall $ diskType d)) (cdType stubdom d) (adjDiskDevice d hd_type) (enumMarshall $ diskMode d) (if ((enumMarshall $ diskDeviceType d) == "cdrom") then (enumMarshall $ diskDeviceType d) else "")
+             (diskPath d)
+             (fileToRaw (enumMarshall $ diskType d))
+             (cdType stubdom d)
+             (adjDiskDevice d hd_type)
+             (enumMarshall $ diskMode d)
+             (if ((enumMarshall $ diskDeviceType d) == "cdrom") then (enumMarshall $ diskDeviceType d) else "")
   where
     cdType stubdom d =
       case (enumMarshall $ diskDeviceType d) of
