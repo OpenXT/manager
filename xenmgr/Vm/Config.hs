@@ -683,26 +683,31 @@ diskSpec :: Uuid -> Disk -> Rpc DiskSpec
 diskSpec uuid d  = do
   stubdom <- readConfigPropertyDef uuid vmStubdom False
   hd_type <- readConfigPropertyDef uuid vmHdType "ide"
-  return $ printf "'format=%s,backendtype=%s,vdev=%s,access=%s,devtype=%s,target=%s'"
-             (fileToRaw disk_type)
+  return $ printf "'format=raw,backendtype=%s,vdev=%s,access=%s,devtype=%s,script=%s,target=%s'"
              (cdType stubdom d)
              (adjDiskDevice d hd_type)
              (enumMarshall $ diskMode d)
              (if (disk_dev_type == "cdrom") then disk_dev_type else "disk")
-             (diskPath d)
+             (script disk_type)
+             (target disk_type (diskPath d))
   where
     disk_type = enumMarshall $ diskType d
     disk_dev_type = enumMarshall $ diskDeviceType d
     cdType stubdom d =
-      case (enumMarshall $ diskDeviceType d) of
-          "cdrom" -> if stubdom then "tap" else "phy"
-          _       -> if disk_type == "phy" then "phy" else "tap"
-    fileToRaw typ = if typ == "file" || typ == "phy" then "raw" else typ
+      case disk_dev_type of
+          "cdrom" -> "phy"
+          _       -> "phy"
     -- convert hdX -> xvdX if hdtype is 'ahci'
     adjDiskDevice d hd_type =
       case hd_type of
           "ahci" -> if (disk_dev_type == "cdrom") then (diskDevice d) else ("xvd" ++ [(last $ diskDevice d)])
           _      -> diskDevice d
+    script "vhd" = "block-tap"
+    script "aio" = "block-tap"
+    script _     = "block"
+    target "vhd" path = printf "vhd:%s" path
+    target "aio" path = printf "aio:%s" path
+    target _     path = path
 
 -- Next section: information about Network Interfaces
 nicSpecs :: VmConfig -> Rpc [NicSpec]
