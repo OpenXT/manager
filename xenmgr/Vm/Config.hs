@@ -683,18 +683,18 @@ diskSpec :: Uuid -> Disk -> Rpc DiskSpec
 diskSpec uuid d  = do
   stubdom <- readConfigPropertyDef uuid vmStubdom False
   hd_type <- readConfigPropertyDef uuid vmHdType "ide"
-  return $ printf "'%s,%s,%s,%s,%s,%s'"
-             (diskPath d)
+  return $ printf "'format=%s,backendtype=%s,vdev=%s,access=%s,devtype=%s,target=%s'"
              (fileToRaw (enumMarshall $ diskType d))
              (cdType stubdom d)
              (adjDiskDevice d hd_type)
              (enumMarshall $ diskMode d)
-             (if ((enumMarshall $ diskDeviceType d) == "cdrom") then (enumMarshall $ diskDeviceType d) else "")
+             (if ((enumMarshall $ diskDeviceType d) == "cdrom") then (enumMarshall $ diskDeviceType d) else "disk")
+             (diskPath d)
   where
     cdType stubdom d =
       case (enumMarshall $ diskDeviceType d) of
-          "cdrom" -> if stubdom then "backendtype=tap" else "backendtype=phy"
-          _       -> if (enumMarshall $ diskType d) == "phy" then "backendtype=phy" else "backendtype=tap"
+          "cdrom" -> if stubdom then "tap" else "phy"
+          _       -> if (enumMarshall $ diskType d) == "phy" then "phy" else "tap"
     fileToRaw typ = if typ == "file" || typ == "phy" then "raw" else typ
     -- convert hdX -> xvdX if hdtype is 'ahci'
     adjDiskDevice d hd_type =
