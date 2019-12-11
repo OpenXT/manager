@@ -884,7 +884,7 @@ miscSpecs cfg = do
              d       -> return ["vga='stdvga'", "dm_display='" ++ d ++ "'"]
 
       vkb = readConfigPropertyDef uuid vmVkbd False >>=
-                \ v -> if v then return ["vkb=['backend-type=linux']"]
+                \ v -> if v then return ["vkb=['backend-type=linux,feature-abs-pointer=1,height=32768,width=32768']"]
                             else return []
 
       -- Other config keys taken directly from .config subtree which we delegate directly
