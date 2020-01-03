@@ -179,12 +179,14 @@ shutdown :: Uuid -> IO ()
 shutdown uuid =
     do
       domid <- getDomainId uuid
-      gpe <- xsRead ("/local/domain/" ++ domid ++ "/control/hvm-powerbutton-enable")
+      stubdomid <- getStubDomainID uuid
+      let xs_path = "/local/domain/" ++ stubdomid ++ "/device-model/" ++ domid
+      gpe <- xsRead (xs_path ++ "/hvm-powerbutton-enable")
       case gpe of
         Just g  -> do exitCode  <- system ("xl shutdown -w " ++ domid)
                       case exitCode of
                         ExitSuccess   -> return ()
-                        _             -> do xsWrite ("/local/domain/" ++ domid ++ "/control/hvm-shutdown") "poweroff"
+                        _             -> do xsWrite (xs_path ++ "/hvm-shutdown") "poweroff"
                                             _ <- system ("xl trigger " ++ domid ++ " power")
                                             _ <- system ("xl shutdown -F -w " ++ domid)
                                             return ()
@@ -306,6 +308,10 @@ getDomainId uuid = do
     case plain_domid of
       "-1" -> return ("")
       _    -> return (plain_domid) --remove trailing newline
+
+getStubDomainID :: Uuid -> IO String
+getStubDomainID uuid =
+    fromMaybe "0" <$> xsRead ("/xenmgr/vms/" ++ show uuid ++ "/stubdomid")
 
 --For a given uuid, change the iso in the cd drive slot
 changeCd :: Uuid -> String -> IO ()
