@@ -40,6 +40,7 @@
     "acpi": "true",
     "virt-type": "hvm",
     "apic": "true",
+    "hap": "true",
     "nx": "true",
     "argo": "true",
     "memory": "192",
