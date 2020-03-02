@@ -20,7 +20,7 @@
     "viridian": "true",
     "hap": "true",
     "nx": "true",
-    "argo": "true",
+    "argo": "false",
     "sound": "ac97",
     "memory": "1024",
     "display": "none",
