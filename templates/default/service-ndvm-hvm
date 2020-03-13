@@ -50,6 +50,7 @@
     "display": "nogfx",
     "boot": "c",
     "flask-label": "system_u:system_r:ndvm_t",
+    "stubdom-flask-label": "system_u:system_r:dm_ndvm_t",
     "pci": {
       "0": {
         "class": "0x0200",
