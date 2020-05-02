@@ -19,11 +19,8 @@
 include common.make
 
 PACKAGES = stdext,uuid,log,bigarray,camomile,json,jsonrpc,threads,unix,str,dbus,tscommon,xenmmap,xenbus,xenstore
-OCAMLOPT = ocamlfind ocamlopt -linkpkg -package $(PACKAGES)
-OCAMLC   = ocamlfind ocamlc -linkpkg -package $(PACKAGES)
-
-OCAMLOPTFLAGS += -g -thread -I autogen
-OCAMLCFLAGS += -g -thread -I autogen
+OCAMLCFLAGS += -g -thread -I autogen -linkpkg -package $(PACKAGES)
+OCAMLOPTFLAGS += -g -thread -I autogen -linkpkg -package $(PACKAGES) -thread
 
 db-cmd_OBJS = autogen/db_client db_cmd
 
