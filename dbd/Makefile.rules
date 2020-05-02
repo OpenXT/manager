@@ -17,13 +17,13 @@ endif
 ALL_OCAML_OBJS ?= $(OBJS)
 
 %.cmo: %.ml
-	$(call quiet-command, $(OCAMLC) $(OCAMLCFLAGS) -c -o $@ $<,MLC,$@)
+	$(call quiet-command, ocamlfind $(OCAMLC) $(OCAMLCFLAGS) -c -o $@ $<,MLC,$@)
 
 %.cmi: %.mli
-	$(call quiet-command, $(OCAMLC) $(OCAMLCFLAGS) -c -o $@ $<,MLI,$@)
+	$(call quiet-command, ocamlfind $(OCAMLC) $(OCAMLCFLAGS) -c -o $@ $<,MLI,$@)
 
 %.cmx: %.ml
-	$(call quiet-command, $(OCAMLOPT) $(OCAMLOPTFLAGS) -c -o $@ $<,MLOPT,$@)
+	$(call quiet-command, ocamlfind $(OCAMLOPT) $(OCAMLOPTFLAGS) -c -o $@ $<,MLOPT,$@)
 
 %.ml: %.mll
 	$(call quiet-command, $(OCAMLLEX) -q -o $@ $<,MLLEX,$@)
@@ -47,8 +47,8 @@ clean: $(CLEAN_HOOKS)
 
 quiet-command = $(if $(V),$1,@printf " %-8s %s\n" "$2" "$3" && $1)
 
-mk-caml-lib-native = $(call quiet-command, $(OCAMLOPT) $(OCAMLOPTFLAGS) -a -o $1 $2 $3,MLA,$1)
-mk-caml-lib-bytecode = $(call quiet-command, $(OCAMLC) $(OCAMLCFLAGS) -a -o $1 $2 $3,MLA,$1)
+mk-caml-lib-native = $(call quiet-command, ocamlfind $(OCAMLOPT) $(OCAMLOPTFLAGS) -a -o $1 $2 $3,MLA,$1)
+mk-caml-lib-bytecode = $(call quiet-command, ocamlfind $(OCAMLC) $(OCAMLCFLAGS) -a -o $1 $2 $3,MLA,$1)
 
 mk-caml-stubs = $(call quiet-command, $(OCAMLMKLIB) -o `basename $1 .a` $2,MKLIB,$1)
 mk-caml-lib-stubs = \
@@ -75,9 +75,9 @@ endef
 
 define OCAML_PROGRAM_template
  $(1): $(foreach obj,$($(1)_OBJS),$(obj).cmx) $($(1)_EXTRA_DEPS)
-	$(call quiet-command, $(OCAMLOPT) $(OCAMLOPTFLAGS) -o $$@ $($(1)_LIBS) $$+,MLBIN,$$@)
+	$(call quiet-command, ocamlfind $(OCAMLOPT) $(OCAMLOPTFLAGS) -o $$@ $($(1)_LIBS) $$+,MLBIN,$$@)
  $(1).byte: $(foreach obj,$($(1)_OBJS),$(obj).cmo)
-	$(call quiet-command, $(OCAMLC) $(OCAMLCFLAGS) -o $$@ $($(1)_BYTE_LIBS) $$+,MLBIN,$$@)
+	$(call quiet-command, ocamlfind $(OCAMLC) $(OCAMLCFLAGS) -o $$@ $($(1)_BYTE_LIBS) $$+,MLBIN,$$@)
 endef
 
 define C_PROGRAM_template
