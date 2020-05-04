@@ -39,8 +39,8 @@ META: META.in
 
 ALL_OCAML_OBJ_SOURCES=$(addsuffix .ml, $(ALL_OCAML_OBJS))
 
-.ocamldep.make: $(ALL_OCAML_OBJ_SOURCES) Makefile $(TOPLEVEL)/Makefile.rules
-	$(call quiet-command, $(OCAMLDEP) $(ALL_OCAML_OBJ_SOURCES) *.mli $o,MLDEP,)
+.ocamldep.make: $(ALL_OCAML_OBJ_SOURCES) Makefile Makefile.rules
+	$(call quiet-command, $(OCAMLDEP) $(OCAMLDEPFLAGS) $(ALL_OCAML_OBJ_SOURCES) *.mli > $@,MLDEP,)
 
 clean: $(CLEAN_HOOKS)
 	$(Q)rm -f *.o *.so *.a *.cmo *.cmi *.cma *.cmx *.cmxa *.annot $(LIBS) $(PROGRAMS) $(GENERATED_FILES) .ocamldep.make

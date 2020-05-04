@@ -21,12 +21,13 @@ include common.make
 PACKAGES = stdext,uuid,log,bigarray,camomile,json,jsonrpc,threads,unix,str,dbus,tscommon,xenmmap,xenbus,xenstore
 OCAMLCFLAGS += -g -thread -I autogen -linkpkg -package $(PACKAGES)
 OCAMLOPTFLAGS += -g -thread -I autogen -linkpkg -package $(PACKAGES) -thread
+OCAMLDEPFLAGS += -I autogen
 
 db-cmd_OBJS = autogen/db_client db_cmd
 
 dbd_OBJS = autogen/dbus_client db_core db_methods autogen/db_server dbd
 
-ALL_OCAML_OBJS = $(dbd_OBJS) $(dbd-cmd_OBJS)
+ALL_OCAML_OBJS = $(dbd_OBJS) $(db-cmd_OBJS)
 
 INTF =
 
