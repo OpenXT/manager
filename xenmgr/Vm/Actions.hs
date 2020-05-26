@@ -1685,16 +1685,6 @@ setVmGpu uuid s = do
                               | otherwise     = (uuid', c)
       test_hdx = do
         unlessM (getVmPvAddons uuid) $ failCannotTurnHdxWithoutPvAddons
-        verifyAutostartAndHDX (set_hdx uuid)
-
-verifyAutostartAndHDX :: ([(Uuid,VmConfig)] -> [(Uuid,VmConfig)]) -> Rpc ()
-verifyAutostartAndHDX change = do
-  max_vgpus <- getMaxVgpus
-  vms <- getGuestVms
-  cfgs <- zip vms <$> mapM (\uuid -> getVmConfig uuid False) vms
-  let cfgs' = change cfgs
-      offending (uuid,cfg) = vmcfgGraphics cfg == HDX && vmcfgAutostart cfg
-  when (length (filter offending cfgs') > max_vgpus) $ failSimultaneousAutostartAndHdx
 
 setVmCd :: Uuid -> String -> Rpc ()
 setVmCd uuid str =
@@ -1723,12 +1713,7 @@ setVmSeamlessTraffic uuid view = saveConfigProperty uuid vmSeamlessTraffic view
 
 setVmStartOnBoot :: Uuid -> Bool -> Rpc ()
 setVmStartOnBoot uuid start = do
-    when start $ verifyAutostartAndHDX (set_start uuid)
     saveConfigProperty uuid vmStartOnBoot start
-  where
-    set_start uuid cfgs = map set cfgs
-        where set (uuid',c) | uuid == uuid' = (uuid', c { vmcfgAutostart = True })
-                            | otherwise     = (uuid', c)
 
 setVmHiddenInSwitcher :: Uuid -> Bool -> Rpc ()
 setVmHiddenInSwitcher uuid hidden = do
