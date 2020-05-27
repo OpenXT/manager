@@ -173,7 +173,6 @@ import XenMgr.Errors
 import XenMgr.Host
 import XenMgr.Connect.Xl (isRunning)
 import qualified XenMgr.Connect.Xl as Xl
-import Rpc.Autogen.SurfmanClient
 
 import Data.Bits
 import System.IO.Unsafe

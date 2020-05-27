@@ -43,8 +43,6 @@ module XenMgr.Connect.Xl
     --dbus stuff
     , onNotify
     , onNotifyRemove
-    , xlSurfmanDbus
-    , xlInputDbus
     , setNicBackendDom
     , removeNic
     , addNic
@@ -435,24 +433,6 @@ onNotifyRemove uuid msgname action =
                case splits of
                  (msg:args) | msg == msgname    -> action args
                  _                              -> return ()
-
---Construct an RPC message for surfman given an argument list and
---command to run.
-xlSurfmanDbus uuid memb args =
-  RpcCall service object interface (fromString memb) args
-  where
-    service = fromString $ "com.citrix.xenclient.surfman"
-    interface = fromString $ "com.citrix.xenclient.surfman"
-    object = fromString $ "/"
-
---Construct an RPC for inputserver given an argument list and
---command to run
-xlInputDbus uuid memb args =
-  RpcCall service object interface (fromString memb) args
-  where
-    service = fromString $ "com.citrix.xenclient.input"
-    interface = fromString $ "com.citrix.xenclient.input"
-    object = fromString $ "/"
 
 --Path to the xl config file generated on domain creation
 configPath uuid = "/tmp/xenmgr-xl-" ++ show uuid

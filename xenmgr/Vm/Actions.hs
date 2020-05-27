@@ -913,19 +913,6 @@ bootVm config reboot
       --      liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-product") "OpenXT 5.0.0"
        --     liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-seamless-hint") "0"
 
-      --Changes to surfman/inputserver moved these calls into xenvm. With xenvm removal, it's easier to call
-      --them from Xenmgr.
-      surfmanDbusCalls uuid =
-          whenDomainID_ uuid $ \domid -> do
-            rpcCallOnce (Xl.xlSurfmanDbus uuid "set_pv_display" [toVariant $ (read (show domid) :: Int32), toVariant $ ""])
-            rpcCallOnce (Xl.xlSurfmanDbus uuid "set_visible" [toVariant $ (read (show domid) :: Int32), toVariant $ (0 :: Int32), toVariant $ False])
-            return ()
-
-      inputDbusCalls uuid =
-          whenDomainID_ uuid $ \domid -> do
-            rpcCallOnce (Xl.xlInputDbus uuid "attach_vkbd" [toVariant $ (read (show domid):: Int32) ])
-            return ()
-
       handleCreationPhases :: XM ()
       handleCreationPhases = do
         waitForVmInternalState uuid CreatingDevices Running 30
@@ -959,11 +946,6 @@ bootVm config reboot
             liftIO $ xsWrite backendNode (show domid)
             liftIO $ xsChmod backendNode "r0"
 
-          vfb_enabled <- getVmVfb uuid
-          when vfb_enabled $ surfmanDbusCalls uuid
-
-          vkb_enabled <- getVmVkbd uuid
-          when vkb_enabled $ inputDbusCalls uuid
           info $ "done pre-dm setup for " ++ show uuid
          
         waitForVmInternalState uuid Created Running 60
