@@ -329,6 +329,54 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedGetDomstoreReadAccess = getDomstoreReadAccess uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetDomstoreWriteAccess = setDomstoreWriteAccess uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetDomstoreWriteAccess = getDomstoreWriteAccess uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetStubDomid = fromIntegral . fromMaybe (-1) <$> getStubDomainID uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetImagePathVg = getVmImagePath uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetImagePathVg = \v -> setVmImagePath uuid v
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetDisplayHandlerStrict = getVmDisplayHandlerStrict uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetDisplayHandlerStrict = \v -> setVmDisplayHandlerStrict uuid v
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetLongFormVg = getVmLongForm uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetLongFormVg = \v -> setVmLongForm uuid v
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetShortFormVg = getVmShortForm uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetShortFormVg = \v -> setVmShortForm uuid v
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetTextColorVg = getVmTextColor uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetTextColorVg = \v -> setVmTextColor uuid v
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetBorderWidthVg = fromIntegral <$> getVmBorderWidth uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetBorderWidthVg = \v -> setVmBorderWidth uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetBorderHeightVg = fromIntegral <$> getVmBorderHeight uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetBorderHeightVg = \v -> setVmBorderHeight uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetVglassEnabled = getVmVglassEnabled uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetVglassEnabled = \v -> setVmVglassEnabled uuid v
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetMosaicMode =  fromIntegral <$> getVmMosaicMode uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetMosaicMode = \v -> setVmMosaicMode uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetWindowedX =  fromIntegral <$> getVmWindowedX uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetWindowedX = \v -> setVmWindowedX uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetWindowedY =  fromIntegral <$> getVmWindowedY uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetWindowedY = \v -> setVmWindowedY uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetWindowedW =  fromIntegral <$> getVmWindowedW uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetWindowedW = \v -> setVmWindowedW uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetWindowedH =  fromIntegral <$> getVmWindowedH uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetWindowedH = \v -> setVmWindowedH uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetPrimaryDomainColor = getVmPrimaryDomainColor uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetPrimaryDomainColor = \v -> setVmPrimaryDomainColor uuid v
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetSecondaryDomainColor = getVmSecondaryDomainColor uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetSecondaryDomainColor = \v -> setVmSecondaryDomainColor uuid v
+
+  , comCitrixXenclientXenmgrVmUnrestrictedGetMosaicVmEnabled = getVmMosaicVmEnabled uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedSetMosaicVmEnabled = \v -> setVmMosaicVmEnabled uuid v
 
     -- bucketload of properties -- restricted version
     -------------------------------------------------
@@ -668,6 +716,54 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmUnrestrictedGetHdtype = getVmHdType uuid
   , comCitrixXenclientXenmgrVmSetHdtype = \v -> restrict >> setVmHdType uuid v
   , comCitrixXenclientXenmgrVmUnrestrictedSetHdtype = \v -> setVmHdType uuid v
+
+  , comCitrixXenclientXenmgrVmGetDisplayHandlerStrict = getVmDisplayHandlerStrict uuid
+  , comCitrixXenclientXenmgrVmSetDisplayHandlerStrict = \v -> restrict >> setVmDisplayHandlerStrict uuid v
+
+  , comCitrixXenclientXenmgrVmGetImagePathVg = getVmImagePath uuid
+  , comCitrixXenclientXenmgrVmSetImagePathVg = \v -> restrict >> setVmImagePath uuid v
+
+  , comCitrixXenclientXenmgrVmGetLongFormVg = getVmLongForm uuid
+  , comCitrixXenclientXenmgrVmSetLongFormVg = \v -> restrict >> setVmLongForm uuid v
+
+  , comCitrixXenclientXenmgrVmGetShortFormVg = getVmShortForm uuid
+  , comCitrixXenclientXenmgrVmSetShortFormVg = \v -> restrict >> setVmShortForm uuid v
+
+  , comCitrixXenclientXenmgrVmGetTextColorVg = getVmTextColor uuid
+  , comCitrixXenclientXenmgrVmSetTextColorVg = \v -> restrict >> setVmTextColor uuid v
+
+  , comCitrixXenclientXenmgrVmGetBorderWidthVg = fromIntegral <$> getVmBorderWidth uuid
+  , comCitrixXenclientXenmgrVmSetBorderWidthVg = \v -> restrict >> setVmBorderWidth uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmGetBorderHeightVg = fromIntegral <$> getVmBorderHeight uuid
+  , comCitrixXenclientXenmgrVmSetBorderHeightVg = \v -> restrict >> setVmBorderHeight uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmGetVglassEnabled = getVmVglassEnabled uuid
+  , comCitrixXenclientXenmgrVmSetVglassEnabled = \v -> restrict >> setVmVglassEnabled uuid v
+
+  , comCitrixXenclientXenmgrVmGetMosaicVmEnabled = getVmMosaicVmEnabled uuid
+  , comCitrixXenclientXenmgrVmSetMosaicVmEnabled = \v -> restrict >> setVmMosaicVmEnabled uuid v
+
+  , comCitrixXenclientXenmgrVmGetMosaicMode =  fromIntegral <$> getVmMosaicMode uuid
+  , comCitrixXenclientXenmgrVmSetMosaicMode = \v -> restrict >> setVmMosaicMode uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmGetWindowedX =  fromIntegral <$> getVmWindowedX uuid
+  , comCitrixXenclientXenmgrVmSetWindowedX = \v -> restrict >> setVmWindowedX uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmGetWindowedY =  fromIntegral <$> getVmWindowedY uuid
+  , comCitrixXenclientXenmgrVmSetWindowedY = \v -> restrict >> setVmWindowedY uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmGetWindowedW =  fromIntegral <$> getVmWindowedW uuid
+  , comCitrixXenclientXenmgrVmSetWindowedW = \v -> restrict >> setVmWindowedW uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmGetWindowedH =  fromIntegral <$> getVmWindowedH uuid
+  , comCitrixXenclientXenmgrVmSetWindowedH = \v -> restrict >> setVmWindowedH uuid (fromIntegral v)
+
+  , comCitrixXenclientXenmgrVmGetPrimaryDomainColor = getVmPrimaryDomainColor uuid
+  , comCitrixXenclientXenmgrVmSetPrimaryDomainColor = \v -> restrict >> setVmPrimaryDomainColor uuid v
+
+  , comCitrixXenclientXenmgrVmGetSecondaryDomainColor = getVmSecondaryDomainColor uuid
+  , comCitrixXenclientXenmgrVmSetSecondaryDomainColor = \v -> restrict >> setVmSecondaryDomainColor uuid v
 
   } where
     stom "" = Nothing

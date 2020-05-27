@@ -204,6 +204,9 @@ pvmPciPtRules =
 gpuPciPtRule :: PciPtRule
 gpuPciPtRule = PciPtRule (Just 0x300) Nothing Nothing True
 
+gpuPciPtRuleAlt :: PciPtRule
+gpuPciPtRuleAlt = PciPtRule (Just 0x380) Nothing Nothing True
+
 -- Match PCI devices on this machine against passthrough rules, output a result in the form of pci addresses
 matchingPciAddresses :: PciPtRule -> IO [(PciAddr, PciPtGuestSlot)]
 matchingPciAddresses (PciPtRuleBDF addr fslot)
@@ -286,7 +289,7 @@ pciGetMatchingDevices src rules = unions <$> mapM from_rule rules
       unions = S.toList . S.unions . map S.fromList
 
 pciGetGpus :: IO [PciDev]
-pciGetGpus = mapM (pciGetDevice . fst) =<< matchingPciAddresses gpuPciPtRule
+pciGetGpus = mapM (pciGetDevice . fst) =<< matchingPciAddressesMany [gpuPciPtRule, gpuPciPtRuleAlt]
 
 pciGetSecondaryGpus :: IO [PciDev]
 pciGetSecondaryGpus = filterM pciGpuIsSecondary =<< pciGetGpus

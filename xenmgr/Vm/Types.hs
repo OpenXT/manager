@@ -119,6 +119,13 @@ data VmConfig = VmConfig {
     , vmcfgMemoryMinMib :: Int
     , vmcfgMemoryStaticMaxMib :: Int
     , vmcfgPreserveOnReboot :: Bool
+    , vmcfgDisplayHandlerStrict :: Bool
+    , vmcfgLongForm :: String
+    , vmcfgShortForm :: String
+    , vmcfgTextColor :: String
+    , vmcfgDomainColor :: String
+    , vmcfgBorderWidth :: Int
+    , vmcfgBorderHeight :: Int
     }
 
 data SupportedOS = Linux | Windows | Windows8 | UnknownOS deriving (Eq,Ord)

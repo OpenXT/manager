@@ -120,6 +120,22 @@ module Vm.Actions
           , setVmAutolockCdDrives
           , setVmHdType
           , cleanupArgoDevice
+          , setVmDisplayHandlerStrict
+          , setVmLongForm
+          , setVmShortForm
+          , setVmTextColor
+          , setVmDomainColor
+          , setVmBorderWidth
+          , setVmBorderHeight
+          , setVmMosaicVmEnabled
+          , setVmVglassEnabled
+          , setVmMosaicMode
+          , setVmWindowedX
+          , setVmWindowedY
+          , setVmWindowedW
+          , setVmWindowedH
+          , setVmPrimaryDomainColor
+          , setVmSecondaryDomainColor
           , EventHookFailMode(..)
           ) where
 
@@ -1839,6 +1855,22 @@ setVmNestedHvm uuid v = saveConfigProperty uuid vmNestedHvm (v::Bool)
 setVmSerial uuid v = saveConfigProperty uuid vmSerial (v::String)
 setVmBios uuid v = saveConfigProperty uuid vmBios (v::String)
 setVmHdType uuid v = saveConfigProperty uuid vmHdType (v::String)
+setVmDisplayHandlerStrict uuid v = saveConfigProperty uuid vmDisplayHandlerStrict (v::Bool)
+setVmLongForm uuid v = saveConfigProperty uuid vmLongForm (v::String)
+setVmShortForm uuid v = saveConfigProperty uuid vmShortForm (v::String)
+setVmTextColor uuid v = saveConfigProperty uuid vmTextColor (v::String)
+setVmDomainColor uuid v = saveConfigProperty uuid vmDomainColor (v::String)
+setVmBorderWidth uuid v = saveConfigProperty uuid vmBorderWidth (v::Int)
+setVmBorderHeight uuid v = saveConfigProperty uuid vmBorderHeight (v::Int)
+setVmMosaicVmEnabled uuid v = saveConfigProperty uuid vmMosaicVmEnabled (v::Bool)
+setVmVglassEnabled uuid v = saveConfigProperty uuid vmVglassEnabled (v::Bool)
+setVmMosaicMode uuid v = saveConfigProperty uuid vmMosaicMode (v::Int)
+setVmWindowedX uuid v = saveConfigProperty uuid vmWindowedX (v::Int)
+setVmWindowedY uuid v = saveConfigProperty uuid vmWindowedY (v::Int)
+setVmWindowedW uuid v = saveConfigProperty uuid vmWindowedW (v::Int)
+setVmWindowedH uuid v = saveConfigProperty uuid vmWindowedH (v::Int)
+setVmPrimaryDomainColor uuid v = saveConfigProperty uuid vmPrimaryDomainColor (v::String)
+setVmSecondaryDomainColor uuid v = saveConfigProperty uuid vmSecondaryDomainColor (v::String)
 
 -- set autolock flag on the vm xenstore tree, per cd device
 -- cd devices which have sticky bit are not subject to autolock ever

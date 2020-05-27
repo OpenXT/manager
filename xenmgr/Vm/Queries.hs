@@ -124,6 +124,22 @@ module Vm.Queries
                , getVmSerial
                , getVmBios
                , getVmHdType
+               , getVmDisplayHandlerStrict
+               , getVmLongForm
+               , getVmShortForm
+               , getVmTextColor
+               , getVmDomainColor
+               , getVmBorderWidth
+               , getVmBorderHeight
+               , getVmMosaicVmEnabled
+               , getVmVglassEnabled
+               , getVmMosaicMode
+               , getVmWindowedX
+               , getVmWindowedY
+               , getVmWindowedW
+               , getVmWindowedH
+               , getVmPrimaryDomainColor
+               , getVmSecondaryDomainColor
                ) where
 
 import Data.String
@@ -256,6 +272,13 @@ getVmConfig uuid resolve_backend_uuids =
        rdd <- future $ getVmRestrictDisplayDepth uuid
        rds <- future $ getVmRestrictDisplayRes uuid
        preserve_on_reboot <- future $ getVmPreserveOnReboot uuid
+       display_handler_strict <- future $ getVmDisplayHandlerStrict uuid
+       long_form <- future $ getVmLongForm uuid
+       short_form <- future $ getVmShortForm uuid
+       text_color <- future $ getVmTextColor uuid
+       domain_color <- future $ getVmDomainColor uuid
+       border_width <- future $ getVmBorderWidth uuid
+       border_height <- future $ getVmBorderHeight uuid
        cfg <-
            force $ VmConfig
                      <$> pure uuid
@@ -290,6 +313,13 @@ getVmConfig uuid resolve_backend_uuids =
                      <*> memmin
                      <*> memmax
                      <*> preserve_on_reboot
+                     <*> display_handler_strict
+                     <*> long_form
+                     <*> short_form
+                     <*> text_color
+                     <*> domain_color
+                     <*> border_width
+                     <*> border_height
        if resolve_backend_uuids
           then plugBackendDomains cfg
           else return cfg
@@ -463,6 +493,55 @@ getVmCpuidResponses uuid = map CpuidResponse . filter (not . null) . map strip .
 
 getVmXciCpuidSignature :: Uuid -> Rpc Bool
 getVmXciCpuidSignature uuid = readConfigPropertyDef uuid vmXciCpuidSignature False
+
+
+getVmMosaicVmEnabled :: Uuid -> Rpc Bool
+getVmMosaicVmEnabled uuid = readConfigPropertyDef uuid vmMosaicVmEnabled False
+
+getVmVglassEnabled :: Uuid -> Rpc Bool
+getVmVglassEnabled uuid = readConfigPropertyDef uuid vmVglassEnabled False
+
+getVmMosaicMode :: Uuid -> Rpc Int
+getVmMosaicMode uuid = readConfigPropertyDef uuid vmMosaicMode 0
+
+getVmWindowedX :: Uuid -> Rpc Int
+getVmWindowedX uuid = readConfigPropertyDef uuid vmWindowedX 0
+
+getVmWindowedY :: Uuid -> Rpc Int
+getVmWindowedY uuid = readConfigPropertyDef uuid vmWindowedY 0
+
+getVmWindowedW :: Uuid -> Rpc Int
+getVmWindowedW uuid = readConfigPropertyDef uuid vmWindowedW 0
+
+getVmWindowedH :: Uuid -> Rpc Int
+getVmWindowedH uuid = readConfigPropertyDef uuid vmWindowedH 0
+
+getVmPrimaryDomainColor :: Uuid -> Rpc String
+getVmPrimaryDomainColor uuid = readConfigPropertyDef uuid vmPrimaryDomainColor ""
+
+getVmSecondaryDomainColor :: Uuid -> Rpc String
+getVmSecondaryDomainColor uuid = readConfigPropertyDef uuid vmSecondaryDomainColor ""
+
+getVmDisplayHandlerStrict :: Uuid -> Rpc Bool
+getVmDisplayHandlerStrict uuid = readConfigPropertyDef uuid vmDisplayHandlerStrict False
+
+getVmLongForm :: Uuid -> Rpc String
+getVmLongForm uuid = readConfigPropertyDef uuid vmLongForm ""
+
+getVmShortForm :: Uuid -> Rpc String
+getVmShortForm uuid = readConfigPropertyDef uuid vmShortForm ""
+
+getVmTextColor :: Uuid -> Rpc String
+getVmTextColor uuid = readConfigPropertyDef uuid vmTextColor ""
+
+getVmDomainColor :: Uuid -> Rpc String
+getVmDomainColor uuid = readConfigPropertyDef uuid vmDomainColor ""
+
+getVmBorderWidth :: Uuid -> Rpc Int
+getVmBorderWidth uuid = readConfigPropertyDef uuid vmBorderWidth 0
+
+getVmBorderHeight :: Uuid -> Rpc Int
+getVmBorderHeight uuid = readConfigPropertyDef uuid vmBorderHeight 0
 
 getVmsByType :: VmType -> Rpc [Uuid]
 getVmsByType t =
