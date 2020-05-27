@@ -22,8 +22,6 @@ module Vm.Types (
                , VmState (..)
                , CpuidResponse (..)
                , PorticaStatus (..)
-               , VmGraphics(..)
-               , VgpuMode(..)
                , VmConfig(..)
                , SupportedOS(..)
                , XcVersion(..)
@@ -80,15 +78,6 @@ data PorticaStatus = PorticaStatus {
     , porticaEnabled :: Bool
     } deriving (Eq, Show)
 
-data VgpuMode = VgpuMode {
-      vgpuMaxVGpus :: Int
-    , vgpuName :: String
-    , vgpuMsiTranslate :: Bool
-    , vgpuPciPtDevices :: [PciPtDev]
-    } deriving (Eq, Show)
-
-data VmGraphics = HDX | VGAEmu deriving (Eq,Show)
-
 data XcVersion = XcVersion String deriving (Eq,Ord)
 
 data S3Mode = S3Pv | S3Ignore | S3Restart | S3Snapshot deriving (Eq,Show)
@@ -112,11 +101,9 @@ data VmConfig = VmConfig {
     , vmcfgNetworks :: [NetworkInfo]
     , vmcfgCryptoKeyDirs :: FilePath
     , vmcfgPvAddons :: Bool
-    , vmcfgGraphics :: VmGraphics
     , vmcfgRestrictDisplayDepth :: Bool
     , vmcfgRestrictDisplayRes :: Bool
     , vmcfgOemAcpiFeatures :: Bool
-    , vmcfgVgpuMode :: Maybe VgpuMode
     , vmcfgPciPtDevices :: [PciPtDev]
     , vmcfgCdExclusive :: Bool
     , vmcfgAutostart :: Bool

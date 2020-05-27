@@ -149,10 +149,7 @@ autoStart uuid = do
     if (not running)
       then do info $ "AutoStart of " ++ show uuid
               startVm uuid `catchError` \e -> warn $ "Problem trying to autostart " ++ show uuid ++ ": " ++ show e
-              typ <- liftRpc $ getVmGraphics uuid
-              case typ of
-                HDX -> liftRpc appPvmAutoStartDelay
-                _   -> liftRpc appSvmAutoStartDelay
+              liftRpc $ appSvmAutoStartDelay
       else return 0
 
 isServiceVm uuid  = getVmType uuid >>= return . test where
@@ -205,8 +202,7 @@ setupAutoStartUuids uuids = do
 
 data AutostartVm = AutostartVm { avm_uuid :: Uuid
                                , avm_prio :: Int
-                               , avm_slot :: Int
-                               , avm_gfx :: VmGraphics }
+                               , avm_slot :: Int }
 
 -- order by (reverse) start on boot priority
 -- so that, higher priority gets started EARLIER
@@ -219,17 +215,13 @@ priorityOrdering uuids =
       get_avm uuid =
           do prio <- getVmStartOnBootPriority uuid
              slot <- getVmSlot uuid
-             gfx  <- getVmGraphics uuid
              return $ AutostartVm { avm_uuid = uuid
                                   , avm_prio = prio
-                                  , avm_slot = slot
-                                  , avm_gfx = gfx }
+                                  , avm_slot = slot }
       priority_compare a b =
           case () of
             _ | avm_prio a > avm_prio b -> LT -- priority always wins
               | avm_prio a < avm_prio b -> GT
-              | avm_gfx a == HDX       -> LT -- pvm wins if priority fails
-              | avm_gfx b == HDX       -> GT
               | otherwise               -> compare (avm_slot a) (avm_slot b) -- slot wins in all else fails
 
 -- Run these operations periodically

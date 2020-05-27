@@ -20,7 +20,6 @@
 module Vm.Config (
                   ConfigProperty
 
-                , diagnose
                 , amtPtActive
 
                   -- read / write / check for existence of config properties
@@ -523,12 +522,6 @@ readConfigPropertyDef uuid p def =
     fromMaybe def <$> readConfigProperty uuid p
 
 type Problem = String
-
--- Find problems with config if any
-diagnose :: VmConfig -> [Problem]
-diagnose cfg
-    | vmcfgGraphics cfg == HDX, not (vmcfgPvAddons cfg) = [ "VM has HDX enabled, but PV addons are not installed" ]
-    | otherwise = [ ]
 
 isHvm :: VmConfig -> Bool
 isHvm cfg = vmcfgVirtType cfg == HVM

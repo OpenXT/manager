@@ -568,8 +568,8 @@ data HostGpu =
      HostGpu { gpuId :: String
              , gpuName :: String } deriving (Eq,Show)
 
-getSurfmanGpu :: Rpc (Maybe HostGpu)
-getSurfmanGpu = do
+getBootVga :: Rpc (Maybe HostGpu)
+getBootVga = do
     devices  <- liftIO pciGetDevices
     devMatch <- filterM boot_vga_filter devices
     case devMatch of
@@ -603,9 +603,9 @@ getHostGpus =
 
 getHostGpus' :: Rpc [HostGpu]
 getHostGpus' = do
-  surfman   <- to_l <$> getSurfmanGpu
+  primary <- to_l <$> getBootVga
   secondary <- secondary_devs =<< appMultiGpuPt
-  return ( surfman ++ map host_gpu secondary )
+  return ( primary ++ map host_gpu secondary )
   where
     to_l Nothing  = []
     to_l (Just x) = [x]

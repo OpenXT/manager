@@ -23,14 +23,12 @@ module Vm.Queries
                , getDomainUuid
                , getStubDomainID
                , whenDomainID, whenDomainID_
-               , getFocusVm
                , getVms
                , getVmsBy
                , getVmsByType
                , getVmByDomid
                , getVmShutdownOrder
                , getGuestVms
-               , getRunningHDX
                , getGraphicsFallbackVm
                , getDefaultNetworkBackendVm
                , getConfigCorruptionInfo
@@ -57,7 +55,6 @@ module Vm.Queries
                , getCryptoKeyLookupPaths
                , getPciPtRules
                , getPciPtDevices
-               , getVisibleVms
                , whenVmRunning
                , isRunning
                , isLoginRequired
@@ -71,7 +68,7 @@ module Vm.Queries
                , getSeamlessVms
                  -- property accessors
                , getVmVirtType
-               , getVmType, getVmGraphics, getMaxVgpus
+               , getVmType
                , getVmWiredNetwork, getVmWirelessNetwork, getVmGpu, getVmCd, getVmMac, getVmAmtPt, getVmPorticaEnabled, getVmPorticaInstalled
                , getVmSeamlessTraffic, getVmAutostartPending, getVmHibernated, getVmMemoryStaticMax
                , getVmMemoryMin
@@ -182,16 +179,12 @@ allVms :: MonadRpc e m => m [Uuid]
 allVms = map fromString <$> dbList "/vm"
 
 -- VMS with corrupt configs
+-- TODO: need implementation
 getConfigCorruptionInfo :: Rpc [(Uuid,String)]
 getConfigCorruptionInfo = do
     vms  <- allVms
     cfgs <- mapM (\uuid -> getVmConfig uuid False) vms
-    return $ foldl' f [] cfgs
-  where
-    f acc cfg =
-        case diagnose cfg of
-          []   ->  acc
-          p:ps -> (vmcfgUuid cfg,p) : acc
+    return []
 
 -- VMS with correct configs
 -- UPDATE: removed the correctness check, it was slowing the RPC extremely and does not protect
@@ -220,11 +213,6 @@ plugBackendDomains cfg =
             domid <- getDomainID uuid
             return $ nic { nicdefBackendDomid = domid }
 
-getMaxVgpus :: Rpc Int
-getMaxVgpus = vgpu <$> querySurfmanVgpuMode
-    where vgpu Nothing  = 0
-          vgpu (Just v) = vgpuMaxVGpus v
-
 isHVM :: VirtType -> Bool
 isHVM vt = vt == HVM
 
@@ -245,8 +233,6 @@ getVmConfig uuid resolve_backend_uuids =
        qemu <- future $ getVmQemuDmPath uuid
        qemu_timeout <- future $ getVmQemuDmTimeout uuid
        excl_cd <- future $ policyQueryCdExclusive
-       vgpu <- future $ ifM (isHVM <$> getVmVirtType uuid) querySurfmanVgpuMode (return Nothing)
-       gfx <- future $ getVmGraphics uuid
        oem_acpi <- future $ getVmOemAcpiFeatures uuid
        pv_addons <- future $ getVmPvAddons uuid
        autostart <- future $ getVmStartOnBoot uuid
@@ -286,11 +272,9 @@ getVmConfig uuid resolve_backend_uuids =
                      <*> nets
                      <*> key_dirs
                      <*> pv_addons
-                     <*> gfx
                      <*> rdd
                      <*> rds
                      <*> oem_acpi
-                     <*> vgpu
                      <*> pcis
                      <*> excl_cd
                      <*> autostart
@@ -421,18 +405,15 @@ getVmTrackDependencies uuid = readConfigPropertyDef uuid vmTrackDependencies Fal
 
 getVmSeamlessMouseX :: Uuid -> (String -> Rpc [HostGpu]) -> Rpc (Maybe Uuid)
 getVmSeamlessMouseX uuid gpusNextTo =
-    do gpu <- gpu_id <$> getVmGpu uuid
+    do gpu <- getVmGpu uuid
        adjacent_gpus <- map gpuId <$> ( gpusNextTo gpu `catchError` (\ex -> return []))
        return . first
          =<< filterM isRunning
          =<< return . concat
          =<< mapM with_gpu adjacent_gpus
     where
-      gpu_id "" = "hdx"
-      gpu_id  x = x
       first [] = Nothing
       first (uuid:_) = Just $ uuid
-      with_gpu "hdx" = getVisibleVms
       with_gpu gpu   = getVmsBy (\vm -> (== gpu) <$> getVmGpu vm)
 
 getVmSeamlessMouseLeft :: Uuid -> Rpc Int
@@ -507,23 +488,6 @@ groupVmsBy get_property uuids =
            rs = groupBy (\a b -> snd a == snd b) vs
        return . map (map fst) $ rs
 
--- get the vm uuid which is supposed to have focus
-getFocusVm :: Rpc (Maybe Uuid)
-getFocusVm =
-    do maybe_uuid <- liftIO $ xsRead "/local/domain/0/switcher/focus-uuid"
-       return . fmap fromString $ maybe_uuid
-
--- get the visible domains (surfman query)
--- NOTE: this doesn't include vms which surfman does not know about, i.e. something which
--- uses passthrough GPU directly
-getVisibleDomids :: Rpc [DomainID]
-getVisibleDomids
-  = map fromIntegral <$>
-     comCitrixXenclientSurfmanGetVisible "com.citrix.xenclient.surfman" "/" `catchError` \_ -> return []
-
-getVisibleVms :: Rpc [Uuid]
-getVisibleVms = catMaybes <$> (mapM getDomainUuid =<< getVisibleDomids)
-
 -- shutdown by descending priority, in parallel if priority equal
 getVmShutdownOrder :: Rpc [[Uuid]]
 getVmShutdownOrder =
@@ -540,12 +504,6 @@ getGuestVms =
       match_guest_type Svm = True
       match_guest_type _   = False
       is_guest uuid = match_guest_type <$> getVmType uuid
-
-getRunningHDX :: Rpc [Uuid]
-getRunningHDX = do
-    filterM isRunning =<< getVmsBy isHDX
-    where
-      isHDX uuid = getVmGraphics uuid >>= return . (== HDX)
 
 getGraphicsFallbackVm :: Rpc (Maybe Uuid)
 getGraphicsFallbackVm = do
@@ -708,22 +666,15 @@ getPciPtRulesList uuid =
 -- Get passthrough devices for a VM
 getPciPtDevices :: Uuid -> Rpc [PciPtDev]
 getPciPtDevices uuid =
-    do gfx <- getVmGraphics uuid
-       amt <- amtPtActive uuid
+    do amt <- amtPtActive uuid
        -- We've got PCI rules for a specifc VM
        vm_rules <- getPciPtRulesList uuid
-       -- We've got PCI rules for HDX
-       hdx_devs <- case gfx of
-                     HDX -> querySurfmanVgpuMode >>= return . vgpu_devs
-                     _   -> return []
        -- And then there are AMT passthrough rules
        let amt_rules = case amt of True -> amtPciPtRules
                                    _    -> []
        -- And optional secondary gpu devs based on GPU property
-       -- ('hdx' indicates surfman devices and should be ignored here)
        gpu_addr_str <- readConfigPropertyDef uuid vmGpu ""
-       let gpu_addr = case gpu_addr_str of "hdx" -> Nothing
-                                           _     -> pciFromStr gpu_addr_str
+       let gpu_addr = pciFromStr gpu_addr_str
        gpu_dev  <- liftIO $ case gpu_addr of
                      Nothing   -> return []
                      Just addr -> do dev <- pciGetDevice addr
@@ -732,10 +683,7 @@ getPciPtDevices uuid =
        let rules = amt_rules ++ vm_rules
 
        devs_from_rules <- liftIO $ pciGetMatchingDevices SourceConfig rules
-       return $ hdx_devs ++ gpu_dev ++ devs_from_rules
-    where
-      vgpu_devs Nothing = []
-      vgpu_devs (Just mode) = vgpuPciPtDevices mode
+       return $ gpu_dev ++ devs_from_rules
 
 getVmFirewallRules :: Uuid -> Rpc [Firewall.Rule]
 getVmFirewallRules uuid = readConfigPropertyDef uuid vmFirewallRules []
@@ -789,21 +737,7 @@ getVmWirelessNetwork uuid
       first (n:_) = Just $ nicdefNetwork n
 
 getVmGpu :: MonadRpc e m => Uuid -> m String
-getVmGpu uuid
-  = ifM (getVmNativeExperience uuid)
-      hdxIfTools {- else -} current
-  where
-    current = readConfigPropertyDef uuid vmGpu ""
-    hdxIfTools
-      = ifM (getVmPvAddons uuid)
-          (return "hdx") {- else -} current
-
-getVmGraphics :: MonadRpc e m => Uuid -> m VmGraphics
-getVmGraphics uuid =
-    do gpu <- getVmGpu uuid
-       return $ case gpu of
-                  "hdx" -> HDX
-                  _ -> VGAEmu
+getVmGpu uuid = readConfigPropertyDef uuid vmGpu ""
 
 -- cd inserted in virtual drive
 getVmCd :: Uuid -> Rpc String
@@ -1016,10 +950,7 @@ getVmVsnd uuid = readConfigPropertyDef uuid vmVsnd False
 getVmShutdownPriority uuid =
     readConfigProperty uuid vmShutdownPriority >>= test where
         test (Just pri) = return pri
-        -- default shutdown priority of pvm is lower so it gets shutdown later on
-        test Nothing = getVmGraphics uuid >>= \t -> return $ case t of
-                                                           HDX ->  (-10)
-                                                           _   -> (0 :: Int)
+        test Nothing = return (0 :: Int)
 
 getVmExtraXenvm uuid = concat . intersperse ";" <$> readConfigPropertyDef uuid vmExtraXenvm []
 getVmExtraHvm   uuid = concat . intersperse ";" <$> readConfigPropertyDef uuid vmExtraHvms []

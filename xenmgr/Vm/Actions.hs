@@ -66,7 +66,7 @@ module Vm.Actions
           , removeVmEnvIso
           -- property accessors
           , setVmType
-          , setVmWiredNetwork, setVmWirelessNetwork, setVmGpu, setVmCd
+          , setVmWiredNetwork, setVmWirelessNetwork, setVmCd, setVmGpu
           , setVmSeamlessTraffic
           , setVmStartOnBoot, setVmHiddenInSwitcher, setVmHiddenInUi, setVmMemory, setVmName
           , setVmImagePath, setVmSlot, setVmPvAddons, setVmPvAddonsVersion
@@ -535,7 +535,7 @@ startVmInternal uuid is_reboot = do
     --Check if vm has a bdf in gpu
     isGpuPt uuid = do
         gpu <- getVmGpu uuid
-        return (gpu /= "" && gpu /= "hdx")
+        return (gpu /= "")
 
     prepareAndCheckConfig uuid = do
       ok <- stage1 -- early tests / dependency startup
@@ -649,24 +649,7 @@ startupCheckNics cfg
           = return ()
 
 startupCheckGraphicsConstraints :: VmConfig -> XM Bool
-startupCheckGraphicsConstraints cfg
-  | (vmcfgGraphics cfg == HDX)
-    = hdxCount >> vtd >> return True
-
-  | otherwise
-    = return True
-
-  where
-    hdxCount = liftRpc $ do
-      hdx <- getRunningHDX
-      case vmcfgVgpuMode cfg of
-        Just vgpu | vgpuMaxVGpus vgpu < length hdx + 1 -> failCannotStartBecauseHdxRunning
-        _ -> return ()
-
-    vtd = do
-      hvmInfo <- liftIO getHvmInfo
-      let vtd = hvmDirectIOEnabled hvmInfo
-      when (not vtd)$ failCannotStartHdxWithoutVtD
+startupCheckGraphicsConstraints cfg = return True
 
 startupCheckAMTConstraints :: VmConfig -> XM Bool
 startupCheckAMTConstraints cfg
@@ -1651,22 +1634,14 @@ setVmWirelessNetwork :: Uuid -> Network -> XM ()
 setVmWirelessNetwork uuid network
     = getVmWirelessNics uuid >>= pure . take 1 >>= mapM_ (\n -> changeVmNicNetwork uuid (nicdefId n) network)
 
--- TODO: this sucks
--- update 6.05.2011: sucks a little bit less now but still
 setVmGpu :: Uuid -> String -> Rpc ()
 setVmGpu uuid s = do
-    running <- isRunning uuid
-    when running $ failCannotTurnHdxWhenVmRunning
-    case s of
-      "hdx" -> test_hdx
-      _ -> return ()
-    saveConfigProperty uuid vmGpu s
-    where
-      set_hdx uuid cfgs = map set cfgs
-          where set (uuid',c) | uuid == uuid' = (uuid', c { vmcfgGraphics = HDX })
-                              | otherwise     = (uuid', c)
-      test_hdx = do
-        unlessM (getVmPvAddons uuid) $ failCannotTurnHdxWithoutPvAddons
+  availableGpus <- getGpuPlacements
+  case filter (matchBdf s) availableGpus of
+    [] -> return () -- No configured gpu-placement
+    _  -> saveConfigProperty uuid vmGpu s
+  where
+    matchBdf s (gpu, placement) = isInfixOf s (gpuId gpu)
 
 setVmCd :: Uuid -> String -> Rpc ()
 setVmCd uuid str =

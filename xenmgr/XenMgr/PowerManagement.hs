@@ -214,30 +214,14 @@ clearCurrentPmAction :: Rpc ()
 clearCurrentPmAction =
     liftIO $ xsRm "/xenmgr/pm-current-action"
 
-hdxRunning :: Rpc Bool
-hdxRunning = (/= []) <$> getRunningHDX
-
 pmGetScreenRestoreVm :: Rpc (Maybe Uuid)
 pmGetScreenRestoreVm = dbMaybeRead "/xenmgr/pm-visible-vm"
 
 pmClearScreenRestoreVm :: Rpc ()
 pmClearScreenRestoreVm = dbRm "/xenmgr/pm-visible-vm"
 
--- doesn't store if any HDX vm running
 pmSetScreenRestoreVm :: Uuid -> Rpc ()
-pmSetScreenRestoreVm vm
-  = --whenM (not <$> hdxRunning) $
-      dbWrite "/xenmgr/pm-visible-vm" vm
-
-storeVisibleVm :: Rpc ()
-storeVisibleVm = from =<< getVisibleVms where
-  from (vm:_) = pmSetScreenRestoreVm vm
-  from _ = return ()
-
-restoreVisibleVm :: Rpc Bool
-restoreVisibleVm = from =<< pmGetScreenRestoreVm where
-  from (Just vm) = pmClearScreenRestoreVm >> switchVm vm
-  from _ = return False
+pmSetScreenRestoreVm vm = dbWrite "/xenmgr/pm-visible-vm" vm
 
 pmShutdownVms :: Bool -> Rpc ()
 pmShutdownVms force = do
@@ -253,12 +237,8 @@ pmShutdownVms force = do
               when (not resumed) $ failResumeFromSleep
       running <- isRunning uuid
       when running $
-           do t <- getVmGraphics uuid
-              when (t == HDX) (switchVm uuid >> return())
-              -- ensure the VM is considered dead internally (i.e. shutdown even handlers have ran)
-              -- by waiting for internal Shutdown state upto 3 secs
-              (shutdownVm uuid >> waitForVmInternalState uuid Shutdown Shutdown 3)
-                `catchError` shutdownError
+          (shutdownVm uuid >> waitForVmInternalState uuid Shutdown Shutdown 3)
+              `catchError` shutdownError
 
     --FIXME! : should really translate xenvm errors into something better than strings
     shutdownError err
@@ -275,24 +255,6 @@ shutdownCommon offCommand force = do
       -- wait for actuall poweroff
       threadDelay $ 360 * (10^6)
 
-splitHDX :: [Uuid] -> Rpc ([Uuid], [Uuid])
-splitHDX uuids = go [] [] uuids where
-    go no_hdx hdx []           = return (no_hdx,hdx)
-    go no_hdx hdx (uuid:uuids) =
-        do g <- getVmGraphics uuid
-           case g of
-             HDX -> go no_hdx ( hdx ++ [uuid] ) uuids
-             _   -> go ( no_hdx ++ [uuid] ) hdx uuids
-
-onScreenHDX :: (MonadRpc e m) => Uuid -> m a -> m a
-onScreenHDX uuid f
-  = go =<< getVmGraphics uuid where
-    go HDX = do
-        success <- reallySwitchVm uuid 10
-        when (not success) $ warn "FAILED to switch to HDX vm before putting it into S3"
-        f
-    go _   = f
-
 -- returns True if vm was put to sleep here, False if that was not necessary (because
 -- it already was in S3 for example)
 putS3 :: Uuid -> XM Bool
@@ -301,18 +263,15 @@ putS3 uuid = putS3' uuid =<< liftRpc (getVmS3Mode uuid)
 putS3' uuid S3Ignore = return True
 putS3' uuid S3Pv = liftRpc $ do
   acpi <- getVmAcpiState uuid
-  if (acpi /= 3)
-    then onScreenHDX uuid $ do
-           info ("PM: putting " ++ show uuid ++ " to sleep") >> sleepVm uuid
-           return True
-    else   return False
+  case acpi of
+    3 -> return False
+    _ -> info ("PM: putting " ++ show uuid ++ " to sleep") >> sleepVm uuid >> return True
+
 putS3' uuid S3Restart = liftRpc $ do
   acpi <- getVmAcpiState uuid
-  if (acpi /= 3)
-    then onScreenHDX uuid $ do
-           info ("PM: shutting " ++ show uuid ++ " down") >> shutdownVm uuid
-           return True
-    else   return False
+  case acpi of
+    3 -> return False
+    _ -> info ("PM: shutting " ++ show uuid ++ " down") >> shutdownVm uuid >> return True
 
 putS3' uuid m = error ("s3 mode " ++ show m ++ " unimplemented")
 
@@ -389,33 +348,19 @@ execute_ ActionSleep supervised = do
     liftRpc (whenM inputAuthOnBoot $ info "PM: locking screen" >> inputLock)
     info "PM: expiring user sessions"
     liftRpc expireSessions
-    -- info "PM: logging out of synchroniser"
-    -- liftRpc $ comCitrixXenclientBedUserLogout "com.citrix.xenclient.bed" "/"
-    info "PM: executing surfman pre-s3"
-    liftRpc $ comCitrixXenclientSurfmanPreS3 "com.citrix.xenclient.surfman" "/"
-    info "PM: executing s3 suspend script"
-    liftIO $ spawnShell "/usr/share/xenclient/enter-s3.sh"
-    info "PM: resumed host from s3"
-    info "PM: executing surfman post-s3"
-    liftRpc $ comCitrixXenclientSurfmanPostS3 "com.citrix.xenclient.surfman" "/"
-    hdx <- liftRpc getRunningHDX
     -- FIXME: we probably should have separate 'host-resuming-from-sleep-state' here
     liftRpc $ setHostState HostIdle
     -- Resume all vms
     resumeQueue (map fst queue)
-    when (hdx == []) $ do
-      restored <- liftRpc $ restoreVisibleVm
-      when (not restored) $ void $ liftRpc $ switchGraphicsFallback
     liftRpc $ pmClearScreenRestoreVm
   where
-    -- stage S3 so non hdx vm go to sleep first in parallel, then all hdx vms
+    -- stage S3 so vms go to sleep in parallel.
     putVmsToSleep  = xmContext >>= \xm -> liftRpc $ do
       guests <- getGuestVms
       -- FIXME: remove this by making all vms (not just user vms) go thru this pipeline
       let needsS3Restart uuid = (`elem` [ S3Restart ]) <$> getVmS3Mode uuid
       more   <- getVmsBy needsS3Restart
-      (no_hdx, hdx) <- splitHDX guests
-      parallelVmExecInStages [ no_hdx, hdx, more ] (sleep xm)
+      parallelVmExecInStages [ guests, more ] (sleep xm)
 
     sleep xm uuid = go =<< isRunning uuid where
       go True = runXM xm $ putS3 uuid
@@ -431,7 +376,6 @@ execute_ ActionSleep supervised = do
 
 execute_ ActionHibernate supervised = do
     info "PM: received host hibernate request"
-    liftRpc $ maybeSwitch =<< getRunningHDX
 
     -- execute hibernate request in parallel for all VMS (but pvm always last)
     -- if it bugs, raise nice error message
@@ -446,8 +390,7 @@ execute_ ActionHibernate supervised = do
 
     parallelHib = xmContext >>= \xm -> liftRpc $
         do guests <- getGuestVms
-           (no_hdx,hdx) <- splitHDX guests
-           parallelVmExecInStages [no_hdx,hdx] (attempt xm)
+           parallelVmExecInStages [guests] (attempt xm)
 
     attempt xm uuid = go =<< isRunning uuid where
       go True = (runXM xm $ putS4 uuid) `catchError` on_vm_hib_error uuid
@@ -501,8 +444,6 @@ handleLidStateChanged closed = do
     when closed $ do
       a <- action
       hostWhenIdleDoWithState (hostStateOfPmAction a) $ do
-        when (a `elem` [ActionHibernate, ActionSleep]) $
-          liftRpc $ storeVisibleVm
         executePmActionInternal a False
   where
     action = do
@@ -518,17 +459,13 @@ handlePowerButtonPressed = do
 
 handleSleepButtonPressed = do
     debug "PM: detected sleep button press event"
-    hostWhenIdleDoWithState HostGoingToSleep $ do
-      liftRpc storeVisibleVm
-      executePmActionInternal ActionSleep True
+    hostWhenIdleDoWithState HostGoingToSleep $ executePmActionInternal ActionSleep True
 
 handleBatteryLevelChanged = do
     level <- liftIO $ getBatteryLevel
     debug $ "PM: detected battery level change event = " ++ (show level)
     when (level == BatCritical) $
-         hostWhenIdleDoWithState HostGoingToHibernate $ do
-           liftRpc storeVisibleVm
-           executePmActionInternal ActionHibernate False
+        executePmActionInternal ActionHibernate False
 
 whenEvent :: Event -> EventHandler -> XM ()
 whenEvent (intf,signal) h =
