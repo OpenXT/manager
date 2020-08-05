@@ -95,6 +95,7 @@
         "devtype": "disk"
       }
     },
-    "qemu-dm-path": "\/usr\/sbin\/svirt-interpose"
+    "qemu-dm-path": "\/usr\/sbin\/svirt-interpose",
+    "vglass-enabled": "true"
   }
 }
