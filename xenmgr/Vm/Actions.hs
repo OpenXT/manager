@@ -106,7 +106,6 @@ module Vm.Actions
           , setVmReady
           , setVmProvidesDefaultNetworkBackend
           , setVmVkbd
-          , setVmVfb
           , setVmArgo
           , setVmRestrictDisplayDepth
           , setVmRestrictDisplayRes
@@ -749,7 +748,6 @@ withPreCreationState uuid f =
 xsp domid = "/local/domain/" ++ show domid
 xsp_dom0  = "/local/domain/0"
 argoBack domid = "/backend/argo/" ++ show domid ++ "/0"
-vfbBack domid = "/backend/vfb/" ++ show domid ++ "/0"
 
 setupArgoDevice uuid =
   whenDomainID_ uuid $ \domid -> liftIO $ do
@@ -1843,7 +1841,6 @@ setVmDownloadProgress uuid v = do
   notifyVmTransferChanged uuid  
 setVmReady uuid v = saveConfigProperty uuid vmReady (v::Bool)
 setVmVkbd uuid v = saveConfigProperty uuid vmVkbd (v::Bool)
-setVmVfb uuid v = saveConfigProperty uuid vmVfb (v::Bool)
 setVmArgo uuid v = saveConfigProperty uuid vmArgo (v::Bool)
 setVmRestrictDisplayDepth uuid v = saveConfigProperty uuid vmRestrictDisplayDepth (v::Bool)
 setVmRestrictDisplayRes uuid v = saveConfigProperty uuid vmRestrictDisplayRes (v::Bool)

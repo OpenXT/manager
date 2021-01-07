@@ -652,11 +652,6 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmSetVkbd = restrict' $ setVmVkbd uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetVkbd = setVmVkbd uuid
 
-  , comCitrixXenclientXenmgrVmGetVfb = getVmVfb uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedGetVfb = getVmVfb uuid
-  , comCitrixXenclientXenmgrVmSetVfb = restrict' $ setVmVfb uuid
-  , comCitrixXenclientXenmgrVmUnrestrictedSetVfb = setVmVfb uuid
-
   , comCitrixXenclientXenmgrVmGetArgo = getVmArgo uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetArgo = getVmArgo uuid
   , comCitrixXenclientXenmgrVmSetArgo = restrict' $ setVmArgo uuid

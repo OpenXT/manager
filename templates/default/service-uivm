@@ -64,7 +64,6 @@
     "apic": "true",
     "nx": "true",
     "vkbd" : "true",
-    "vfb" : "false",
     "argo" : "true",
     "memory-min": "192",
     "memory": "256",

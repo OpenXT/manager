@@ -112,7 +112,6 @@ module Vm.Queries
                , getVmReady
                , getVmProvidesDefaultNetworkBackend
                , getVmVkbd
-               , getVmVfb
                , getVmArgo
                , getVmRestrictDisplayDepth
                , getVmRestrictDisplayRes
@@ -1051,7 +1050,6 @@ getVmOvfTransportIso uuid = readConfigPropertyDef uuid vmOvfTransportIso False
 getVmDownloadProgress uuid = fromMaybe (0::Int) <$> dbRead ("/vm/"++show uuid++"/download-progress")
 getVmReady uuid = readConfigPropertyDef uuid vmReady True
 getVmVkbd uuid = readConfigPropertyDef uuid vmVkbd False
-getVmVfb uuid = readConfigPropertyDef uuid vmVfb False
 getVmArgo uuid = readConfigPropertyDef uuid vmArgo False
 getVmRestrictDisplayDepth uuid = readConfigPropertyDef uuid vmRestrictDisplayDepth False
 getVmRestrictDisplayRes uuid = readConfigPropertyDef uuid vmRestrictDisplayRes False

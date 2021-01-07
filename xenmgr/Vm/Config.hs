@@ -65,7 +65,7 @@ module Vm.Config (
                 , vmXciCpuidSignature
                 , vmS3Mode
                 , vmS4Mode
-                , vmVsnd, vmVkbd, vmVfb, vmArgo
+                , vmVsnd, vmVkbd, vmArgo
                 , vmRealm
                 , vmSyncUuid
                 , vmIcbinnPath
@@ -472,7 +472,6 @@ vmQemuDmPath = property "config.qemu-dm-path"
 vmQemuDmTimeout = property "config.qemu-dm-timeout"
 vmVsnd = property "config.vsnd"
 vmVkbd = property "config.vkbd"
-vmVfb = property "config.vfb"
 vmArgo = property "config.argo"
 vmHpet = property "config.hpet"
 vmHpetDefault = True
@@ -899,7 +898,6 @@ miscSpecs cfg = do
           , ("extra"           , vmCmdLine)
           , ("vcpus"           , vmVcpus)
           , ("hap"             , vmHap)
-          , ("vfb"             , vmVfb)
           , ("seclabel"        , vmFlaskLabel)
           , ("init_seclabel"   , vmInitFlaskLabel)
           , ("device_model_stubdomain_seclabel", vmStubdomFlaskLabel)
