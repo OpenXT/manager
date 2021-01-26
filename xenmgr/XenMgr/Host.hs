@@ -79,11 +79,16 @@ module XenMgr.Host (
             , hostIsLicensed
             , hostSetLicense
             , hostLicenseInit
+            , setDisplayHandlerGpu
+            , getDisplayHandlerGpu
+            , getGpusForDisplayhandler
+            , getOnboardGpuBdf
             ) where
 
 import Data.Bits
 import Data.Char
 import Data.List
+import qualified Data.List.Split as Split
 import Data.Maybe
 import Data.Ord
 import Data.Time
@@ -121,6 +126,7 @@ import XenMgr.Config
 import XenMgr.Errors
 import Vm.Types
 import Vm.Pci
+import {-# SOURCE #-} Vm.Queries
 import XenMgr.Db
 import XenMgr.Notify
 
@@ -574,22 +580,28 @@ getBootVga = do
     devMatch <- filterM boot_vga_filter devices
     case devMatch of
         [] -> return Nothing
-        _  -> return $ Just $ HostGpu "hdx" (show (devName (head devMatch)))
+        _  -> return $ Just $ HostGpu (show $ devAddr $ head devMatch)
+                                      (show $ devName $ head devMatch)
 
-    where
-        boot_vga_filter d = do
-            let boot_vga_file = devSysfsPath d </> "boot_vga"
-            boot_vga_exists <- liftIO $ doesFileExist boot_vga_file
-            if boot_vga_exists 
-                then do contents <- chomp <$> (liftIO $ readFile boot_vga_file)
-                        case contents of
-                            "1" -> return True
-                            _   -> return False
-                else return False
+boot_vga_filter d = do
+    let boot_vga_file = devSysfsPath d </> "boot_vga"
+    boot_vga_exists <- liftIO $ doesFileExist boot_vga_file
+    if boot_vga_exists
+        then do contents <- chomp <$> (liftIO $ readFile boot_vga_file)
+                case contents of
+                    "1" -> return True
+                    _   -> return False
+        else return False
 
 hostGpus :: MVar (Maybe [HostGpu])
 {-# NOINLINE hostGpus #-}
 hostGpus = unsafePerformIO (newMVar Nothing)
+
+drmSysfsDevDir :: FilePath
+drmSysfsDevDir = "/sys/class/drm"
+
+translateDrmToBdf :: String -> IO String
+translateDrmToBdf drmCard = readSymbolicLink (drmSysfsDevDir </> drmCard)
 
 getHostGpus :: Rpc [HostGpu]
 getHostGpus =
@@ -633,9 +645,97 @@ assertGpuId gpu_id =
 configureGpuPlacement :: String -> Int -> Rpc ()
 configureGpuPlacement gpu_id n = assertGpuId gpu_id >> dbWrite ("/xenmgr/gpu-placement/" ++ gpu_id) n
 
+
+-- Return the pci address of the onboard graphics
+getOnboardGpuBdf :: Rpc String
+getOnboardGpuBdf = do
+    devices  <- liftIO pciGetDevices
+    devMatch <- filterM boot_vga_filter devices
+    case devMatch of
+      [] -> return "No onboard graphics"
+      _  -> return $ show (devAddr (head devMatch))
+
 getGpuPlacements :: Rpc [(HostGpu,Int)]
-getGpuPlacements = getHostGpus >>= \gpus -> zip gpus <$> mapM placement gpus
-    where placement gpu = getGpuPlacement (gpuId gpu)
+getGpuPlacements =
+    (filterM isDhGpus =<< getHostGpus) >>= \gpus -> zip gpus <$> mapM placement gpus
+  where
+    placement gpu = getGpuPlacement (gpuId gpu)
+    isDhGpus gpu = do
+      dhBdf <- dbReadWithDefault "" "/xenmgr/dh/gpu"
+      return $ not $ isInfixOf (gpuId gpu) dhBdf
+
+--filter the list of all drm cards and return the cardX value that matches
+--the provided pci address
+getDrmCardByGpu :: String -> Rpc Int
+getDrmCardByGpu addr = do
+    drmCardList <- getAllDrmCards
+    card <- liftIO $ filterM (drmFilter addr) drmCardList
+    case card of
+      [] -> return $ (-1)
+      _  -> return $ (read (drop 4 (head card)) :: Int)
+    where
+      drmFilter addr drmCard = do
+        path <- translateDrmToBdf drmCard
+        return $ isInfixOf addr path
+
+--filter function to remove entries that are not
+--of the form "cardX" where X is a digit from 0-9
+onlyCards :: String -> Bool
+onlyCards path = not (isInfixOf "-" path) && (isInfixOf "card" path)
+
+--returns a list of all "cardX" entries in /sys/class/drm
+getAllDrmCards :: Rpc [String]
+getAllDrmCards = liftIO $ do
+    dirContents <- getDirectoryContents drmSysfsDevDir
+    return $ filter onlyCards dirContents
+
+--Verifies that the string passed is in valid domain-bdf format
+wellFormed' [] count =
+    case count of
+      12 -> True
+      _  -> False
+wellFormed' (x:xs) count =
+    case count of
+      4 -> if x == ':' then wellFormed' xs (count+1) else wellFormed' [] count
+      7 -> if x == ':' then wellFormed' xs (count+1) else wellFormed' [] count
+      10-> if x == '.' then wellFormed' xs (count+1) else wellFormed' [] count
+      _ -> if isDigit x then wellFormed' xs (count+1) else wellFormed' [] count
+
+wellFormed [] = False
+wellFormed bdf = wellFormed' bdf 0
+
+--returns a list of Strings that represent each drm card
+--filtered by the contents of db entry /xenmgr/dh/gpu
+getDrmCardList :: String -> Rpc [String]
+getDrmCardList addrs = do
+    drmCardList <- getAllDrmCards
+    let addr_list = Split.splitOn "," addrs
+    cardMatches <- liftIO $ filterM (matchAddrToDrm addr_list) drmCardList
+    debug $ "cardMatches: " ++ show cardMatches
+    return $ map (drop 4) cardMatches -- TODO: drop 4?
+  where
+    matchAddrToDrm addr_list card = do
+      symlink <- readSymbolicLink (drmSysfsDevDir </> card)
+      let match = [x | x <- addr_list, isInfixOf x symlink, wellFormed x]
+      case match of
+        [] -> return False
+        _  -> return True
+
+--Return a tuple of HostGpu object and drm card ID
+--that are available for the displayhandler to use
+--(ie, gpus not passed through to a guest VM)
+getGpusForDisplayhandler :: Rpc [(HostGpu, Int)]
+getGpusForDisplayhandler =
+    (filterM ptGpus =<< getHostGpus) >>= \gpus -> zip gpus <$> mapM drm gpus
+  where
+    drm gpu = getDrmCardByGpu (gpuId gpu)
+    ptGpus gpu = do
+      vm_uuids <- getVms
+      ptGpus <- mapM getVmGpu vm_uuids
+      --ptGpus type: [String]
+      case filter (isInfixOf (gpuId gpu)) ptGpus of
+        [] -> return True
+        _  -> return False
 
 getGpusLeftOf :: String -> Rpc [HostGpu]
 getGpusLeftOf gpu_id =
@@ -733,3 +833,49 @@ selectHostCaptureDevice :: PcmDeviceId -> Rpc ()
 selectHostCaptureDevice (PcmDeviceId idS) = do
   dbWrite "/audio/capture-pcm" idS
   liftIO . void $ readProcessOrDie "update-pcm-config" [] ""
+
+--Write a comma separated list of pci addresses
+--to the db, representing the gpus to be given to
+--the display handler.
+setDisplayHandlerGpu :: String -> Rpc ()
+setDisplayHandlerGpu gpu = do
+  let gpus = Split.splitOn "," gpu
+  okForDH <- filterM isGpuOkForDH gpus
+  let ok = filter wellFormed okForDH
+  --if the resulting list made it through both filters,
+  --none are pt or badly formed. Write the db if this or ""
+  case (gpus == ok || gpu == "") of
+    True  -> do dbWrite "xenmgr/dh/gpu" gpu
+                notifyDisplayHandlerGpuChanged
+    False -> return $ error "A gpu is already assigned for Passthrough or badly formed."
+
+  --Return True if gpu is not already assigned for PT
+  where isGpuOkForDH gpu = do
+          vm_uuids <- getVms
+          ptGpus <- mapM getVmGpu vm_uuids
+          let ok = filter (gpu ==) ptGpus
+          case ok of
+            [] -> return True
+            _  -> return False
+
+
+--local implementation of Data.List.Utils join
+--can be replaced with "join" if that module is ever
+--included.
+xenmgrJoin :: [a] -> [[a]] -> [a]
+xenmgrJoin delim l = concat (intersperse delim l)
+
+--return a String of comma separated ints that represent
+--the card numbers that the displayhandler should use on start
+--(ie 0,2,3 for --device 0 --device 2 --device 3)
+getDisplayHandlerGpu :: Rpc String
+getDisplayHandlerGpu = do
+    onboardGpuBdf <- getOnboardGpuBdf
+    debug $ "onboardGpuBdf: " ++ show onboardGpuBdf
+    pci_addrs <- dbReadWithDefault "" "/xenmgr/dh/gpu"
+    debug $ "pci_addrs: " ++ show pci_addrs
+    cardList <- getDrmCardList pci_addrs
+    debug $ "cardList: " ++ show cardList
+    case pci_addrs of
+      "" -> getDrmCardByGpu onboardGpuBdf >>= \x -> return $ show x
+      _  -> return $ xenmgrJoin "," cardList

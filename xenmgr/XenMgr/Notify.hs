@@ -27,6 +27,7 @@ module XenMgr.Notify (
                      , notifyStorageSpaceLow
                      , notifyDiagGatherRequest
                      , updateKeyedNotifyTask
+                     , notifyDisplayHandlerGpuChanged
                      ) where
 import Data.String
 import Data.Int
@@ -49,6 +50,10 @@ notifyHostStateChanged state =
 notifyLicenseChanged :: (MonadRpc e m) => m ()
 notifyLicenseChanged =
   notifyComCitrixXenclientXenmgrHostLicenseChanged (fromString "/host")
+
+notifyDisplayHandlerGpuChanged :: (MonadRpc e m) => m ()
+notifyDisplayHandlerGpuChanged =
+  notifyComCitrixXenclientXenmgrHostDisplayhandlerGpuChanged (fromString "/host")
 
 configChangedTasks :: MVar (Map Uuid ScheduledTask)
 {-# NOINLINE configChangedTasks #-}
