@@ -134,9 +134,6 @@ implementation xm testingCtx =
   , comCitrixXenclientXenmgrConfigGetAutolockCdDrives = appGetAutolockCdDrives
   , comCitrixXenclientXenmgrConfigSetAutolockCdDrives = hostChangeAutolockCdDrives
 
-  , comCitrixXenclientXenmgrConfigUiGetDrmGraphics = appGetDrmGraphics
-  , comCitrixXenclientXenmgrConfigUiSetDrmGraphics = appSetDrmGraphics
-
   , comCitrixXenclientXenmgrConfigUiGetSwitcherEnabled = appGetSwitcherEnabled
   , comCitrixXenclientXenmgrConfigUiSetSwitcherEnabled = appSetSwitcherEnabled
   , comCitrixXenclientXenmgrConfigUiGetSwitcherSelfSwitchEnabled = appGetSwitcherSelfSwitchEnabled
