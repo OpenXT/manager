@@ -1,5 +1,4 @@
-autogen
-dbd
-db-cmd
+Rpc
+dist
 oe-logs
 oe-workdir

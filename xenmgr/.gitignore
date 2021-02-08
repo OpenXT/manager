@@ -3,5 +3,5 @@
 xenmgr
 xenmgr.debug
 dist
-
-
+oe-logs
+oe-workdir
