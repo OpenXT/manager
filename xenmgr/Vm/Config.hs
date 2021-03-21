@@ -559,7 +559,7 @@ stringifyXlConfig (XlConfig params) = unlines params
 getXlConfig :: VmConfig -> Rpc XlConfig
 getXlConfig cfg =
     fmap (XlConfig . concat) . mapM (force <=< future) $
-    [prelude, diskSpecs cfg, nicSpecs cfg, pciSpecs cfg
+    [prelude, virtSpecs cfg, diskSpecs cfg, nicSpecs cfg, pciSpecs cfg
     , miscSpecs cfg]
   where
     uuid = vmcfgUuid cfg
@@ -567,13 +567,7 @@ getXlConfig cfg =
     prelude = do Just uuid <- readConfigProperty uuid vmUuidP :: Rpc (Maybe Uuid)
                  name <- readConfigPropertyDef uuid vmName ""
                  hd_type <- readConfigPropertyDef uuid vmHdType "ide"
-                 let virt = vmcfgVirtType cfg
-                 let kernel = maybe [] (\path -> ["kernel='"++path++"'"]) (vmcfgKernelPath cfg)
                  let nameStr = if name == "" then [] else [("name='"++ name ++ "'")]
-                 let builder = ["type='" ++ ( virtStr virt ) ++ "'"]
-                 let dm_args = case virt of
-                                 HVM -> ["device_model_version='qemu-xen'"]
-                                 _   -> []
                  let hdtype = ["hdtype='" ++ hd_type ++ "'"]
 
                  return $ [ "uuid='" ++ (show uuid) ++ "'"
@@ -586,15 +580,30 @@ getXlConfig cfg =
                           , "pci_power_mgmt=1"
                           ]
                             ++ nameStr
-                            ++ kernel
-                            ++ builder
-                            ++ dm_args
                             ++ hdtype
-            where
-                virtStr virt = case virt of
-                                 HVM -> "hvm"
-                                 PVH -> "pvh"
-                                 PV  -> "pv"
+
+virtSpecs :: VmConfig -> Rpc [Param]
+virtSpecs cfg = do
+    let virt = vmcfgVirtType cfg
+    cmd <- readConfigProperty uuid vmCmdLine
+    let builder = ["type='" ++ ( virtStr virt ) ++ "'"]
+    let kernel = case virt of
+                   HVM -> []
+                   _   -> maybe [] (\path -> ["kernel='"++path++"'"]) (vmcfgKernelPath cfg)
+    let cmdline = case virt of
+                    HVM -> []
+                    _   -> _cmdline cmd
+    let dm_args = case virt of
+                    HVM -> ["device_model_version='qemu-xen'"]
+                    _   -> []
+    return $ builder ++ kernel ++ cmdline ++ dm_args
+  where
+    uuid = vmcfgUuid cfg
+    _cmdline _cmd = maybe [] (\cmd -> ["cmdline=" ++ (wrapQuotes cmd)]) _cmd
+    virtStr virt = case virt of
+                         HVM -> "hvm"
+                         PVH -> "pvh"
+                         PV  -> "pv"
 
 -- Next section: information about disk drives
 allDisks = vmcfgDisks
@@ -864,7 +873,6 @@ miscSpecs cfg = do
           , ("viridian"        , vmViridian) --set to 'default'
           , ("nx"              , vmNx)
           , ("boot"            , vmBoot)
-          , ("extra"           , vmCmdLine)
           , ("vcpus"           , vmVcpus)
           , ("hap"             , vmHap)
           , ("vkb"             , vmVkbd)
@@ -897,9 +905,6 @@ miscSpecs cfg = do
                                              "serial"   -> name ++ "=" ++ (wrapBrackets $ wrapQuotes v)
                                              "iomem"   -> name ++ "=" ++ (wrapBrackets $ wrapQuotes v)
                                              "ioports"   -> name ++ "=" ++ (wrapBrackets $ wrapQuotes v)
-                                             "extra"    -> case v of
-                                                           "" -> []
-                                                           _  -> name ++ "=" ++ (wrapQuotes v)
                                              "seclabel" -> name ++ "=" ++ (wrapQuotes v)
                                              "init_seclabel" -> name ++ "=" ++ (wrapQuotes v)
                                              "device_model_stubdomain_seclabel" -> name ++ "=" ++ (wrapQuotes v)
