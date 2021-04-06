@@ -95,6 +95,7 @@ withMountedDisk extraEnv diskT ro phys_path part action
            do lo <- locreate dev
               finally' (loremove lo) $
                 do loop <- lopart lo part
+                   settle part
                    mount loop temp_dir ro
                    finally' (umount temp_dir) $ action temp_dir
   where
@@ -114,6 +115,14 @@ withMountedDisk extraEnv diskT ro phys_path part action
     args = ["--find", "--show" ] ++ partscan part
     partscan Nothing = []
     partscan (Just pnum) = ["--partscan"]
+
+-- losetup returns without waiting for the the partition device nodes.
+-- The kernel creates them fast enough, but they aren't necessarily
+-- labeled by by udev, and mount can fail from the incorrect label.
+settle :: Maybe PartitionNum -> IO ()
+settle Nothing = return ()
+settle (Just pmnum) = do
+    void $ readProcessOrDie "udevadm" ["settle"] ""
 
 lopart :: FilePath -> Maybe PartitionNum -> IO FilePath
 lopart lo Nothing = return lo
