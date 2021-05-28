@@ -19,8 +19,7 @@
 {-# LANGUAGE FlexibleContexts, DeriveDataTypeable #-}
 
 module XenMgr.Errors (
-                   failSimultaneousAutostartAndHdx
-                 , failHibernateFailed
+                   failHibernateFailed
                  , failCannotEditPropertiesDueToPolicy
                  , failDuplicateDevice
                  , failNoSuchDevice
@@ -29,15 +28,11 @@ module XenMgr.Errors (
                  , failNoSuchDisk
                  , failIncorrectDiskType
                  , failIncorrectDeviceType
-                 , failCannotTurnHdxWhenVmRunning
-                 , failCannotTurnHdxWithoutPvAddons
-                 , failCannotStartHdxWithoutVtD
                  , failActionRequiresPvAddons
                  , failPropertyIsReadonly
                  , failPropertyIsWriteonly
                  , failNotGatheringDiagnostics
                  , failDiskSha1SumDoesNotMatch
-                 , failCannotStartBecauseHdxRunning
                  , failCannotStartBecauseAmtPtRunning
                  , failCannotStartBecauseOemFeaturesRunning
                  , failActionSuppressedByPolicy
@@ -101,9 +96,6 @@ failNotEnoughMemory :: (MonadError XmError m) => m a
 failNotEnoughMemory = throwError $ XError 101 "Not enough memory!"
 
 -- List of literate errors thrown to upper layers (UI)
-failSimultaneousAutostartAndHdx :: (MonadError XmError m) => m a
-failSimultaneousAutostartAndHdx = throwError $ XError 200 "HDX and Autostart cannot be simultaneously activated on more than one VM."
-
 failHibernateFailed :: (MonadError XmError m) => m a
 failHibernateFailed = throwError $ XError 201 "Failed to hibernate VM"
 
@@ -128,15 +120,6 @@ failIncorrectDiskType = throwError $ XError 207 "Incorrect disk type"
 failIncorrectDeviceType :: (MonadError XmError m) => m a
 failIncorrectDeviceType = throwError $ XError 208 "Incorrect device type"
 
-failCannotTurnHdxWhenVmRunning :: (MonadError XmError m) => m a
-failCannotTurnHdxWhenVmRunning = throwError $ XError 209 "Cannot turn HDX on/off while the VM is running"
-
-failCannotTurnHdxWithoutPvAddons :: (MonadError XmError m) => m a
-failCannotTurnHdxWithoutPvAddons = throwError $ XError 210 "Cannot turn HDX on until XenClient PV addons are installed inside the guest"
-
-failCannotStartHdxWithoutVtD :: (MonadError XmError m) => m a
-failCannotStartHdxWithoutVtD = throwError $ XError 211 "Cannot start VM with HDX because VT-d is turned off."
-
 failDuplicateDevice :: (MonadError XmError m) => m a
 failDuplicateDevice = throwError $ XError 212 "Failed to add a disk, device ID is duplicated"
 
@@ -154,9 +137,6 @@ failNotGatheringDiagnostics = throwError $ XError 216 "Currently not gathering d
 
 failDiskSha1SumDoesNotMatch :: (MonadError XmError m) => m a
 failDiskSha1SumDoesNotMatch = throwError $ XError 217 "Disk SHA1 sum does not match the expected one!"
-
-failCannotStartBecauseHdxRunning :: (MonadError XmError m) => m a
-failCannotStartBecauseHdxRunning = throwError $ XError 218 "Cannot start VM - too many vms with HDX are already running"
 
 failCannotStartBecauseAmtPtRunning :: (MonadError XmError m) => m a
 failCannotStartBecauseAmtPtRunning = throwError $ XError 219 "Cannot start VM - another VM with AMT passthrough is already running"

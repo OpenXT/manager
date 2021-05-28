@@ -49,9 +49,6 @@
 	    <xci:RpcRule>allow destination com.citrix.xenclient.input</xci:RpcRule>
 	    <xci:RpcRule>allow destination com.citrix.xenclient.usbdaemon</xci:RpcRule>
 	    <xci:RpcRule>allow destination com.citrix.xenclient.updatemgr</xci:RpcRule>
-	    <xci:RpcRule>allow destination com.citrix.xenclient.surfman interface com.citrix.xenclient.surfman member increase_brightness</xci:RpcRule>
-	    <xci:RpcRule>allow destination com.citrix.xenclient.surfman interface com.citrix.xenclient.surfman member decrease_brightness</xci:RpcRule>
-	    <xci:RpcRule>allow destination com.citrix.xenclient.surfman interface com.citrix.xenclient.surfman member display_image</xci:RpcRule>
 	    <xci:RpcRule>allow destination com.citrix.xenclient.networkdaemon</xci:RpcRule>
 	  </xci:RpcFirewall>
 

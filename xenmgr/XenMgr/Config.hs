@@ -58,7 +58,6 @@ module XenMgr.Config
                  , appGetSwitcherKeyboardFollowsMouse, appSetSwitcherKeyboardFollowsMouse
                  , appGetSwitcherResistance, appSetSwitcherResistance
                  , appGetSwitcherStatusReportEnabled, appSetSwitcherStatusReportEnabled
-                 , appGetDrmGraphics, appSetDrmGraphics
                  , appGetSupportedLanguages
                  , appGetLanguage, appSetLanguage
                  , BuildInfo(..)
@@ -372,20 +371,3 @@ dictFile = catMaybes . map (safeHead2 . split '=') . lines
 
 dictFileStr :: [(String,String)] -> String
 dictFileStr = unlines . map mkline where mkline (k,v) = k ++ "=" ++ v
-
-drmScript :: [String] -> IO String
-drmScript opts = readProcessOrDie "/usr/share/xenclient/drm_graphics_option.sh" opts ""
-
-appGetDrmGraphics :: Rpc Bool
-appGetDrmGraphics = liftIO $ do
-  v <- E.try (parse . chomp <$> drmScript ["-g"])
-  case v of
-    Right v' -> return v'
-    Left (e :: E.SomeException) -> return False
-  where
-    parse "true" = True
-    parse _ = False
-
-appSetDrmGraphics :: Bool -> Rpc ()
-appSetDrmGraphics v = liftIO $
-  void $ drmScript ["-u", "-s", if v then "true" else "false"]

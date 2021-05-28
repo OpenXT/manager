@@ -48,7 +48,6 @@ module Vm.Pci (
            , pciGetMMIOResources
            , pciGetMemHole
            , pciGetMemHoleBase
-           , querySurfmanVgpuMode
            ) where
 
 import Data.Char
@@ -87,7 +86,6 @@ import Tools.Misc
 
 import XenMgr.Rpc
 import XenMgr.Db
-import Rpc.Autogen.SurfmanClient
 
 import Vm.PciDatabase
 import Vm.Types
@@ -206,6 +204,9 @@ pvmPciPtRules =
 gpuPciPtRule :: PciPtRule
 gpuPciPtRule = PciPtRule (Just 0x300) Nothing Nothing True
 
+gpuPciPtRuleAlt :: PciPtRule
+gpuPciPtRuleAlt = PciPtRule (Just 0x380) Nothing Nothing True
+
 -- Match PCI devices on this machine against passthrough rules, output a result in the form of pci addresses
 matchingPciAddresses :: PciPtRule -> IO [(PciAddr, PciPtGuestSlot)]
 matchingPciAddresses (PciPtRuleBDF addr fslot)
@@ -288,7 +289,7 @@ pciGetMatchingDevices src rules = unions <$> mapM from_rule rules
       unions = S.toList . S.unions . map S.fromList
 
 pciGetGpus :: IO [PciDev]
-pciGetGpus = mapM (pciGetDevice . fst) =<< matchingPciAddresses gpuPciPtRule
+pciGetGpus = mapM (pciGetDevice . fst) =<< matchingPciAddressesMany [gpuPciPtRule, gpuPciPtRuleAlt]
 
 pciGetSecondaryGpus :: IO [PciDev]
 pciGetSecondaryGpus = filterM pciGpuIsSecondary =<< pciGetGpus
@@ -314,28 +315,6 @@ pciDriverPath addr = pciSysfsDevPath addr </> "driver"
 pciGetInfo :: PciDev -> IO (Maybe PciInfo)
 pciGetInfo dev = listToMaybe . map snd . filter byDev . unPciCache <$> readPciCache
   where byDev (dev',_) = dev' == dev
-
--- query the surface manager for list of pt devices in passthrough mode / vgpu mode parameters
-querySurfmanVgpuMode :: Rpc (Maybe VgpuMode)
-querySurfmanVgpuMode = do
-    r <- ( Just <$>
-           comCitrixXenclientSurfmanVgpuMode "com.citrix.xenclient.surfman" "/"
-         ) `catchError` (\_ -> return Nothing)
-    case r of
-      Nothing -> return Nothing
-      Just (max_count, dev_name, msi_trans, bdfs) ->
-          let devices = pci_pt max_count bdfs msi_trans (T.pack dev_name) in
-          return . Just $ VgpuMode (fromIntegral max_count) dev_name msi_trans devices
-
-    where
-      -- fill the msi translate flag & dev name
-      pci_pt 0 _    _   _    = []
-      pci_pt _ []   _   _    = []
-      pci_pt _ bdfs msi name = map (fill msi name) . catMaybes . map (parsePciPtDev SourceVendorPlugin) $ bdfs
-
-      fill msi name d =
-          d { pciPtMsiTranslate = msi
-            , pciPtDevice = (pciPtDevice d) { devNameT = name } }
 
 -- | driver bits
 newtype PciDriver = PciDriver { pciDriverName :: String } deriving (Eq, Show)

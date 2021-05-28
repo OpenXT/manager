@@ -155,6 +155,9 @@ implementation xm host_info_cache = do
   , comCitrixXenclientXenmgrInstallerGetEula              = getEULA
   , comCitrixXenclientXenmgrInstallerGetInstallstate      = _GetInstallstate
   , comCitrixXenclientXenmgrInstallerProgressInstallstate = _ProgressInstallstate
+  , comCitrixXenclientXenmgrHostGetDisplayhandlerGpu = getDisplayHandlerGpu
+  , comCitrixXenclientXenmgrHostSetDisplayhandlerGpu = \gpu -> setDisplayHandlerGpu gpu
+  , comCitrixXenclientXenmgrHostListGpusForDisplayhandler = _ListGpusForDisplayhandler
   }
 
   where
@@ -260,10 +263,22 @@ _ListPciDevices =
                             ]
 
 _ListGpuDevices :: Rpc [Map String String]
-_ListGpuDevices = map dict_entry <$> getGpuPlacements where
-    dict_entry (d,p) = M.fromList $ [ ("addr", gpuId d)
-                                    , ("name", gpuName d)
-                                    , ("placement", show p) ]
+_ListGpuDevices =
+    map dict_entry <$> getGpuPlacements
+  where
+    dict_entry (d,p) =
+      M.fromList $ [ ("addr", gpuId d)
+                   , ("name", gpuName d)
+                   , ("placement", show p) ]
+
+_ListGpusForDisplayhandler :: Rpc [Map String String]
+_ListGpusForDisplayhandler =
+    map dict_entry <$> getGpusForDisplayhandler
+  where
+    dict_entry (d,c) =
+      M.fromList $ [ ("addr", gpuId d)
+                   , ("name", gpuName d)
+                   , ("drmcard", show c) ]
 
 _GetGpuPlacement :: String -> Rpc Int32
 _GetGpuPlacement id = fromIntegral <$> getGpuPlacement id

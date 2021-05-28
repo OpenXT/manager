@@ -272,11 +272,6 @@ whenRunning xm = do
     usb <- uuidRpc getVmUsbEnabled
     when usb $ whenDomainID_ uuid $ \domid -> usbUp (fromIntegral domid)
 
-cleanupVkbd :: Uuid -> DomainID -> Rpc ()
-cleanupVkbd uuid domid = do
-    rpcCallOnce (Xl.xlInputDbus uuid "detach_vkbd" [toVariant $ (read (show domid) :: Int32) ])
-    return ()
-
 maybeCleanupSnapshots :: Vm ()
 maybeCleanupSnapshots = do
     uuid <- vmUuid
@@ -307,8 +302,6 @@ whenShutdown xm reason = do
         usbDown domid
         removeAlsa domid
         cleanupArgoDevice domid
-        vkb_enabled <- getVmVkbd uuid
-        when vkb_enabled $ liftRpc $ cleanupVkbd uuid domid
       _ -> return ()
     liftIO $ removeVmEnvIso uuid
     uuidRpc $ manageFrontVifs False

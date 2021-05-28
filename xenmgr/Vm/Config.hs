@@ -20,7 +20,6 @@
 module Vm.Config (
                   ConfigProperty
 
-                , diagnose
                 , amtPtActive
 
                   -- read / write / check for existence of config properties
@@ -66,7 +65,7 @@ module Vm.Config (
                 , vmXciCpuidSignature
                 , vmS3Mode
                 , vmS4Mode
-                , vmVsnd, vmVkbd, vmVfb, vmArgo
+                , vmVsnd, vmVkbd, vmArgo
                 , vmRealm
                 , vmSyncUuid
                 , vmIcbinnPath
@@ -83,6 +82,22 @@ module Vm.Config (
                 , vmSerial
                 , vmBios
                 , vmHdType
+                , vmDisplayHandlerStrict
+                , vmLongForm
+                , vmShortForm
+                , vmTextColor
+                , vmDomainColor
+                , vmBorderWidth
+                , vmBorderHeight
+                , vmMosaicVmEnabled
+                , vmVglassEnabled
+                , vmMosaicMode
+                , vmWindowedX
+                , vmWindowedY
+                , vmWindowedW
+                , vmWindowedH
+                , vmPrimaryDomainColor
+                , vmSecondaryDomainColor
                 ) where
 
 import Control.Arrow
@@ -457,7 +472,6 @@ vmQemuDmPath = property "config.qemu-dm-path"
 vmQemuDmTimeout = property "config.qemu-dm-timeout"
 vmVsnd = property "config.vsnd"
 vmVkbd = property "config.vkbd"
-vmVfb = property "config.vfb"
 vmArgo = property "config.argo"
 vmHpet = property "config.hpet"
 vmHpetDefault = True
@@ -465,6 +479,22 @@ vmTimerMode = property "config.timer-mode"
 vmTimerModeDefault = "no_delay_for_missed_ticks"
 vmNestedHvm = property "config.nestedhvm"
 vmSerial = property "config.serial"
+vmDisplayHandlerStrict = property "config.display-handler-strict"
+vmLongForm = property "config.long-form"
+vmShortForm = property "config.short-form"
+vmTextColor = property "config.text-color"
+vmDomainColor = property "config.domain-color"
+vmBorderWidth = property "config.border-width"
+vmBorderHeight = property "config.border-height"
+vmMosaicVmEnabled = property "config.mosaic-vm-enabled"
+vmVglassEnabled = property "config.vglass-enabled"
+vmMosaicMode = property "config.mosaic-mode"
+vmWindowedX = property "config.windowed-x"
+vmWindowedY = property "config.windowed-y"
+vmWindowedW = property "config.windowed-w"
+vmWindowedH = property "config.windowed-h"
+vmPrimaryDomainColor = property "config.domain-color"
+vmSecondaryDomainColor = property "config.secondary-domain-color"
 vmStubdomMemory = property "config.stubdom-memory"
 vmStubdomCmdline = property "config.stubdom-cmdline"
 vmBios = property "config.bios"
@@ -523,12 +553,6 @@ readConfigPropertyDef uuid p def =
     fromMaybe def <$> readConfigProperty uuid p
 
 type Problem = String
-
--- Find problems with config if any
-diagnose :: VmConfig -> [Problem]
-diagnose cfg
-    | vmcfgGraphics cfg == HDX, not (vmcfgPvAddons cfg) = [ "VM has HDX enabled, but PV addons are not installed" ]
-    | otherwise = [ ]
 
 isHvm :: VmConfig -> Bool
 isHvm cfg = vmcfgVirtType cfg == HVM
@@ -795,6 +819,7 @@ miscSpecs cfg = do
     nested_ <- nested
     dm_override_ <- liftRpc dm_override
     dm_display_ <- liftRpc dm_display
+    vkb_ <- vkb
     extra_hvms <- readConfigPropertyDef uuid vmExtraHvms []
     acpi_table_ <- liftIO $ acpi_table
 
@@ -810,6 +835,7 @@ miscSpecs cfg = do
         ++ nested_
         ++ dm_override_
         ++ dm_display_
+        ++ vkb_
         ++ acpi_table_
     where
       uuid = vmcfgUuid cfg
@@ -864,6 +890,11 @@ miscSpecs cfg = do
              "none"  -> return ["vga='stdvga'"]
              ""      -> return ["vga='stdvga'"]
              d       -> return ["vga='stdvga'", "dm_display='" ++ d ++ "'"]
+
+      vkb = readConfigPropertyDef uuid vmVkbd False >>=
+                \ v -> if v then return ["vkb=['backend-type=linux,feature-abs-pointer=1,height=32768,width=32768']"]
+                            else return []
+
       -- Other config keys taken directly from .config subtree which we delegate directly
       -- to xenvm
       passToXenvmProperties =
@@ -875,8 +906,6 @@ miscSpecs cfg = do
           , ("boot"            , vmBoot)
           , ("vcpus"           , vmVcpus)
           , ("hap"             , vmHap)
-          , ("vkb"             , vmVkbd)
-          , ("vfb"             , vmVfb)
           , ("seclabel"        , vmFlaskLabel)
           , ("init_seclabel"   , vmInitFlaskLabel)
           , ("device_model_stubdomain_seclabel", vmStubdomFlaskLabel)

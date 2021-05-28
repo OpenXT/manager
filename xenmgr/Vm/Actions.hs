@@ -66,7 +66,7 @@ module Vm.Actions
           , removeVmEnvIso
           -- property accessors
           , setVmType
-          , setVmWiredNetwork, setVmWirelessNetwork, setVmGpu, setVmCd
+          , setVmWiredNetwork, setVmWirelessNetwork, setVmCd, setVmGpu
           , setVmSeamlessTraffic
           , setVmStartOnBoot, setVmHiddenInSwitcher, setVmHiddenInUi, setVmMemory, setVmName
           , setVmImagePath, setVmSlot, setVmPvAddons, setVmPvAddonsVersion
@@ -106,7 +106,6 @@ module Vm.Actions
           , setVmReady
           , setVmProvidesDefaultNetworkBackend
           , setVmVkbd
-          , setVmVfb
           , setVmArgo
           , setVmRestrictDisplayDepth
           , setVmRestrictDisplayRes
@@ -120,6 +119,22 @@ module Vm.Actions
           , setVmAutolockCdDrives
           , setVmHdType
           , cleanupArgoDevice
+          , setVmDisplayHandlerStrict
+          , setVmLongForm
+          , setVmShortForm
+          , setVmTextColor
+          , setVmDomainColor
+          , setVmBorderWidth
+          , setVmBorderHeight
+          , setVmMosaicVmEnabled
+          , setVmVglassEnabled
+          , setVmMosaicMode
+          , setVmWindowedX
+          , setVmWindowedY
+          , setVmWindowedW
+          , setVmWindowedH
+          , setVmPrimaryDomainColor
+          , setVmSecondaryDomainColor
           , EventHookFailMode(..)
           ) where
 
@@ -535,7 +550,7 @@ startVmInternal uuid is_reboot = do
     --Check if vm has a bdf in gpu
     isGpuPt uuid = do
         gpu <- getVmGpu uuid
-        return (gpu /= "" && gpu /= "hdx")
+        return (gpu /= "")
 
     prepareAndCheckConfig uuid = do
       ok <- stage1 -- early tests / dependency startup
@@ -649,24 +664,7 @@ startupCheckNics cfg
           = return ()
 
 startupCheckGraphicsConstraints :: VmConfig -> XM Bool
-startupCheckGraphicsConstraints cfg
-  | (vmcfgGraphics cfg == HDX)
-    = hdxCount >> vtd >> return True
-
-  | otherwise
-    = return True
-
-  where
-    hdxCount = liftRpc $ do
-      hdx <- getRunningHDX
-      case vmcfgVgpuMode cfg of
-        Just vgpu | vgpuMaxVGpus vgpu < length hdx + 1 -> failCannotStartBecauseHdxRunning
-        _ -> return ()
-
-    vtd = do
-      hvmInfo <- liftIO getHvmInfo
-      let vtd = hvmDirectIOEnabled hvmInfo
-      when (not vtd)$ failCannotStartHdxWithoutVtD
+startupCheckGraphicsConstraints cfg = return True
 
 startupCheckAMTConstraints :: VmConfig -> XM Bool
 startupCheckAMTConstraints cfg
@@ -750,7 +748,6 @@ withPreCreationState uuid f =
 xsp domid = "/local/domain/" ++ show domid
 xsp_dom0  = "/local/domain/0"
 argoBack domid = "/backend/argo/" ++ show domid ++ "/0"
-vfbBack domid = "/backend/vfb/" ++ show domid ++ "/0"
 
 setupArgoDevice uuid =
   whenDomainID_ uuid $ \domid -> liftIO $ do
@@ -913,19 +910,6 @@ bootVm config reboot
       --      liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-product") "OpenXT 5.0.0"
        --     liftIO $ xsWrite (xsp domid ++ "/bios-strings/xenvendor-seamless-hint") "0"
 
-      --Changes to surfman/inputserver moved these calls into xenvm. With xenvm removal, it's easier to call
-      --them from Xenmgr.
-      surfmanDbusCalls uuid =
-          whenDomainID_ uuid $ \domid -> do
-            rpcCallOnce (Xl.xlSurfmanDbus uuid "set_pv_display" [toVariant $ (read (show domid) :: Int32), toVariant $ ""])
-            rpcCallOnce (Xl.xlSurfmanDbus uuid "set_visible" [toVariant $ (read (show domid) :: Int32), toVariant $ (0 :: Int32), toVariant $ False])
-            return ()
-
-      inputDbusCalls uuid =
-          whenDomainID_ uuid $ \domid -> do
-            rpcCallOnce (Xl.xlInputDbus uuid "attach_vkbd" [toVariant $ (read (show domid):: Int32) ])
-            return ()
-
       handleCreationPhases :: XM ()
       handleCreationPhases = do
         waitForVmInternalState uuid CreatingDevices Running 30
@@ -959,11 +943,6 @@ bootVm config reboot
             liftIO $ xsWrite backendNode (show domid)
             liftIO $ xsChmod backendNode "r0"
 
-          vfb_enabled <- getVmVfb uuid
-          when vfb_enabled $ surfmanDbusCalls uuid
-
-          vkb_enabled <- getVmVkbd uuid
-          when vkb_enabled $ inputDbusCalls uuid
           info $ "done pre-dm setup for " ++ show uuid
          
         waitForVmInternalState uuid Created Running 60
@@ -1669,32 +1648,14 @@ setVmWirelessNetwork :: Uuid -> Network -> XM ()
 setVmWirelessNetwork uuid network
     = getVmWirelessNics uuid >>= pure . take 1 >>= mapM_ (\n -> changeVmNicNetwork uuid (nicdefId n) network)
 
--- TODO: this sucks
--- update 6.05.2011: sucks a little bit less now but still
 setVmGpu :: Uuid -> String -> Rpc ()
 setVmGpu uuid s = do
-    running <- isRunning uuid
-    when running $ failCannotTurnHdxWhenVmRunning
-    case s of
-      "hdx" -> test_hdx
-      _ -> return ()
-    saveConfigProperty uuid vmGpu s
-    where
-      set_hdx uuid cfgs = map set cfgs
-          where set (uuid',c) | uuid == uuid' = (uuid', c { vmcfgGraphics = HDX })
-                              | otherwise     = (uuid', c)
-      test_hdx = do
-        unlessM (getVmPvAddons uuid) $ failCannotTurnHdxWithoutPvAddons
-        verifyAutostartAndHDX (set_hdx uuid)
-
-verifyAutostartAndHDX :: ([(Uuid,VmConfig)] -> [(Uuid,VmConfig)]) -> Rpc ()
-verifyAutostartAndHDX change = do
-  max_vgpus <- getMaxVgpus
-  vms <- getGuestVms
-  cfgs <- zip vms <$> mapM (\uuid -> getVmConfig uuid False) vms
-  let cfgs' = change cfgs
-      offending (uuid,cfg) = vmcfgGraphics cfg == HDX && vmcfgAutostart cfg
-  when (length (filter offending cfgs') > max_vgpus) $ failSimultaneousAutostartAndHdx
+  availableGpus <- getGpuPlacements
+  case filter (matchBdf s) availableGpus of
+    [] -> return () -- No configured gpu-placement
+    _  -> saveConfigProperty uuid vmGpu s
+  where
+    matchBdf s (gpu, placement) = isInfixOf s (gpuId gpu)
 
 setVmCd :: Uuid -> String -> Rpc ()
 setVmCd uuid str =
@@ -1723,12 +1684,7 @@ setVmSeamlessTraffic uuid view = saveConfigProperty uuid vmSeamlessTraffic view
 
 setVmStartOnBoot :: Uuid -> Bool -> Rpc ()
 setVmStartOnBoot uuid start = do
-    when start $ verifyAutostartAndHDX (set_start uuid)
     saveConfigProperty uuid vmStartOnBoot start
-  where
-    set_start uuid cfgs = map set cfgs
-        where set (uuid',c) | uuid == uuid' = (uuid', c { vmcfgAutostart = True })
-                            | otherwise     = (uuid', c)
 
 setVmHiddenInSwitcher :: Uuid -> Bool -> Rpc ()
 setVmHiddenInSwitcher uuid hidden = do
@@ -1885,7 +1841,6 @@ setVmDownloadProgress uuid v = do
   notifyVmTransferChanged uuid  
 setVmReady uuid v = saveConfigProperty uuid vmReady (v::Bool)
 setVmVkbd uuid v = saveConfigProperty uuid vmVkbd (v::Bool)
-setVmVfb uuid v = saveConfigProperty uuid vmVfb (v::Bool)
 setVmArgo uuid v = saveConfigProperty uuid vmArgo (v::Bool)
 setVmRestrictDisplayDepth uuid v = saveConfigProperty uuid vmRestrictDisplayDepth (v::Bool)
 setVmRestrictDisplayRes uuid v = saveConfigProperty uuid vmRestrictDisplayRes (v::Bool)
@@ -1897,6 +1852,22 @@ setVmNestedHvm uuid v = saveConfigProperty uuid vmNestedHvm (v::Bool)
 setVmSerial uuid v = saveConfigProperty uuid vmSerial (v::String)
 setVmBios uuid v = saveConfigProperty uuid vmBios (v::String)
 setVmHdType uuid v = saveConfigProperty uuid vmHdType (v::String)
+setVmDisplayHandlerStrict uuid v = saveConfigProperty uuid vmDisplayHandlerStrict (v::Bool)
+setVmLongForm uuid v = saveConfigProperty uuid vmLongForm (v::String)
+setVmShortForm uuid v = saveConfigProperty uuid vmShortForm (v::String)
+setVmTextColor uuid v = saveConfigProperty uuid vmTextColor (v::String)
+setVmDomainColor uuid v = saveConfigProperty uuid vmDomainColor (v::String)
+setVmBorderWidth uuid v = saveConfigProperty uuid vmBorderWidth (v::Int)
+setVmBorderHeight uuid v = saveConfigProperty uuid vmBorderHeight (v::Int)
+setVmMosaicVmEnabled uuid v = saveConfigProperty uuid vmMosaicVmEnabled (v::Bool)
+setVmVglassEnabled uuid v = saveConfigProperty uuid vmVglassEnabled (v::Bool)
+setVmMosaicMode uuid v = saveConfigProperty uuid vmMosaicMode (v::Int)
+setVmWindowedX uuid v = saveConfigProperty uuid vmWindowedX (v::Int)
+setVmWindowedY uuid v = saveConfigProperty uuid vmWindowedY (v::Int)
+setVmWindowedW uuid v = saveConfigProperty uuid vmWindowedW (v::Int)
+setVmWindowedH uuid v = saveConfigProperty uuid vmWindowedH (v::Int)
+setVmPrimaryDomainColor uuid v = saveConfigProperty uuid vmPrimaryDomainColor (v::String)
+setVmSecondaryDomainColor uuid v = saveConfigProperty uuid vmSecondaryDomainColor (v::String)
 
 -- set autolock flag on the vm xenstore tree, per cd device
 -- cd devices which have sticky bit are not subject to autolock ever

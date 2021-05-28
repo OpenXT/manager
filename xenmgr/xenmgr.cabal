@@ -27,6 +27,7 @@ Executable xenmgr
     regex-posix,
     hsyslog,
     zlib,
+    split,
     xch-rpc,
     xchutils,
     xchargo,
