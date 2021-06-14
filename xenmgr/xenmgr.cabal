@@ -33,7 +33,8 @@ Executable xenmgr
     xchargo,
     xchxenstore,
     xchdb,
-    xenmgr-core
+    xenmgr-core,
+    rpc-autogen
 
   Main-Is: Main.hs
   GHC-Options: -O2 -Werror -fwarn-incomplete-patterns -threaded -dynamic
