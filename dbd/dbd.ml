@@ -27,8 +27,9 @@ module D = Debug.Debugger(struct let name="dbd" end)
 open D
 
 let update_interval = 3.0
+let default_pidfile = "/var/run/dbd.pid"
 
-let monitor_rpc_dbus () =
+let monitor_rpc_dbus pidfile =
 	let intf = Printf.sprintf "com.citrix.xenclient.db" in
 	(match DBus.Bus.request_name bus intf [DBus.Bus.DoNotQueue] with
 	| DBus.Bus.PrimaryOwner -> ()
@@ -36,6 +37,7 @@ let monitor_rpc_dbus () =
 	);
 	db_export_dbus "/" bus;
 	Unixext.daemonize ();
+	(try Unixext.pidfile_write pidfile with _ -> ());
 	let t0 = ref ( Unix.time() ) in
 	let dt_without_update = ref 0.0 in
 	while true do
@@ -55,6 +57,13 @@ let monitor_rpc_dbus () =
 	done
 
 let _ =
+	let pidf = ref "" in
+	let speclist = [("--pidfile", Arg.Set_string pidf, "")] in
+	let usage_msg = "usage: dbd [--pidfile <filename>] [--help]" in
+	Arg.parse speclist (fun _ -> ()) usage_msg;
+
+	let pidfile = if !pidf <> "" then !pidf else default_pidfile in
+
 	Logs.set_default Log.Debug ["syslog:dbd"];
 	Logs.set_default Log.Info ["syslog:dbd"];
 	Logs.set_default Log.Warn ["syslog:dbd"];
@@ -67,4 +76,4 @@ let _ =
 	(* make sure to write db on sigterm if dirty *)
 	Sys.set_signal Sys.sigterm (Sys.Signal_handle (fun _ ->
 		if !tree_dirty then ( write_db ~unlink_files:true ); exit 0));
-	monitor_rpc_dbus ()
+	monitor_rpc_dbus pidfile
