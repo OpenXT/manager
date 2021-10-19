@@ -41,7 +41,8 @@ let monitor_rpc_dbus pidfile =
 	let t0 = ref ( Unix.time() ) in
 	let dt_without_update = ref 0.0 in
 	while true do
-		ignore (DBus.Connection.read_write_dispatch bus 1000);
+		let sleep_time = if !tree_dirty then 3000 else -1 in
+		ignore (DBus.Connection.read_write_dispatch bus sleep_time);
 		let t1 = Unix.time () in
 		let dt = t1 -. !t0 in
 		t0 := t1;
