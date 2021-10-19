@@ -327,7 +327,7 @@ and placement_in_dir nodes dir =
 	List.map place nodes
 
 let write_db ~unlink_files =
-	info "Updating database";
+	debug "Updating database";
 	(* go through placement rules and write using them *)
 	List.iter (fun rul -> write_db_using_rule ~unlink_files ~rul) rules;
 
