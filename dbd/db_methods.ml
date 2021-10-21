@@ -122,7 +122,7 @@ let com_citrix_xenclient_db_exists msg p =
 
 (* updates *)
 let com_citrix_xenclient_db_write msg p v =
-	debug "write %s %s %s" (sender_name msg) p v;
+	if !debugging then debug "write %s %s %s" (sender_name msg) p v;
 	let path = Tree.path_of_string ( get_domain_path_or_fail msg p ) in
 	let value = Json.String v in
 	tree := Tree.write !tree path value;
@@ -130,7 +130,7 @@ let com_citrix_xenclient_db_write msg p v =
 	()
 
 let com_citrix_xenclient_db_inject msg p v =
-	debug "inject %s %s %s" (sender_name msg) p v;
+	if !debugging then debug "inject %s %s %s" (sender_name msg) p v;
         let path = Tree.path_of_string ( get_domain_path_or_fail msg p ) in
         let json = Json_parse.of_string v in
         let value = Tree.of_json json in
@@ -139,7 +139,7 @@ let com_citrix_xenclient_db_inject msg p v =
 	()
 
 let com_citrix_xenclient_db_rm msg p =
-	debug "rm %s %s" (sender_name msg) p;
+	if !debugging then debug "rm %s %s" (sender_name msg) p;
 	let path = Tree.path_of_string ( get_domain_path_or_fail msg p ) in
 	tree := Tree.rm !tree path;
 	tree_dirty := true;
