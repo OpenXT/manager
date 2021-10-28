@@ -81,6 +81,8 @@ module Vm.Config (
                 , vmNestedHvm
                 , vmSerial
                 , vmBios
+                , vmSecureboot
+                , vmAuthenforce
                 , vmHdType
                 , vmDisplayHandlerStrict
                 , vmLongForm
@@ -498,6 +500,8 @@ vmSecondaryDomainColor = property "config.secondary-domain-color"
 vmStubdomMemory = property "config.stubdom-memory"
 vmStubdomCmdline = property "config.stubdom-cmdline"
 vmBios = property "config.bios"
+vmSecureboot = property "config.secureboot"
+vmAuthenforce = property "config.authenforce"
 vmHdType = property "config.hdtype"
 
 -- Composite ones and lists
@@ -915,6 +919,8 @@ miscSpecs cfg = do
           , ("iomem"           , vmPassthroughMmio) --ranges at a finer granularity. Few ways to implement, likely as a db-node with
           , ("ioports"         , vmPassthroughIo)   --each range as an entry beneath it, which is read and parsed during xl cfg generation.
           , ("bios"            , vmBios)
+          , ("secureboot"      , vmSecureboot) --set to False
+          , ("authenforce"     , vmAuthenforce) --set to True
           , ("initrd"          , vmInitrd)
           ]                                         --Remove this comment block when implemented.
 

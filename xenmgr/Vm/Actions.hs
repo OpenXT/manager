@@ -116,6 +116,8 @@ module Vm.Actions
           , setVmNestedHvm
           , setVmSerial
           , setVmBios
+          , setVmSecureboot
+          , setVmAuthenforce
           , setVmAutolockCdDrives
           , setVmHdType
           , cleanupArgoDevice
@@ -1851,6 +1853,8 @@ setVmTimerMode uuid v = saveConfigProperty uuid vmTimerMode (v::String)
 setVmNestedHvm uuid v = saveConfigProperty uuid vmNestedHvm (v::Bool)
 setVmSerial uuid v = saveConfigProperty uuid vmSerial (v::String)
 setVmBios uuid v = saveConfigProperty uuid vmBios (v::String)
+setVmSecureboot uuid v = saveConfigProperty uuid vmSecureboot (v::Bool)
+setVmAuthenforce uuid v = saveConfigProperty uuid vmAuthenforce (v::Bool)
 setVmHdType uuid v = saveConfigProperty uuid vmHdType (v::String)
 setVmDisplayHandlerStrict uuid v = saveConfigProperty uuid vmDisplayHandlerStrict (v::Bool)
 setVmLongForm uuid v = saveConfigProperty uuid vmLongForm (v::String)

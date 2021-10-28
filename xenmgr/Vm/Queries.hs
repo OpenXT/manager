@@ -122,6 +122,8 @@ module Vm.Queries
                , getVmNestedHvm
                , getVmSerial
                , getVmBios
+               , getVmSecureboot
+               , getVmAuthenforce
                , getVmHdType
                , getVmDisplayHandlerStrict
                , getVmLongForm
@@ -1062,4 +1064,6 @@ getVmTimerMode uuid = readConfigPropertyDef uuid vmTimerMode vmTimerModeDefault
 getVmNestedHvm uuid = readConfigPropertyDef uuid vmNestedHvm False
 getVmSerial uuid = readConfigPropertyDef uuid vmSerial ""
 getVmBios uuid = readConfigPropertyDef uuid vmBios "seabios"
+getVmSecureboot uuid = readConfigPropertyDef uuid vmSecureboot False
+getVmAuthenforce uuid = readConfigPropertyDef uuid vmAuthenforce True
 getVmHdType uuid = readConfigPropertyDef uuid vmHdType "ide"

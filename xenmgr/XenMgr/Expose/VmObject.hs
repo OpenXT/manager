@@ -707,6 +707,16 @@ implementationFor xm uuid = self where
   , comCitrixXenclientXenmgrVmSetBios = restrict' $ setVmBios uuid
   , comCitrixXenclientXenmgrVmUnrestrictedSetBios = setVmBios uuid
 
+  , comCitrixXenclientXenmgrVmGetSecureboot = getVmSecureboot uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetSecureboot = getVmSecureboot uuid
+  , comCitrixXenclientXenmgrVmSetSecureboot = \v -> restrict >> setVmSecureboot uuid v
+  , comCitrixXenclientXenmgrVmUnrestrictedSetSecureboot = \v -> setVmSecureboot uuid v
+
+  , comCitrixXenclientXenmgrVmGetAuthenforce = getVmAuthenforce uuid
+  , comCitrixXenclientXenmgrVmUnrestrictedGetAuthenforce = getVmAuthenforce uuid
+  , comCitrixXenclientXenmgrVmSetAuthenforce = \v -> restrict >> setVmAuthenforce uuid v
+  , comCitrixXenclientXenmgrVmUnrestrictedSetAuthenforce = \v -> setVmAuthenforce uuid v
+
   , comCitrixXenclientXenmgrVmGetHdtype = getVmHdType uuid
   , comCitrixXenclientXenmgrVmUnrestrictedGetHdtype = getVmHdType uuid
   , comCitrixXenclientXenmgrVmSetHdtype = \v -> restrict >> setVmHdType uuid v
