@@ -601,7 +601,6 @@ getXlConfig cfg =
                  return $ [ "uuid='" ++ (show uuid) ++ "'"
                           , "vnc=0"
                           , "crypto_key_dir='" ++ (vmcfgCryptoKeyDirs cfg) ++ "'"
-                          , "xci_cpuid_signature=" ++ (if vmcfgXciCpuidSignature cfg then "1" else "0")
                           , "pci_permissive=1"
                           , "pci_msitranslate=1"
                           , "pci_seize=1"
