@@ -187,14 +187,14 @@ shutdown uuid =
       let xs_path = "/local/domain/" ++ stubdomid ++ "/device-model/" ++ domid
       gpe <- xsRead (xs_path ++ "/hvm-powerbutton-enable")
       case gpe of
-        Just g  -> do exitCode  <- system_ ("xl shutdown -w " ++ domid)
+        Just g  -> do exitCode  <- system_ ("xl shutdown -ww " ++ domid)
                       case exitCode of
                         ExitSuccess   -> return ()
                         _             -> do xsWrite (xs_path ++ "/hvm-shutdown") "poweroff"
                                             _ <- system_ ("xl trigger " ++ domid ++ " power")
-                                            _ <- system_ ("xl shutdown -F -w " ++ domid)
+                                            _ <- system_ ("xl shutdown -F -ww " ++ domid)
                                             return ()
-        Nothing -> do system_ ("xl shutdown -c -w " ++ domid)
+        Nothing -> do system_ ("xl shutdown -c -ww " ++ domid)
                       return ()
 
 pause :: Uuid -> IO ()
