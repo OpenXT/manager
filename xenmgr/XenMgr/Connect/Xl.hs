@@ -238,8 +238,8 @@ signal uuid = do
 --It should be noted that by design, we start our domains paused to ensure all the
 --backend components are created and xenstore nodes are written before the domain
 --begins running.
-start :: Uuid -> IO ()
-start uuid =
+start :: Uuid -> [(String, String)] -> IO ()
+start uuid extraEnv =
     do
       --if domain already has a pid don't try to create another.
       pid <- getXlProcess uuid
@@ -249,7 +249,8 @@ start uuid =
           case state of
             Shutdown -> do
                           (_, _, Just err, handle) <- createProcess (proc "xl" ["create", configPath uuid, "-p"]){std_err = CreatePipe,
-                                  close_fds = True}
+                                  close_fds = True,
+                                  env = Just extraEnv}
                           ec <- waitForProcess handle
                           stderr <- hGetContents err
                           case ec of
