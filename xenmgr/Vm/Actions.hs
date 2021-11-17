@@ -878,7 +878,8 @@ bootVm config reboot
                 then do 
                   if reboot 
                     then do liftIO $ Xl.signal uuid
-                    else do liftIO $ Xl.start uuid --we start paused by default
+                    else do tapenv <- tapEnvForVm uuid
+                            liftIO $ Xl.start uuid tapenv --we start paused by default
                 else do liftIO $ xsWrite (vmSuspendImageStatePath uuid) "resume"
                         liftIO $ Xl.resumeFromFile uuid suspend_file False True
          return bootstrap
