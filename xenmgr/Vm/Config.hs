@@ -925,8 +925,8 @@ miscSpecs cfg = do
           , ("init_seclabel"   , vmInitFlaskLabel)
           , ("device_model_stubdomain_seclabel", vmStubdomFlaskLabel)
           , ("serial"          , vmSerial)
-          , ("stubdom_cmdline" , vmStubdomCmdline)
-          , ("stubdom_memory"  , vmStubdomMemory)   --OXT-1220: iomem and ioports should be reworked to support specifying multiple
+          , ("stubdomain_cmdline" , vmStubdomCmdline)
+          , ("stubdomain_memkb"  , vmStubdomMemory)   --OXT-1220: iomem and ioports should be reworked to support specifying multiple
           , ("iomem"           , vmPassthroughMmio) --ranges at a finer granularity. Few ways to implement, likely as a db-node with
           , ("ioports"         , vmPassthroughIo)   --each range as an entry beneath it, which is read and parsed during xl cfg generation.
           , ("bios"            , vmBios)
@@ -956,7 +956,8 @@ miscSpecs cfg = do
                                              "device_model_stubdomain_seclabel" -> name ++ "=" ++ (wrapQuotes v)
                                              "boot"     -> name ++ "=" ++ (wrapQuotes v)
                                              "bios"     -> name ++ "=" ++ (wrapQuotes v)
-                                             "stubdom_cmdline" -> name ++ "=" ++ (wrapQuotes v)
+                                             "stubdomain_cmdline" -> name ++ "=" ++ (wrapQuotes v)
+                                             "stubdomain_memkb" -> name ++ "=" ++ show (1024 * read v)
                                              "initrd"   -> name ++ "=" ++ (wrapQuotes v)
                                              _          -> name ++ "=" ++ v) <$>
                                 readConfigProperty uuid prop
