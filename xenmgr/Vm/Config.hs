@@ -906,9 +906,17 @@ miscSpecs cfg = do
              ""      -> return ["vga='stdvga'"]
              d       -> return ["vga='stdvga'", "dm_display='" ++ d ++ "'"]
 
-      vkb = readConfigPropertyDef uuid vmVkbd False >>=
-                \ v -> if v then return ["vkb=['backend-type=linux,feature-abs-pointer=1,height=32768,width=32768']"]
-                            else return ["vkb_device=0"]
+      vkb =
+        do
+          vkbd <- readConfigProperty uuid vmVkbd
+          vglass <- readConfigPropertyDef uuid vmVglassEnabled False
+          case (vkbd, vglass) of
+               (Just True,  _) -> return vkb
+               (Nothing, True) -> return vkb
+               (_,          _) -> return no_vkb
+        where
+          vkb = ["vkb=['backend-type=linux,feature-abs-pointer=1,height=32768,width=32768']"]
+          no_vkb = ["vkb_device=0"]
 
       -- Other config keys taken directly from .config subtree which we delegate directly
       -- to xenvm
