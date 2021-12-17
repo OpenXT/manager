@@ -79,6 +79,7 @@ data PMAction = ActionSleep
               | ActionHibernate
               | ActionShutdown
               | ActionForcedShutdown
+              | ActionIdleShutdown
               | ActionReboot
               | ActionNothing
               | ActionInvalid
@@ -114,6 +115,7 @@ pmActionOfStr "sleep"     = ActionSleep
 pmActionOfStr "hibernate" = ActionHibernate
 pmActionOfStr "shutdown"  = ActionShutdown
 pmActionOfStr "forced-shutdown" = ActionForcedShutdown
+pmActionOfStr "idle-shutdown" = ActionIdleShutdown
 pmActionOfStr "reboot"    = ActionReboot
 pmActionOfStr "nothing"   = ActionNothing
 pmActionOfStr ""          = ActionNothing
@@ -123,6 +125,7 @@ pmActionToStr ActionSleep     = "sleep"
 pmActionToStr ActionHibernate = "hibernate"
 pmActionToStr ActionShutdown  = "shutdown"
 pmActionToStr ActionForcedShutdown = "forced-shutdown"
+pmActionToStr ActionIdleShutdown = "idle-shutdown"
 pmActionToStr ActionReboot    = "reboot"
 pmActionToStr ActionNothing   = "nothing"
 pmActionToStr ActionInvalid   = "nothing"
@@ -147,6 +150,7 @@ hostStateOfPmAction ActionHibernate = HostGoingToHibernate
 hostStateOfPmAction ActionReboot = HostRebooting
 hostStateOfPmAction ActionShutdown = HostShuttingDown
 hostStateOfPmAction ActionForcedShutdown = HostShuttingDown
+hostStateOfPmAction ActionIdleShutdown = HostShuttingDown
 hostStateOfPmAction ActionNothing = HostIdle
 hostStateOfPmAction ActionInvalid = HostIdle
 
@@ -194,6 +198,7 @@ getCurrentPmAction =
     f (Just "hibernate") = Just ActionHibernate
     f (Just "shutdown")  = Just ActionShutdown
     f (Just "forced-shutdown") = Just ActionForcedShutdown
+    f (Just "idle-shutdown") = Just ActionIdleShutdown
     f (Just "reboot")    = Just ActionReboot
     f _                  = Nothing
 
@@ -207,6 +212,7 @@ setCurrentPmAction action =
     str ActionHibernate = "hibernate"
     str ActionShutdown = "shutdown"
     str ActionForcedShutdown = "forced-shutdown"
+    str ActionIdleShutdown = "idle-shutdown"
     str ActionNothing = error "bad pm action"
     str ActionInvalid = error "bad pm action"
 
@@ -253,6 +259,19 @@ shutdownCommon offCommand force = do
       info "PM: halting host now"
       spawnShell offCommand
       -- wait for actuall poweroff
+      threadDelay $ 360 * (10^6)
+
+-- Got idle shutdown trigger from xcpmd. Start a thread
+-- that will force the host off after 5 minutes. While that's running,
+-- perform the normal shutdown procedure passed in via offCommand
+shutdownIdle :: String -> XM ()
+shutdownIdle offCommand = do
+    liftIO $ forkIO $ (threadDelay (300 * (10^6)) >> forceShutdown)
+    shutdownCommon offCommand False
+  where
+    forceShutdown = do
+      info "PM: 5 minute cap reached for idle shutdown, performing immediate host shutdown"
+      spawnShell "poweroff -ff"
       threadDelay $ 360 * (10^6)
 
 -- returns True if vm was put to sleep here, False if that was not necessary (because
@@ -320,12 +339,18 @@ executePmActionInternal action supervised =
     when (action /= ActionNothing) $ do
       info $ "PM: received pm action request: " ++ show action
       current <- liftRpc getCurrentPmAction
-      case current of
-        Just c  -> info $ "PM: but pm action " ++ show c ++ " is currently running, so cannot do"
-        Nothing -> (do liftRpc $ setCurrentPmAction action
+      case (action, current) of
+        (ActionIdleShutdown, Just ActionIdleShutdown) -> info $ "PM: but pm action idle-shutdown is already running - do nothing"
+        (ActionIdleShutdown, _) -> do_action action supervised
+        (_, Just c) -> info $ "PM: but pm action " ++ show c ++ " is currently running - do nothing"
+        (_, Nothing) -> do_action action supervised
+
+  where
+    do_action action supervised =
+                   (do liftRpc $ setCurrentPmAction action
                        execute_ action supervised
                        liftRpc $ clearCurrentPmAction)
-                   `catchError` \err -> do
+                       `catchError` \err -> do
                            liftRpc $ clearCurrentPmAction
                            throwError err
 
@@ -341,6 +366,11 @@ execute_ ActionForcedShutdown supervised = do
     info "PM: received host force shutdown request"
     setHostState HostShuttingDown
     shutdownCommon "poweroff" True
+
+execute_ ActionIdleShutdown supervised = do
+    info "PM: received host idle shutdown request"
+    setHostState HostShuttingDown
+    shutdownIdle "poweroff"
 
 execute_ ActionSleep supervised = do
     info "PM: received host sleep request"

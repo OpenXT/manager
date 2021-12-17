@@ -17,6 +17,7 @@
 --
 
 module XenMgr.HostOps ( hostShutdown
+                      , hostShutdownIdle
                       , hostSleep
                       , hostHibernate
                       , hostReboot
@@ -46,6 +47,9 @@ import XenMgr.Config
 -- These operations fail silently if host is not in idle state, i.e. is doing another action already
 hostShutdown :: XM ()
 hostShutdown = (hostWhenIdleDoWithState HostShuttingDown $ executePmAction ActionShutdown) >> return ()
+
+hostShutdownIdle :: XM ()
+hostShutdownIdle = executePmAction ActionIdleShutdown >> return ()
 
 hostSleep :: XM ()
 hostSleep = (hostWhenIdleDoWithState HostGoingToSleep $ executePmAction ActionSleep) >> return ()

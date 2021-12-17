@@ -8,6 +8,7 @@ data PMAction = ActionSleep
               | ActionHibernate
               | ActionShutdown
 	      | ActionForcedShutdown
+	      | ActionIdleShutdown
               | ActionReboot
               | ActionNothing
               | ActionInvalid

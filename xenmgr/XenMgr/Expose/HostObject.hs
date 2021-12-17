@@ -102,6 +102,7 @@ implementation xm host_info_cache = do
   , comCitrixXenclientXenmgrHostIsServiceRunning = isServiceRunning
 
   , comCitrixXenclientXenmgrHostShutdown  = runXM xm hostShutdown
+  , comCitrixXenclientXenmgrHostShutdownIdle  = runXM xm hostShutdownIdle
   , comCitrixXenclientXenmgrHostReboot    = runXM xm hostReboot
   , comCitrixXenclientXenmgrHostSleep     = runXM xm hostSleep
   , comCitrixXenclientXenmgrHostHibernate = runXM xm hostHibernate
