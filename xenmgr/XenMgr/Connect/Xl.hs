@@ -30,7 +30,6 @@ module XenMgr.Connect.Xl
     , acpiState
     , waitForAcpiState
     , waitForState
-    , signal
 
     --xl/toolstack queries
     , domainID
@@ -170,8 +169,7 @@ reboot uuid =
       exitCode <- system ("xl reboot " ++ domid)
       case exitCode of
         ExitSuccess   -> return ()
-        _             -> do _ <- system ("xl reboot -F " ++ domid)
-                            return ()
+        _             -> shutdown uuid
 
 shutdown :: Uuid -> IO ()
 shutdown uuid =
@@ -213,21 +211,6 @@ getXlProcess uuid = do
     case ec of
         ExitSuccess -> return $ TT.strip str_pid
         _           -> return ""
-    
-
--- Sends sigusr1 to specified xl process, in order to unblock
--- it from a reboot
-signal :: Uuid -> IO ()
-signal uuid = do
-    pid <- getXlProcess uuid
-    if pid /= ""
-      then do
-        info $ "signal xl process for uuid: " ++ (show uuid) ++ " pid: " ++ pid
-        readProcessOrDie "kill" ["-s", "SIGUSR1", pid] ""
-        return ()
-      else do
-        info $ "Couldn't find xl process for uuid: " ++ (show uuid)
-        return ()
 
 --It should be noted that by design, we start our domains paused to ensure all the
 --backend components are created and xenstore nodes are written before the domain
