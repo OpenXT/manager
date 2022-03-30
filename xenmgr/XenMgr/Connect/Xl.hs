@@ -224,20 +224,23 @@ start uuid extraEnv =
       if pid == ""
         then do
           case state of
-            Shutdown -> do
-                          (_, _, Just err, handle) <- createProcess (proc "xl" ["create", configPath uuid, "-p"]){std_err = CreatePipe,
-                                  close_fds = True,
-                                  env = Just extraEnv}
-                          ec <- waitForProcess handle
-                          stderr <- hGetContents err
-                          case ec of
-                            ExitSuccess -> return ()
-                            _           -> do
-                                             updateVmDomainStateIO uuid Shutdown
-                                             throw $ XlException $ L.intercalate "<br>" $ L.lines stderr
+            Shutdown -> _start
+            Rebooted -> _start
             _        -> do return ()
         else do
           throw $ XlException "Don't try to start a guest twice"
+    where
+      _start = do
+                (_, _, Just err, handle) <- createProcess (proc "xl" ["create", configPath uuid, "-p"]){std_err = CreatePipe,
+                        close_fds = True,
+                        env = Just extraEnv}
+                ec <- waitForProcess handle
+                stderr <- hGetContents err
+                case ec of
+                  ExitSuccess -> return ()
+                  _           -> do
+                                   updateVmDomainStateIO uuid Shutdown
+                                   throw $ XlException $ L.intercalate "<br>" $ L.lines stderr
 
 --if domain has no domid, the domain is already dead. But we should make sure
 --the xenstore state is set to 'shutdown'.  Sometimes when domains crash on startup,
