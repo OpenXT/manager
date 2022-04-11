@@ -489,7 +489,7 @@ checkBsgDevStatus = uuidRpc $ \uuid -> whenDomainID_ uuid $ \domid ->
 -- 1 acpi state we care about: s3. Xenvm used to fork a thread that polled xen
 -- for domain acpi state with xc_hvm_param_get, which is BAD since xc_hvm_param_get
 -- makes a hypercall.Second, we can remove responsibility from inputserver to react
--- to acpi state changes (it shouldn't have to deal with that anyway). Third, we 
+-- to acpi state changes (it shouldn't have to deal with that anyway). Third, we
 -- won't have to patch libxl.
 reactVmAcpiUpdate :: Vm ()
 reactVmAcpiUpdate = do
@@ -497,12 +497,13 @@ reactVmAcpiUpdate = do
     whenDomainID_ uuid $ \domid -> do
       maybe_acpi <- liftIO $ xsRead ("/local/domain/" ++ show domid ++ "/acpi-state")
       case maybe_acpi of
-          Just acpi -> if acpi == "s3" then do switchVm domainUIVM 
-                                               notifyVmAcpiState 3
-                                               return () 
-                                       else return () 
-          Nothing   -> return () 
-   
+          Just "s3" -> do switchVm domainUIVM
+                          notifyVmAcpiState 3
+                          return ()
+          Just "s0" -> do notifyVmAcpiState 0
+                          return ()
+          _         -> return ()
+
 -- This is a new notify function to support state updates coming from xl
 -- Instead of implementing dbus support in xl, state updates are written to a
 -- xenstore node which XenMgr watches, which then fires off a dbus message, upon
