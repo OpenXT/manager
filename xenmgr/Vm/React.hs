@@ -123,6 +123,18 @@ runEventScriptR = mkReact f where
     f (VmStateChange CreatingDomain) = return ()
     f (VmStateChange CreatingDevices) = return ()
     f (VmStateChange Created) = return ()
+    f (VmStateChange Running) =
+      do uuid <- vmUuid
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnStateChange [uuidStr uuid, stateToPublicStr Running]
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnAcpiStateChange [uuidStr uuid, "0"]
+    f (VmStateChange Suspended) =
+      do uuid <- vmUuid
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnStateChange [uuidStr uuid, stateToPublicStr Suspended]
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnAcpiStateChange [uuidStr uuid, "3"]
+    f (VmStateChange Shutdown) =
+      do uuid <- vmUuid
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnStateChange [uuidStr uuid, stateToPublicStr Shutdown]
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnAcpiStateChange [uuidStr uuid, "5"]
     f (VmStateChange state) =
       do uuid <- vmUuid
          liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnStateChange [uuidStr uuid, stateToPublicStr state]
