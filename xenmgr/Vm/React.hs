@@ -163,6 +163,9 @@ detectStateChange mon =
 detectAcpiChange =
   whenE VmAcpiUpdate reactVmAcpiUpdate
 
+detectPowerChange =
+  whenE VmPowerUpdate reactVmPowerUpdate
+
 clockR = mkReact f where
   f (VmRtcChange offset) = vmUuid >>= \uuid -> saveConfigProperty uuid vmTimeOffset offset
   f _ = return ()
@@ -274,6 +277,7 @@ vmEventProcessor monitor
                `mappend` notifyExternalR
                `mappend` detectStateChange monitor
                `mappend` detectAcpiChange
+               `mappend` detectPowerChange
          return $
                 \hid e -> sequence_ $ [err (f e) | f <- r]
       where
@@ -514,6 +518,18 @@ reactVmAcpiUpdate = do
                           return ()
           Just "s0" -> do notifyVmAcpiState 0
                           return ()
+          _         -> return ()
+
+reactVmPowerUpdate :: Vm ()
+reactVmPowerUpdate = do
+    uuid <- vmUuid
+    whenDomainID_ uuid $ \domid -> do
+      maybe_acpi <- liftIO $ xsRead ("/local/domain/" ++ show domid ++ "/power-state")
+      info $ "reactVmPowerUpdate " ++ (fromMaybe "nothing" maybe_acpi)
+      case maybe_acpi of
+          Just "4" -> do switchVm domainUIVM
+                         notifyVmAcpiState 4
+                         return ()
           _         -> return ()
 
 -- This is a new notify function to support state updates coming from xl

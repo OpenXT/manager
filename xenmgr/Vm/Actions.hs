@@ -775,6 +775,10 @@ setupAcpiNode uuid =
      case stubdom of
          Just stubdomid -> liftIO $ xsChmod (xsp domid ++ "/acpi-state") ("b" ++ show stubdomid)
          Nothing        -> liftIO $ xsChmod (xsp domid ++ "/acpi-state") ("b" ++ show domid)
+     liftIO $ xsWrite (xsp domid ++ "/power-state") ("")
+     case stubdom of
+         Just stubdomid -> liftIO $ xsChmod (xsp domid ++ "/power-state") ("b" ++ show stubdomid)
+         Nothing        -> liftIO $ xsChmod (xsp domid ++ "/power-state") ("b" ++ show domid)
 
 -- Creates a snapshot from the primary disk when the disk persistence option is
 -- set. It first checks to see if a snapshot already exists and deletes it before
