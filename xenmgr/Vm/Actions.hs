@@ -1018,15 +1018,15 @@ applyVmBackendShift bkuuid = do
 
 
 -- Reboot a VM
-rebootVm :: Uuid -> Rpc ()
+rebootVm :: Uuid -> XM ()
 rebootVm uuid = do
     info $ "rebooting VM " ++ show uuid
-    -- Write XL configuration file
-    writeXlConfig =<< getVmConfig uuid True
-    --Let xl take care of bringing down the domain and updating our state
-    --When xenmgr sees the 'Rebooted' state, it fires off a startVm call,
-    --which performs all the normal guest boot tasks, while xl brings up the domain.
-    liftIO $ Xl.reboot uuid
+    debug $ "reboot issuing shutdown to " ++ show uuid
+    liftRpc $ shutdownVm uuid
+    debug $ "reboot done issuing shutdown to " ++ show uuid
+    done <- liftIO $ Xl.waitForState uuid Shutdown (Just 60)
+    debug $ "reboot waitForState returned " ++ show done
+    when done $ restartVm uuid
 
 shutdownVm :: Uuid -> Rpc ()
 shutdownVm uuid = do
