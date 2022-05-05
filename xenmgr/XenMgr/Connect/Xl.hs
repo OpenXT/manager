@@ -20,7 +20,6 @@ module XenMgr.Connect.Xl
     , pause
     , destroy
     , resumeFromSleep
-    , reboot
     , sleep
     , hibernate
     , suspendToFile
@@ -161,15 +160,6 @@ domainXsPath uuid = do
 
 
 --The following functions are all domain lifecycle operations, and self-explanatory
-
-reboot :: Uuid -> IO ()
-reboot uuid =
-    do
-      domid <- getDomainId uuid
-      exitCode <- system ("xl reboot " ++ domid)
-      case exitCode of
-        ExitSuccess   -> return ()
-        _             -> shutdown uuid
 
 shutdown :: Uuid -> IO ()
 shutdown uuid =
