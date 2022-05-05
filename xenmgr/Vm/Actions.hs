@@ -23,7 +23,6 @@ module Vm.Actions
           , trashUnusedServiceVms
           , createVm, CreateVmPms(..), defaultCreateVmPms
           , removeVm
-          , restartVm
           , startVm
           , startVmInternal
           , rebootVm
@@ -505,16 +504,11 @@ getVhdReferences vhd = concat <$> (mapM (diskVhdReferences vhd) =<< getVms) wher
     references vhd disk = diskPath disk == vhd
 
 startVm :: Uuid -> XM ()
-startVm uuid = _startVm False uuid
-
-restartVm :: Uuid -> XM ()
-restartVm uuid = _startVm True uuid
-
-_startVm :: Bool -> Uuid -> XM ()
-_startVm is_reboot uuid = do
+startVm uuid = do
+  info $ "Starting " ++ show uuid
   withPreCreationState uuid $ do
     ran <- liftRpc $ runEventScript HardFail uuid getVmRunInsteadofStart [uuidStr uuid]
-    when (not ran) $ startVmInternal uuid is_reboot
+    when (not ran) $ startVmInternal uuid
 
 --Add a passthrough rule to vm config
 add_pt_rule_bdf uuid dev = modifyVmPciPtRules uuid $ pciAddRule (form_rule_bdf (show (devAddr dev)))
@@ -523,14 +517,14 @@ form_rule_bdf = rule . fromMaybe (error "error parsing rule") . pciAndSlotFromSt
   rule (addr,sl) = PciPtRuleBDF addr sl
 
 -- Start a VM! (maybe, because stuff can happen not)
-startVmInternal :: Uuid -> Bool -> XM ()
-startVmInternal uuid is_reboot = do
+startVmInternal :: Uuid -> XM ()
+startVmInternal uuid = do
     unlessM (dbExists $ "/vm/" ++ show uuid) $ error ("vm does not have a database entry: " ++ show uuid)
     info $ "starting VM " ++ show uuid
     liftRpc $ maybePtGpuFuncs uuid
     config <- prepareAndCheckConfig uuid
     case config of
-      Just c -> info ("done checks for VM " ++ show uuid) >> bootVm c is_reboot
+      Just c -> info ("done checks for VM " ++ show uuid) >> bootVm c
       Nothing-> return ()
   where
 
@@ -833,8 +827,8 @@ checkAndPerformSnapshotIfReq uuid disks = do
             _                                -> return disk --other Snapshot types unimplemented for now since UI can't set them
 
 
-bootVm :: VmConfig -> Bool -> XM ()
-bootVm config reboot
+bootVm :: VmConfig -> XM ()
+bootVm config
   = do
        monitor <- vm_monitor <$> xmRunVm uuid vmContext
 
@@ -1026,7 +1020,7 @@ rebootVm uuid = do
     debug $ "reboot done issuing shutdown to " ++ show uuid
     done <- liftIO $ Xl.waitForState uuid Shutdown (Just 60)
     debug $ "reboot waitForState returned " ++ show done
-    when done $ restartVm uuid
+    when done $ startVm uuid
 
 shutdownVm :: Uuid -> Rpc ()
 shutdownVm uuid = do
