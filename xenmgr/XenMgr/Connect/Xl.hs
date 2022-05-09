@@ -158,6 +158,22 @@ domainXsPath uuid = do
       "" -> return $ "/local/domain/unknown"
       _  -> return $ "/local/domain/" ++ domid
 
+pushPowerButton :: Uuid -> Int -> IO ()
+pushPowerButton uuid count = do
+      domid <- getDomainId uuid
+      stubdomid <- getStubDomainID uuid
+      let xs_path = "/local/domain/" ++ stubdomid ++ "/device-model/" ++ domid
+      _pushPowerButton uuid domid xs_path 1 count
+    where
+      _pushPowerButton :: Uuid -> String -> String -> Int -> Int -> IO ()
+      _pushPowerButton uuid domid xs_path i max = do
+          debug $ "push power button " ++ show uuid ++ " " ++ show i ++ " of " ++ show max
+          xsWrite (xs_path ++ "/hvm-shutdown") "poweroff"
+          system ("xl trigger " ++ domid ++ " power")
+          if i < max
+              then do threadDelay $ 10^6
+                      _pushPowerButton uuid domid xs_path ( i + 1 ) max
+              else return ()
 
 --The following functions are all domain lifecycle operations, and self-explanatory
 
@@ -172,8 +188,7 @@ shutdown uuid =
         Just g  -> do exitCode  <- system ("xl shutdown -w " ++ domid)
                       case exitCode of
                         ExitSuccess   -> return ()
-                        _             -> do xsWrite (xs_path ++ "/hvm-shutdown") "poweroff"
-                                            _ <- system ("xl trigger " ++ domid ++ " power")
+                        _             -> do forkIO $ pushPowerButton uuid 3
                                             _ <- system ("xl shutdown -F -w " ++ domid)
                                             return ()
         Nothing -> do system ("xl shutdown -c -w " ++ domid)
