@@ -315,7 +315,7 @@ whenShutdown xm reason = do
     maybeCleanupSnapshots
     if reason == Reboot
       then do
-        uuidRpc (backgroundRpc . runXM xm . restartVm)
+        uuidRpc (backgroundRpc . runXM xm . startVm)
       else do
         runXM xm (maybeKeepVmAlive uuid)
         return ()

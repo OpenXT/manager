@@ -20,7 +20,6 @@ module XenMgr.Connect.Xl
     , pause
     , destroy
     , resumeFromSleep
-    , reboot
     , sleep
     , hibernate
     , suspendToFile
@@ -30,7 +29,6 @@ module XenMgr.Connect.Xl
     , acpiState
     , waitForAcpiState
     , waitForState
-    , signal
 
     --xl/toolstack queries
     , domainID
@@ -160,18 +158,24 @@ domainXsPath uuid = do
       "" -> return $ "/local/domain/unknown"
       _  -> return $ "/local/domain/" ++ domid
 
+pushPowerButton :: Uuid -> Int -> IO ()
+pushPowerButton uuid count = do
+      domid <- getDomainId uuid
+      stubdomid <- getStubDomainID uuid
+      let xs_path = "/local/domain/" ++ stubdomid ++ "/device-model/" ++ domid
+      _pushPowerButton uuid domid xs_path 1 count
+    where
+      _pushPowerButton :: Uuid -> String -> String -> Int -> Int -> IO ()
+      _pushPowerButton uuid domid xs_path i max = do
+          debug $ "push power button " ++ show uuid ++ " " ++ show i ++ " of " ++ show max
+          xsWrite (xs_path ++ "/hvm-shutdown") "poweroff"
+          system ("xl trigger " ++ domid ++ " power")
+          if i < max
+              then do threadDelay $ 10^6
+                      _pushPowerButton uuid domid xs_path ( i + 1 ) max
+              else return ()
 
 --The following functions are all domain lifecycle operations, and self-explanatory
-
-reboot :: Uuid -> IO ()
-reboot uuid =
-    do
-      domid <- getDomainId uuid
-      exitCode <- system ("xl reboot " ++ domid)
-      case exitCode of
-        ExitSuccess   -> return ()
-        _             -> do _ <- system ("xl reboot -F " ++ domid)
-                            return ()
 
 shutdown :: Uuid -> IO ()
 shutdown uuid =
@@ -184,8 +188,7 @@ shutdown uuid =
         Just g  -> do exitCode  <- system ("xl shutdown -w " ++ domid)
                       case exitCode of
                         ExitSuccess   -> return ()
-                        _             -> do xsWrite (xs_path ++ "/hvm-shutdown") "poweroff"
-                                            _ <- system ("xl trigger " ++ domid ++ " power")
+                        _             -> do forkIO $ pushPowerButton uuid 3
                                             _ <- system ("xl shutdown -F -w " ++ domid)
                                             return ()
         Nothing -> do system ("xl shutdown -c -w " ++ domid)
@@ -213,27 +216,12 @@ getXlProcess uuid = do
     case ec of
         ExitSuccess -> return $ TT.strip str_pid
         _           -> return ""
-    
-
--- Sends sigusr1 to specified xl process, in order to unblock
--- it from a reboot
-signal :: Uuid -> IO ()
-signal uuid = do
-    pid <- getXlProcess uuid
-    if pid /= ""
-      then do
-        info $ "signal xl process for uuid: " ++ (show uuid) ++ " pid: " ++ pid
-        readProcessOrDie "kill" ["-s", "SIGUSR1", pid] ""
-        return ()
-      else do
-        info $ "Couldn't find xl process for uuid: " ++ (show uuid)
-        return ()
 
 --It should be noted that by design, we start our domains paused to ensure all the
 --backend components are created and xenstore nodes are written before the domain
 --begins running.
-start :: Uuid -> IO ()
-start uuid =
+start :: Uuid -> [(String, String)] -> IO ()
+start uuid extraEnv =
     do
       --if domain already has a pid don't try to create another.
       pid <- getXlProcess uuid
@@ -241,19 +229,23 @@ start uuid =
       if pid == ""
         then do
           case state of
-            Shutdown -> do
-                          (_, _, Just err, handle) <- createProcess (proc "xl" ["create", configPath uuid, "-p"]){std_err = CreatePipe,
-                                  close_fds = True}
-                          ec <- waitForProcess handle
-                          stderr <- hGetContents err
-                          case ec of
-                            ExitSuccess -> return ()
-                            _           -> do
-                                             updateVmDomainStateIO uuid Shutdown
-                                             throw $ XlException $ L.intercalate "<br>" $ L.lines stderr
+            Shutdown -> _start
+            Rebooted -> _start
             _        -> do return ()
         else do
           throw $ XlException "Don't try to start a guest twice"
+    where
+      _start = do
+                (_, _, Just err, handle) <- createProcess (proc "xl" ["create", configPath uuid, "-p"]){std_err = CreatePipe,
+                        close_fds = True,
+                        env = Just extraEnv}
+                ec <- waitForProcess handle
+                stderr <- hGetContents err
+                case ec of
+                  ExitSuccess -> return ()
+                  _           -> do
+                                   updateVmDomainStateIO uuid Shutdown
+                                   throw $ XlException $ L.intercalate "<br>" $ L.lines stderr
 
 --if domain has no domid, the domain is already dead. But we should make sure
 --the xenstore state is set to 'shutdown'.  Sometimes when domains crash on startup,

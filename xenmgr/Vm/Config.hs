@@ -606,6 +606,7 @@ getXlConfig cfg =
                           , "pci_msitranslate=1"
                           , "pci_seize=1"
                           , "pci_power_mgmt=1"
+                          , "on_reboot='destroy'"
                           ]
                             ++ nameStr
                             ++ hdtype
