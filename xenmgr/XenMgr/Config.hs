@@ -72,6 +72,7 @@ import qualified Control.Exception as E
 import Data.List
 import Data.Maybe
 import Data.Char
+import System.Directory
 import System.IO
 import System.IO.Unsafe
 import System.Posix.Files
@@ -269,7 +270,9 @@ appSetEnableDom0Networking True =
       exist <- doesFileExist "/config/system/dom0-networking-disabled"
       if exist then removeFile "/config/system/dom0-networking-disabled" else return ()
 appSetEnableDom0Networking False =
-    liftIO $ writeFile "/config/system/dom0-networking-disabled" ""
+    liftIO $ do
+      createDirectoryIfMissing True "/config/system"
+      writeFile "/config/system/dom0-networking-disabled" ""
 
 appGetDom0MemTargetMIB :: Rpc Int
 appGetDom0MemTargetMIB = dbReadWithDefault 256 "/dom0-mem-target-mib"
