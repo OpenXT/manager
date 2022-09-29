@@ -71,7 +71,6 @@ import Tools.Log
 import Tools.Process
 import Tools.Text as TT
 import System
-import System.Cmd
 import System.Process
 import System.Directory
 import System.IO
@@ -94,6 +93,13 @@ instance Exception XlExceptionClass
 instance Show XlExceptionClass where
     show e@(XlException s) = show s
 
+-- system_ blocks waiting for the process to finish, so it is only suitable for
+-- short-running commands.
+system_ :: String -> IO ExitCode
+system_ str = do
+    (_,_,_,p) <- runInteractiveCommand_closeFds str
+    waitForProcess p
+
 bailIfError :: ExitCode -> String -> IO ()
 bailIfError exitCode msg =
     do
@@ -104,7 +110,7 @@ bailIfError exitCode msg =
 resumeFromSleep :: Uuid -> IO Bool
 resumeFromSleep uuid = do
     domid <- getDomainId uuid
-    exitCode <- system ("xl trigger " ++ domid ++ " s3resume")
+    exitCode <- system_ ("xl trigger " ++ domid ++ " s3resume")
     case exitCode of
       _  -> waitForAcpiState uuid 0 (Just 10)
 
@@ -167,10 +173,10 @@ reboot :: Uuid -> IO ()
 reboot uuid =
     do
       domid <- getDomainId uuid
-      exitCode <- system ("xl reboot " ++ domid)
+      exitCode <- system_ ("xl reboot " ++ domid)
       case exitCode of
         ExitSuccess   -> return ()
-        _             -> do _ <- system ("xl reboot -F " ++ domid)
+        _             -> do _ <- system_ ("xl reboot -F " ++ domid)
                             return ()
 
 shutdown :: Uuid -> IO ()
@@ -181,21 +187,21 @@ shutdown uuid =
       let xs_path = "/local/domain/" ++ stubdomid ++ "/device-model/" ++ domid
       gpe <- xsRead (xs_path ++ "/hvm-powerbutton-enable")
       case gpe of
-        Just g  -> do exitCode  <- system ("xl shutdown -w " ++ domid)
+        Just g  -> do exitCode  <- system_ ("xl shutdown -w " ++ domid)
                       case exitCode of
                         ExitSuccess   -> return ()
                         _             -> do xsWrite (xs_path ++ "/hvm-shutdown") "poweroff"
-                                            _ <- system ("xl trigger " ++ domid ++ " power")
-                                            _ <- system ("xl shutdown -F -w " ++ domid)
+                                            _ <- system_ ("xl trigger " ++ domid ++ " power")
+                                            _ <- system_ ("xl shutdown -F -w " ++ domid)
                                             return ()
-        Nothing -> do system ("xl shutdown -c -w " ++ domid)
+        Nothing -> do system_ ("xl shutdown -c -w " ++ domid)
                       return ()
 
 pause :: Uuid -> IO ()
 pause uuid =
     do
       domid     <- getDomainId uuid
-      exitCode  <- system ("xl pause " ++ domid)
+      exitCode  <- system_ ("xl pause " ++ domid)
       bailIfError exitCode "Error parsing domain."
 
 unpause :: Uuid -> IO ()
@@ -204,7 +210,7 @@ unpause uuid = do
     case domid of
         "" -> return ()
         _  -> do
-                exitCode <- system ("xl unpause " ++ domid)
+                exitCode <- system_ ("xl unpause " ++ domid)
                 bailIfError exitCode "Error unpausing domain."
 
 getXlProcess :: Uuid -> IO String
@@ -267,35 +273,35 @@ destroy uuid = do
                   case maybe_state of
                     Just state -> if state /= "shutdown" then do xsWrite ("/state/" ++ show uuid ++ "/state") "shutdown" else return ()
                     Nothing    -> return ()
-        _   -> do exitCode <- system ("xl destroy " ++ domid)
+        _   -> do exitCode <- system_ ("xl destroy " ++ domid)
                   bailIfError exitCode "Error destroying domain."
 
 sleep :: Uuid -> IO ()
 sleep uuid =
     do
       domid    <- getDomainId uuid
-      exitCode <- system ("xl trigger " ++ domid ++ " sleep")
+      exitCode <- system_ ("xl trigger " ++ domid ++ " sleep")
       bailIfError exitCode "Error entering s3."
 
 hibernate :: Uuid -> IO ()
 hibernate uuid =
     do
       domid    <- getDomainId uuid
-      exitCode <- system ("xl hiberate " ++ domid)
+      exitCode <- system_ ("xl hiberate " ++ domid)
       bailIfError exitCode "Error entering s4."
       
 suspendToFile :: Uuid -> FilePath -> IO ()
 suspendToFile uuid file =
     do
       domid    <- getDomainId uuid
-      exitCode <- system ("xl save " ++ domid ++ " " ++ file ++ " " ++ configPath uuid)
+      exitCode <- system_ ("xl save " ++ domid ++ " " ++ file ++ " " ++ configPath uuid)
       bailIfError exitCode "Error suspending to file."
 
 resumeFromFile :: Uuid -> FilePath -> Bool -> Bool -> IO ()
 resumeFromFile uuid file delete paused =
     do
       let p = if paused then "-p" else ""
-      _ <- system ("xl restore " ++ p ++ " " ++ configPath uuid ++ " " ++ file)
+      _ <- system_ ("xl restore " ++ p ++ " " ++ configPath uuid ++ " " ++ file)
       if delete then removeFile file else return ()
 
 --Ask xl directly for the domid
@@ -369,13 +375,13 @@ wakeIfS3 uuid = do
 setMemTarget :: Uuid -> Int -> IO ()
 setMemTarget uuid mbs = do
     domid    <- getDomainId uuid
-    exitCode <- system ("xl mem-set " ++ domid ++ " " ++ show mbs ++ "m")
+    exitCode <- system_ ("xl mem-set " ++ domid ++ " " ++ show mbs ++ "m")
     bailIfError exitCode "Error setting mem target."
 
 removeNic :: Uuid -> NicID -> DomainID -> IO ()
 removeNic uuid nic back_domid = do
     domid <- getDomainId uuid
-    system ("xl network-detach " ++ domid ++ " " ++ show nic)
+    system_ ("xl network-detach " ++ domid ++ " " ++ show nic)
     return ()
 
 addNic :: Uuid -> NicID -> String -> DomainID -> IO ()
@@ -392,9 +398,9 @@ addNic uuid nic net back_domid = do
 setNicBackendDom :: Uuid -> NicID -> DomainID -> IO ()
 setNicBackendDom uuid nic back_domid = do
     domid    <- getDomainId uuid
-    exitCode <- system ("xl network-detach " ++ show domid ++ " " ++ show nic)
+    exitCode <- system_ ("xl network-detach " ++ show domid ++ " " ++ show nic)
     bailIfError exitCode "Error detatching nic from domain."
-    exitCode <- system ("xl network-attach " ++ domid ++ " backend=" ++ show back_domid)
+    exitCode <- system_ ("xl network-attach " ++ domid ++ " backend=" ++ show back_domid)
     bailIfError exitCode "Error attaching new nic to domain."
 
 --Implement signal watcher to fire off handler upon receiving
