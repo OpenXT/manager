@@ -601,7 +601,6 @@ getXlConfig cfg =
                  return $ [ "uuid='" ++ (show uuid) ++ "'"
                           , "vnc=0"
                           , "crypto_key_dir='" ++ (vmcfgCryptoKeyDirs cfg) ++ "'"
-                          , "xci_cpuid_signature=" ++ (if vmcfgXciCpuidSignature cfg then "1" else "0")
                           , "pci_permissive=1"
                           , "pci_msitranslate=1"
                           , "pci_seize=1"
@@ -683,19 +682,31 @@ diskSpec :: Uuid -> Disk -> Rpc DiskSpec
 diskSpec uuid d  = do
   stubdom <- readConfigPropertyDef uuid vmStubdom False
   hd_type <- readConfigPropertyDef uuid vmHdType "ide"
-  return $ printf "'%s,%s,%s,%s,%s,%s'"
-             (diskPath d) (fileToRaw (enumMarshall $ diskType d)) (cdType stubdom d) (adjDiskDevice d hd_type) (enumMarshall $ diskMode d) (if ((enumMarshall $ diskDeviceType d) == "cdrom") then (enumMarshall $ diskDeviceType d) else "")
+  return $ printf "'format=raw,backendtype=%s,vdev=%s,access=%s,devtype=%s,script=%s,target=%s'"
+             (cdType stubdom d)
+             (adjDiskDevice d hd_type)
+             (enumMarshall $ diskMode d)
+             (if (disk_dev_type == "cdrom") then disk_dev_type else "disk")
+             (script disk_type)
+             (target disk_type (diskPath d))
   where
+    disk_type = enumMarshall $ diskType d
+    disk_dev_type = enumMarshall $ diskDeviceType d
     cdType stubdom d =
-      case (enumMarshall $ diskDeviceType d) of
-          "cdrom" -> if stubdom then "backendtype=tap" else "backendtype=phy"
-          _       -> if (enumMarshall $ diskType d) == "phy" then "backendtype=phy" else "backendtype=tap"
-    fileToRaw typ = if typ == "file" || typ == "phy" then "raw" else typ
+      case disk_dev_type of
+          "cdrom" -> "phy"
+          _       -> "phy"
     -- convert hdX -> xvdX if hdtype is 'ahci'
     adjDiskDevice d hd_type =
       case hd_type of
-          "ahci" -> if ((enumMarshall $ diskDeviceType d) == "cdrom") then (diskDevice d) else ("xvd" ++ [(last $ diskDevice d)])
+          "ahci" -> if (disk_dev_type == "cdrom") then (diskDevice d) else ("xvd" ++ [(last $ diskDevice d)])
           _      -> diskDevice d
+    script "vhd" = "block-tap"
+    script "aio" = "block-tap"
+    script _     = "block"
+    target "vhd" path = printf "vhd:%s" path
+    target "aio" path = printf "aio:%s" path
+    target _     path = path
 
 -- Next section: information about Network Interfaces
 nicSpecs :: VmConfig -> Rpc [NicSpec]
@@ -895,9 +906,17 @@ miscSpecs cfg = do
              ""      -> return ["vga='stdvga'"]
              d       -> return ["vga='stdvga'", "dm_display='" ++ d ++ "'"]
 
-      vkb = readConfigPropertyDef uuid vmVkbd False >>=
-                \ v -> if v then return ["vkb=['backend-type=linux,feature-abs-pointer=1,height=32768,width=32768']"]
-                            else return []
+      vkb =
+        do
+          vkbd <- readConfigProperty uuid vmVkbd
+          vglass <- readConfigPropertyDef uuid vmVglassEnabled False
+          case (vkbd, vglass) of
+               (Just True,  _) -> return vkb
+               (Nothing, True) -> return vkb
+               (_,          _) -> return no_vkb
+        where
+          vkb = ["vkb=['backend-type=linux,feature-abs-pointer=1,height=32768,width=32768']"]
+          no_vkb = ["vkb_device=0"]
 
       -- Other config keys taken directly from .config subtree which we delegate directly
       -- to xenvm
@@ -914,8 +933,8 @@ miscSpecs cfg = do
           , ("init_seclabel"   , vmInitFlaskLabel)
           , ("device_model_stubdomain_seclabel", vmStubdomFlaskLabel)
           , ("serial"          , vmSerial)
-          , ("stubdom_cmdline" , vmStubdomCmdline)
-          , ("stubdom_memory"  , vmStubdomMemory)   --OXT-1220: iomem and ioports should be reworked to support specifying multiple
+          , ("stubdomain_cmdline" , vmStubdomCmdline)
+          , ("stubdomain_memkb"  , vmStubdomMemory)   --OXT-1220: iomem and ioports should be reworked to support specifying multiple
           , ("iomem"           , vmPassthroughMmio) --ranges at a finer granularity. Few ways to implement, likely as a db-node with
           , ("ioports"         , vmPassthroughIo)   --each range as an entry beneath it, which is read and parsed during xl cfg generation.
           , ("bios"            , vmBios)
@@ -945,7 +964,8 @@ miscSpecs cfg = do
                                              "device_model_stubdomain_seclabel" -> name ++ "=" ++ (wrapQuotes v)
                                              "boot"     -> name ++ "=" ++ (wrapQuotes v)
                                              "bios"     -> name ++ "=" ++ (wrapQuotes v)
-                                             "stubdom_cmdline" -> name ++ "=" ++ (wrapQuotes v)
+                                             "stubdomain_cmdline" -> name ++ "=" ++ (wrapQuotes v)
+                                             "stubdomain_memkb" -> name ++ "=" ++ show (1024 * read v)
                                              "initrd"   -> name ++ "=" ++ (wrapQuotes v)
                                              _          -> name ++ "=" ++ v) <$>
                                 readConfigProperty uuid prop

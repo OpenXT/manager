@@ -187,14 +187,14 @@ shutdown uuid =
       let xs_path = "/local/domain/" ++ stubdomid ++ "/device-model/" ++ domid
       gpe <- xsRead (xs_path ++ "/hvm-powerbutton-enable")
       case gpe of
-        Just g  -> do exitCode  <- system_ ("xl shutdown -w " ++ domid)
+        Just g  -> do exitCode  <- system_ ("xl shutdown -ww " ++ domid)
                       case exitCode of
                         ExitSuccess   -> return ()
                         _             -> do xsWrite (xs_path ++ "/hvm-shutdown") "poweroff"
                                             _ <- system_ ("xl trigger " ++ domid ++ " power")
-                                            _ <- system_ ("xl shutdown -F -w " ++ domid)
+                                            _ <- system_ ("xl shutdown -F -ww " ++ domid)
                                             return ()
-        Nothing -> do system_ ("xl shutdown -c -w " ++ domid)
+        Nothing -> do system_ ("xl shutdown -c -ww " ++ domid)
                       return ()
 
 pause :: Uuid -> IO ()
@@ -238,8 +238,8 @@ signal uuid = do
 --It should be noted that by design, we start our domains paused to ensure all the
 --backend components are created and xenstore nodes are written before the domain
 --begins running.
-start :: Uuid -> IO ()
-start uuid =
+start :: Uuid -> [(String, String)] -> IO ()
+start uuid extraEnv =
     do
       --if domain already has a pid don't try to create another.
       pid <- getXlProcess uuid
@@ -249,7 +249,8 @@ start uuid =
           case state of
             Shutdown -> do
                           (_, _, Just err, handle) <- createProcess (proc "xl" ["create", configPath uuid, "-p"]){std_err = CreatePipe,
-                                  close_fds = True}
+                                  close_fds = True,
+                                  env = Just extraEnv}
                           ec <- waitForProcess handle
                           stderr <- hGetContents err
                           case ec of
