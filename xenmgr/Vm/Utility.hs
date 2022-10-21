@@ -60,6 +60,18 @@ mount dev dir ro = void $ readProcessOrDie "mount" ["-o", opts, dev, dir] "" whe
   ro_opt | ro = "ro"
          | otherwise = ""
 
+mount_try_n n dev dir ro =
+  do
+    info $ "mount " ++ (show n) ++ " " ++ dev ++ " on " ++ (show dir) ++ " read-only:" ++ (show ro)
+    readProcessOrDie "udevadm" ["settle"] ""
+    mount dev dir ro `E.catch` mount_error n
+  where
+    mount_error :: Int -> E.SomeException -> IO ()
+    mount_error 0 e = E.throw e
+    mount_error i e = do mount_try_n (i - 1) dev dir ro
+
+mount_try = mount_try_n 7
+
 umount :: FilePath -> IO ()
 umount dir = void $ readProcessOrDie "umount" [dir] ""
 
@@ -96,7 +108,7 @@ withMountedDisk extraEnv diskT ro phys_path part action
               finally' (loremove lo) $
                 do loop <- lopart lo part
                    settle part
-                   mount loop temp_dir ro
+                   mount_try loop temp_dir ro
                    finally' (umount temp_dir) $ action temp_dir
   where
     create_dev DiskImage = return phys_path
