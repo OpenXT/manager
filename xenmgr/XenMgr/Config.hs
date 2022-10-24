@@ -27,7 +27,6 @@ module XenMgr.Config
                  , appSvmAutoStartDelay
                  , appOverwriteServiceVmSettings
                  , appXcDiagTimeout
-                 , appIdleTimeThreshold
                  , appArgoHostsFile
                  , appMultiGpuPt
                  , appSeamlessTrafficDefault
@@ -43,7 +42,6 @@ module XenMgr.Config
                  , appSetSvmAutoStartDelay
                  , appSetOverwriteServiceVmSettings
                  , appSetXcDiagTimeout
-                 , appSetIdleTimeThreshold
                  , appSetArgoHostsFile
                  , appSetPlatformCryptoKeyDirs
                  , appConfigurableSaveChangesAcrossReboots
@@ -168,15 +166,6 @@ appXcDiagTimeout =
 
 appSetXcDiagTimeout :: Int -> Rpc ()
 appSetXcDiagTimeout to = dbWrite "/xenmgr/xc-diag-timeout" to
-
--- defaults to 0s
-appIdleTimeThreshold :: Rpc Int
-appIdleTimeThreshold =
-    dbMaybeRead "/xenmgr/idle-time-threshold" >>= return . fromMaybe 0
-
-appSetIdleTimeThreshold :: Int -> Rpc ()
-appSetIdleTimeThreshold to = dbWrite "/xenmgr/idle-time-threshold" to
-
 
 -- Should we be updating /etc/hosts with argo addresses. defaults to true
 appArgoHostsFile :: Rpc Bool
