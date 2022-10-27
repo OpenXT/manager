@@ -38,7 +38,8 @@ Executable rpc-proxy
     transformers-base,
     xchwebsocket,
     xchxenstore,
-    xchdb
+    xchdb,
+    rpc-autogen
   Main-Is: Main.hs
   if flag(stubdom)
     GHC-Options: -O2 -fwarn-incomplete-patterns -static -optl-static -optl-pthread

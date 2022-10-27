@@ -35,6 +35,7 @@ Executable updatemgr
     monad-control,
     monad-loops,
     hinotify,
-    HTTP
+    HTTP,
+    rpc-autogen
   Main-Is: Main.hs
   GHC-Options: -O2 -fwarn-incomplete-patterns -dynamic -threaded
