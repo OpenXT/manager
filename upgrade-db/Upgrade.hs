@@ -23,7 +23,8 @@ import Control.Monad
 import Control.Exception
 import Control.Applicative
 
-import System
+import System.Environment
+import System.Exit
 import System.IO
 import Directory
 

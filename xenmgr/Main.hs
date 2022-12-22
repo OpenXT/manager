@@ -27,7 +27,8 @@ import Data.String
 import Data.List
 import Data.Ord
 import Data.Maybe
-import System
+import System.Environment
+import System.Exit
 import System.Posix.Files
 import System.Posix.Syslog
 import System.Posix.Process

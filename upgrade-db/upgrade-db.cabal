@@ -9,7 +9,6 @@ Executable upgrade-db
   Build-Depends:
     base,
     containers,
-    haskell98,
     process,
     unix,
     text,

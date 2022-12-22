@@ -15,7 +15,6 @@ Executable rpc-proxy
     base,
     deepseq,
     containers,
-    haskell98,
     process,
     unix,
     text,

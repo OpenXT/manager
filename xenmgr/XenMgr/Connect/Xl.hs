@@ -70,7 +70,7 @@ import Tools.XenStore
 import Tools.Log
 import Tools.Process
 import Tools.Text as TT
-import System
+import System.Exit
 import System.Process
 import System.Directory
 import System.IO

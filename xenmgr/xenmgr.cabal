@@ -14,7 +14,6 @@ Executable xenmgr
     time,
     deepseq,
     containers,
-    haskell98,
     process,
     unix,
     text,
