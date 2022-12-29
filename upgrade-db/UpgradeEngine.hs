@@ -37,7 +37,6 @@ import Data.List
 import Control.Monad
 import Control.Monad.State
 import System.IO
-import qualified System.IO.UTF8 as UTF8
 import System.FilePath
 import ShellTools
 import JSONTrees
@@ -80,7 +79,7 @@ setCurrentVersion v = do
 
 readJSONFile :: FilePath -> IO JSValue
 readJSONFile path = do
-  contents <- UTF8.readFile path
+  contents <- readFile path
   case decodeStrict $ contents of
     Error msg -> error $ "malformed JSON file: " ++ msg
     Ok json   -> return json

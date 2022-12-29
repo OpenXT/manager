@@ -20,8 +20,8 @@
 module Migrations.M_7 (migration) where
 
 import Control.Monad
-import Directory
 import Data.List
+import System.Directory
 import System.Posix.Files
 
 import UpgradeEngine
