@@ -58,11 +58,11 @@ dtypes :: TypeConvMode -> [JArg] -> [Type]
 dtypes (SpecifyTypes ts) _ = ts
 dtypes GuessTypes as = map dtype as
   where
-    dtype (JArgBool _) = DBusBoolean
-    dtype (JArgString _) = DBusString
-    dtype (JArgNumber _) = DBusWord32
-    dtype (JArgArray _) = DBusArray DBusByte
-    dtype (JArgDict _) = DBusDictionary DBusString DBusString
+    dtype (JArgBool _) = TypeBoolean
+    dtype (JArgString _) = TypeString
+    dtype (JArgNumber _) = TypeWord32
+    dtype (JArgArray _) = TypeArray TypeWord8
+    dtype (JArgDict _) = TypeDictionary TypeString TypeString
 
 -- | JSON -> DBUS
 
@@ -104,28 +104,28 @@ convJArgs :: TypeConvMode -> [JArg] -> Maybe [Variant]
 convJArgs m as = mapM (uncurry convJArg) (zip (dtypes m as) as)
 
 convJArg :: DBus.Internal.Types.Type -> JArg -> Maybe Variant
-convJArg DBusString (JArgString x) = Just $ toVariant x
-convJArg DBusBoolean (JArgBool x) = Just $ toVariant x
-convJArg DBusInt16 (JArgNumber x) = Just $ toVariant (floor x :: Int16)
-convJArg DBusInt32 (JArgNumber x) = Just $ toVariant (floor x :: Int32)
-convJArg DBusInt64 (JArgNumber x) = Just $ toVariant (floor x :: Int64)
-convJArg DBusByte (JArgNumber x) = Just $ toVariant (floor x :: Word8)
-convJArg DBusWord16 (JArgNumber x) = Just $ toVariant (floor x :: Word16)
-convJArg DBusWord32 (JArgNumber x) = Just $ toVariant (floor x :: Word32)
-convJArg DBusWord64 (JArgNumber x) = Just $ toVariant (floor x :: Word64)
-convJArg DBusDouble (JArgNumber x) = Just $ toVariant (realToFrac x :: Double)
-convJArg DBusSignature (JArgString x) = toVariant <$> mkSignature x
-convJArg DBusObjectPath (JArgString x) = toVariant <$> mkObjectPath x
-convJArg (DBusArray et) (JArgArray xs)
+convJArg TypeString (JArgString x) = Just $ toVariant x
+convJArg TypeBoolean (JArgBool x) = Just $ toVariant x
+convJArg TypeInt16 (JArgNumber x) = Just $ toVariant (floor x :: Int16)
+convJArg TypeInt32 (JArgNumber x) = Just $ toVariant (floor x :: Int32)
+convJArg TypeInt64 (JArgNumber x) = Just $ toVariant (floor x :: Int64)
+convJArg TypeWord8 (JArgNumber x) = Just $ toVariant (floor x :: Word8)
+convJArg TypeWord16 (JArgNumber x) = Just $ toVariant (floor x :: Word16)
+convJArg TypeWord32 (JArgNumber x) = Just $ toVariant (floor x :: Word32)
+convJArg TypeWord64 (JArgNumber x) = Just $ toVariant (floor x :: Word64)
+convJArg TypeDouble (JArgNumber x) = Just $ toVariant (realToFrac x :: Double)
+convJArg TypeSignature (JArgString x) = toVariant <$> mkSignature x
+convJArg TypeObjectPath (JArgString x) = toVariant <$> mkObjectPath x
+convJArg (TypeArray et) (JArgArray xs)
   = liftM toVariant . arrayFromItems et =<< mapM (convJArg et) xs
-convJArg (DBusDictionary kt vt) (JArgDict d)
+convJArg (TypeDictionary kt vt) (JArgDict d)
   = fmap toVariant . dictionaryFromItems kt vt =<< mapM item d
   where item (k,v) = (,) <$> convJArg kt (JArgString k) <*> convJArg vt v
-convJArg DBusVariant (JArgString x) = Just . toVariant $ toVariant x
-convJArg DBusVariant (JArgBool x) = Just . toVariant $ toVariant x
-convJArg DBusVariant (JArgNumber x) = Just . toVariant $ toVariant (floor x :: Int32)
+convJArg TypeVariant (JArgString x) = Just . toVariant $ toVariant x
+convJArg TypeVariant (JArgBool x) = Just . toVariant $ toVariant x
+convJArg TypeVariant (JArgNumber x) = Just . toVariant $ toVariant (floor x :: Int32)
 -- ^^ FIXME: other more complex variant are going to fail
--- DBusStructure not supported
+-- TypeStructure not supported
 convJArg _ _ = Nothing
 
 -- | DBUS -> JSON
@@ -169,24 +169,24 @@ convFromError (serial,e) =
 
 convVariant :: Variant -> Maybe JArg
 convVariant v = go (variantType v) where
-  go DBusBoolean = JArgBool <$> fromVariant v
-  go DBusByte = JArgNumber . toRational <$> (fromVariant v :: Maybe Word8)
-  go DBusInt16 = JArgNumber . toRational <$> (fromVariant v :: Maybe Int16)
-  go DBusInt32 = JArgNumber . toRational <$> (fromVariant v :: Maybe Int32)
-  go DBusInt64 = JArgNumber . toRational <$> (fromVariant v :: Maybe Int64)
-  go DBusWord16 = JArgNumber . toRational <$> (fromVariant v :: Maybe Word16)
-  go DBusWord32 = JArgNumber . toRational <$> (fromVariant v :: Maybe Word32)
-  go DBusWord64 = JArgNumber . toRational <$> (fromVariant v :: Maybe Word64)
-  go DBusDouble = JArgNumber . toRational <$> (fromVariant v :: Maybe Double)
-  go DBusString = JArgString <$> fromVariant v
-  go DBusSignature = JArgString . strSignature <$> fromVariant v
-  go DBusObjectPath = JArgString . strObjectPath <$> fromVariant v
-  go DBusVariant = convVariant =<< fromVariant v
-  go (DBusStructure ts) =
+  go TypeBoolean = JArgBool <$> fromVariant v
+  go TypeWord8 = JArgNumber . toRational <$> (fromVariant v :: Maybe Word8)
+  go TypeInt16 = JArgNumber . toRational <$> (fromVariant v :: Maybe Int16)
+  go TypeInt32 = JArgNumber . toRational <$> (fromVariant v :: Maybe Int32)
+  go TypeInt64 = JArgNumber . toRational <$> (fromVariant v :: Maybe Int64)
+  go TypeWord16 = JArgNumber . toRational <$> (fromVariant v :: Maybe Word16)
+  go TypeWord32 = JArgNumber . toRational <$> (fromVariant v :: Maybe Word32)
+  go TypeWord64 = JArgNumber . toRational <$> (fromVariant v :: Maybe Word64)
+  go TypeDouble = JArgNumber . toRational <$> (fromVariant v :: Maybe Double)
+  go TypeString = JArgString <$> fromVariant v
+  go TypeSignature = JArgString . strSignature <$> fromVariant v
+  go TypeObjectPath = JArgString . strObjectPath <$> fromVariant v
+  go TypeVariant = convVariant =<< fromVariant v
+  go (TypeStructure ts) =
     do Structure items <- fromVariant v
        JArgArray <$> mapM convVariant items
-  go (DBusArray et)
+  go (TypeArray et)
     = liftM JArgArray . mapM convVariant . arrayItems =<< fromVariant v
-  go (DBusDictionary _ _)
+  go (TypeDictionary _ _)
     = let item (k, dv) = (,) <$> (fromVariant k :: Maybe TL.Text) <*> convVariant dv in
       liftM JArgDict . mapM item . dictionaryItems =<< fromVariant v
