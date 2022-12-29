@@ -51,11 +51,11 @@ import qualified Data.ByteString.Lazy as LazyBS
 import Text.Printf
 
 import DBus.Wire ( marshalMessage, unmarshalMessage, Endianness(..) )
-import DBus.Message ( Message(..), ReceivedMessage(..), Serial, receivedSerial, receivedSender
+import DBus.Internal.Message ( Message(..), ReceivedMessage(..), Serial, receivedSerial, receivedSender
                     , MethodCall(..),Signal(..),MethodReturn(..),Error(..), firstSerial, nextSerial
                     , serialValue )
-import DBus.Types ( InterfaceName, MemberName )
-import qualified DBus.Types
+import DBus.Internal.Types ( InterfaceName, MemberName )
+import qualified DBus.Internal.Types
 import Rpc.Core
 import Rpc.Autogen.DbusClient
 
@@ -453,8 +453,8 @@ replaceAnonymousXF context = do
       transformIn = Transform $ \m@(Msg rm buf) ->
         case rm of
           ReceivedMethodCall serial _ call
-            | Just dest <- DBus.Message.methodCallDestination call
-            , destStr <- DBus.Types.strBusName dest
+            | Just dest <- DBus.Internal.Message.methodCallDestination call
+            , destStr <- DBus.Internal.Types.strBusName dest
             , not (TL.null destStr), TL.index destStr 0 == ':' -> do
               let d = TL.unpack destStr
               liftIO $ whenM (isNothing <$> lookupName names d) $ runRpcProxyM context (queryUpdateNameTable names)
@@ -545,7 +545,7 @@ changeRequestNameXF service (ArtefactSource _ maybe_uuid _)
                    , methodCallDestination = Just nameOrgFreedesktopDBus
                    , methodCallFlags       = methodCallFlags call
                    , methodCallBody        = replace_name n (methodCallBody call) }
-          where replace_name n [name_v, flags_v] = [DBus.Types.toVariant n, flags_v]
+          where replace_name n [name_v, flags_v] = [DBus.Internal.Types.toVariant n, flags_v]
                 replace_name _ args = args
 
       spoof m@(Msg rm _) serial call new_name

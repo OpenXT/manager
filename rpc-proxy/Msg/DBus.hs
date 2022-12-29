@@ -19,7 +19,7 @@
 module Msg.DBus
        ( Msg (..)
        , unmarshaledMessages
-       , module DBus.Message
+       , module DBus.Internal.Message
        ) where
 
 import Data.List
@@ -36,7 +36,7 @@ import System.Posix
 import System.IO.Unsafe
 import Text.Printf
 
-import DBus.Message ( ReceivedMessage(..) )
+import DBus.Internal.Message ( ReceivedMessage(..) )
 import DBus.Wire ( marshalMessage, unmarshalMessage, Endianness(..) )
 
 import Channel

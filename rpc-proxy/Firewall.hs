@@ -42,10 +42,10 @@ import Msg.DBus
 import Types
 import Tools.Log
 
-import DBus.Message ( Message(..), ReceivedMessage(..), Serial, receivedSerial, receivedSender
+import DBus.Internal.Message ( Message(..), ReceivedMessage(..), Serial, receivedSerial, receivedSender
                     , MethodCall(..),Signal(..),MethodReturn(..),Error(..), firstSerial, nextSerial )
-import DBus.Types ( strBusName, strInterfaceName, strObjectPath, strMemberName, toVariant )
-import qualified DBus.Types as DT
+import DBus.Internal.Types ( strBusName, strInterfaceName, strObjectPath, strMemberName, toVariant )
+import qualified DBus.Internal.Types as DT
 
 import Rpc.Core ( Proxy (..), fromVariant, RemoteObject (..), ObjectPath, remote, Dispatcher, mkObjectPath_, Variable (..) )
 

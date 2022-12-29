@@ -45,9 +45,9 @@ import Text.JSON
 import Text.Printf
 import System.IO.Unsafe
 
-import DBus.Types hiding (fromVariant,toVariant)
-import qualified DBus.Types as DB
-import DBus.Message
+import DBus.Internal.Types hiding (fromVariant,toVariant)
+import qualified DBus.Internal.Types as DB
+import DBus.Internal.Message
 import DBus.Wire ( marshalMessage, unmarshalMessage, Endianness(..) )
 
 import Rpc.Core hiding (ObjectPath, BusName, MemberName, InterfaceName, mkObjectPath_, mkBusName_, mkMemberName_, mkInterfaceName_) --hiding (ObjectPath, BusName, MemberName, InterfaceName)

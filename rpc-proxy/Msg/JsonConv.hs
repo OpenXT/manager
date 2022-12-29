@@ -39,8 +39,8 @@ import Data.Ratio
 import qualified Data.Set
 import qualified Data.Text.Lazy as TL
 
-import DBus.Types
-import DBus.Message
+import DBus.Internal.Types
+import DBus.Internal.Message
 
 import Msg.JsonRpc
 
@@ -103,7 +103,7 @@ convToError sig e
 convJArgs :: TypeConvMode -> [JArg] -> Maybe [Variant]
 convJArgs m as = mapM (uncurry convJArg) (zip (dtypes m as) as)
 
-convJArg :: DBus.Types.Type -> JArg -> Maybe Variant
+convJArg :: DBus.Internal.Types.Type -> JArg -> Maybe Variant
 convJArg DBusString (JArgString x) = Just $ toVariant x
 convJArg DBusBoolean (JArgBool x) = Just $ toVariant x
 convJArg DBusInt16 (JArgNumber x) = Just $ toVariant (floor x :: Int16)
