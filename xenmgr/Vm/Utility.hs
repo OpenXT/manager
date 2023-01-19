@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-module Vm.Utility ( withMountedDisk, copyFileFromDisk
+module Vm.Utility ( copyFileFromDisk
                   , tapCreate
                   , tapCreateVhd
                   , tapDestroy
@@ -86,9 +86,9 @@ withTempDirectory root_path action =
                      | otherwise              = E.throw e
     templated_name magic_num = root_path </> printf "tempdir-%08d" magic_num
 
-withMountedDisk :: [(String,String)] -> DiskType -> Bool -> FilePath -> Maybe PartitionNum -> (FilePath -> IO a) -> IO a
-withMountedDisk _ QemuCopyOnWrite _ _ _ _ = error "qcow unsupported"
-withMountedDisk extraEnv diskT ro phys_path part action
+withMountedRODisk :: [(String,String)] -> DiskType -> FilePath -> Maybe PartitionNum -> (FilePath -> IO a) -> IO a
+withMountedRODisk _ QemuCopyOnWrite _ _ _ = error "qcow unsupported"
+withMountedRODisk extraEnv diskT phys_path part action
   = withTempDirectory "/tmp" $ \temp_dir ->
       do dev <- create_dev diskT
          finally' (destroy_dev diskT dev) $
@@ -99,6 +99,7 @@ withMountedDisk extraEnv diskT ro phys_path part action
                    mount loop temp_dir ro
                    finally' (umount temp_dir) $ action temp_dir
   where
+    ro = True
     create_dev DiskImage = return phys_path
     create_dev PhysicalDevice = return phys_path
     create_dev VirtualHardDisk = tapCreateVhd extraEnv ro phys_path
@@ -137,9 +138,9 @@ lopart lo (Just pnum) = do
 deslash ('/':xs) = xs
 deslash xs = xs
 
-copyFileFromDisk :: [(String, String)] -> DiskType -> Bool -> FilePath -> (Maybe PartitionNum,FilePath) -> FilePath -> IO ()
-copyFileFromDisk extraEnv diskT ro phys_path (part,src_path) dst_path
-  = withMountedDisk extraEnv diskT ro phys_path part $ \contents ->
+copyFileFromDisk :: [(String, String)] -> DiskType -> FilePath -> (Maybe PartitionNum,FilePath) -> FilePath -> IO ()
+copyFileFromDisk extraEnv diskT phys_path (part,src_path) dst_path
+  = withMountedRODisk extraEnv diskT phys_path part $ \contents ->
       void $ 
         readProcessOrDie "cp" [contents </> deslash src_path, dst_path] "" >>
           readProcessOrDie "sync" [] "" >> verifyChecksum (contents </> deslash src_path) dst_path

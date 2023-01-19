@@ -1624,7 +1624,7 @@ extractFileFromPvDomain (Just dst_path) ext_loc uuid = withKernelPath dst_path w
 
 copyKernelFromDisk :: [ (String, String) ] -> Disk -> FilePath -> (Maybe PartitionNum,FilePath) -> IO ()
 copyKernelFromDisk extraEnv disk dst_path src
- = copyFileFromDisk extraEnv (diskType disk) (diskMode disk == ReadOnly) (diskPath disk) src dst_path
+ = copyFileFromDisk extraEnv (diskType disk) (diskPath disk) src dst_path
 
 changeVmNicNetwork :: Uuid -> NicID -> Network -> XM ()
 changeVmNicNetwork uuid nicid network = do
