@@ -35,4 +35,4 @@ Executable xenmgr
     xenmgr-core
 
   Main-Is: Main.hs
-  GHC-Options: -O2 -Werror -fwarn-incomplete-patterns -threaded -dynamic
+  GHC-Options: -O2 -Werror -Wno-deprecations -fwarn-incomplete-patterns -threaded -dynamic
