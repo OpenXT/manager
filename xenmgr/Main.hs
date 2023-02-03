@@ -38,7 +38,7 @@ import System.IO
 import System.Timeout (timeout)
 import System.Process
 import System.FilePath
-import Directory
+import System.Directory
 
 import qualified Tools.Periodic as Periodic
 import Tools.Periodic

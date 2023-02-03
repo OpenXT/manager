@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE TypeSynonymInstances,TypeOperators,PatternGuards,ScopedTypeVariables,FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances,TypeOperators,PatternGuards,ScopedTypeVariables,FlexibleInstances,FlexibleContexts #-}
 module Vm.Config (
                   ConfigProperty
 
@@ -112,7 +112,7 @@ import Data.List
 import Data.Maybe
 import qualified Data.Text.Lazy as TL
 import qualified Data.Map as M
-import Directory
+import System.Directory
 import Text.Printf
 import System.FilePath.Posix
 

@@ -17,7 +17,7 @@
 --
 
 -- Configuration of XenMgr
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
 
 module XenMgr.Config
                  (
@@ -74,7 +74,7 @@ import System.Directory
 import System.IO
 import System.IO.Unsafe
 import System.Posix.Files
-import Directory
+import System.Directory
 
 import Tools.Text
 import Tools.Misc

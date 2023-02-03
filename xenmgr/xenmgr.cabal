@@ -32,7 +32,8 @@ Executable xenmgr
     xchargo,
     xchxenstore,
     xchdb,
-    xenmgr-core
+    xenmgr-core,
+    old-locale
 
   Main-Is: Main.hs
   GHC-Options: -O2 -Werror -Wno-deprecations -fwarn-incomplete-patterns -threaded -dynamic

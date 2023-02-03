@@ -71,7 +71,7 @@ import Control.Monad
 import Control.Monad.Error (catchError)
 import Control.Applicative
 import qualified Control.Exception as E
-import Directory
+import System.Directory
 import System.FilePath.Posix
 import System.Posix.IO
 import System.Posix.Files

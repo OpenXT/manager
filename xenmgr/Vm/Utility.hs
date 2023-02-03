@@ -34,7 +34,7 @@ import System.IO.Error
 import System.FilePath
 import Text.Printf
 
-import Directory
+import System.Directory
 import Tools.Misc
 import Tools.Process
 import Tools.Text

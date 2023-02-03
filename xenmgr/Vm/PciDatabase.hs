@@ -32,7 +32,7 @@ module Vm.PciDatabase
         , gatherPciDeviceEntries
 	) where
 
-import Control.Applicative ((<*), (*>), (<|>), (<$>), (<*>), pure)
+import Control.Applicative ((<*), (*>), (<|>), (<$>), (<*>), many, pure)
 import Control.Monad
 import Data.Attoparsec
 import Data.Attoparsec.Combinator
@@ -45,7 +45,7 @@ import qualified Data.List
 import Data.Word
 import Prelude hiding (concat, foldl, take, readFile, takeWhile)
 import Text.Printf
-import Directory (removeFile)
+import System.Directory (removeFile)
 import Tools.Process (safeSpawnShell)
 import qualified Codec.Compression.GZip as GZ
 

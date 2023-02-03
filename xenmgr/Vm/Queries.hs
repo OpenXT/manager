@@ -155,7 +155,7 @@ import qualified Control.Exception as E
 import Control.Monad
 import Control.Monad.Error
 import Control.Applicative
-import Directory
+import System.Directory
 import Text.Printf
 
 import XenMgr.Db

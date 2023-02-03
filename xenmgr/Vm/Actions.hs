@@ -168,7 +168,7 @@ import System.Exit
 import System.IO
 import System.Timeout
 import Data.Time
-import Directory
+import System.Directory
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import qualified Data.Foldable
 

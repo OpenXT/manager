@@ -94,7 +94,6 @@ import Data.Ord
 import Data.Time
 import Data.Time.Clock.POSIX
 import Data.Word
-import Locale
 import Text.Printf
 import qualified Data.Map as M
 import Data.String
@@ -103,14 +102,14 @@ import Control.Concurrent
 import Control.Monad
 import Control.Monad.Error hiding (liftIO)
 import Control.Applicative
-import Control.DeepSeq
+import Control.DeepSeq hiding (force)
 import qualified Control.Exception as E
 import System.Posix.Files
 import System.Process
 import System.IO
 import System.IO.Unsafe
 import System.FilePath
-import Directory
+import System.Directory
 import Text.Regex.Posix
 
 import Tools.Log

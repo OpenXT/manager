@@ -43,9 +43,8 @@ import Tools.Process
 import Tools.Text
 import System.FilePath
 import System.Posix.Time
-import Locale
 import Data.Time
-import Directory
+import System.Directory
 import System.Directory (canonicalizePath)
 
 import XenMgr.XM
