@@ -886,9 +886,9 @@ miscSpecs cfg = do
       -- Activate sound
       sound = do
           sound_type <- readConfigPropertyDef uuid vmSound "none"
-	  case sound_type of
-	    "none" -> return []
-	    _      -> return ["soundhw=" ++ wrapQuotes sound_type]
+          case sound_type of
+            "none" -> return []
+            _      -> return ["soundhw=" ++ wrapQuotes sound_type]
 
       -- Tells xl to use a stubdom or not
       stubdom | isHvm cfg && vmcfgStubdom cfg = return ["device_model_stubdomain_override=1"]

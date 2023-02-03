@@ -474,7 +474,7 @@ removeVm uuid =
        
        -- Need to quit xenvm
        -- FIXME: cleanly stop monitoring events
-       removeDefaultEvents uuid	--cleanly...stop monitoring events
+       removeDefaultEvents uuid --cleanly...stop monitoring events
        liftIO $ xsRm $ "/state/" ++ show uuid --vm is deleted, no need for state node anymore
        notifyVmDeleted uuid
   where
@@ -1223,8 +1223,8 @@ doVmFirewallRules message which =
                 Firewall.reduce (Firewall.ReduceContext vm seamlessVms vms) [rule]
             vm_rules = mapM (getEffectiveVmFirewallRules . Firewall.vmUuid)
         let makeRules vms = (concat . map (reduce vms) .
-                	     concat . zipWith (\vm rs -> map (vm,) rs) vms) <$>
- 		             vm_rules vms
+                         concat . zipWith (\vm rs -> map (vm,) rs) vms) <$>
+                     vm_rules vms
         changeset <- Firewall.changeset <$> makeRules vms <*> makeRules vms'
         liftIO $ Firewall.applyChangeset changeset
 

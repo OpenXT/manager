@@ -21,16 +21,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Vm.PciDatabase
-	( PciDatabase
-	, VendorId
-	, DeviceId
-        , DeviceEntry(..)
-        , Name
-	, empty
-	, load
-	, loadDefault
-        , gatherPciDeviceEntries
-	) where
+   ( PciDatabase
+   , VendorId
+   , DeviceId
+   , DeviceEntry(..)
+   , Name
+   , empty
+   , load
+   , loadDefault
+   , gatherPciDeviceEntries
+   ) where
 
 import Control.Applicative ((<*), (*>), (<|>), (<$>), (<*>), many, pure)
 import Control.Monad

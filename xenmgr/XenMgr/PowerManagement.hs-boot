@@ -7,8 +7,8 @@ import XenMgr.XM
 data PMAction = ActionSleep
               | ActionHibernate
               | ActionShutdown
-	      | ActionForcedShutdown
-	      | ActionIdleShutdown
+              | ActionForcedShutdown
+              | ActionIdleShutdown
               | ActionReboot
               | ActionNothing
               | ActionInvalid
