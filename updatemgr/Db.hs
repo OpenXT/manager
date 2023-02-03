@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE TypeSynonymInstances,OverlappingInstances,TypeOperators,FlexibleInstances,UndecidableInstances #-}
+{-# LANGUAGE TypeSynonymInstances,TypeOperators,FlexibleInstances,UndecidableInstances #-}
 
 -- Higher level interface for database access
 -- which allows to read / write any types implementing Marshall class

@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, PatternGuards, FlexibleContexts, ScopedTypeVariables, MultiParamTypeClasses, FlexibleInstances, TupleSections, OverlappingInstances, ViewPatterns #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, PatternGuards, FlexibleContexts, ScopedTypeVariables, MultiParamTypeClasses, FlexibleInstances, TupleSections, ViewPatterns #-}
 module RpcProxy ( module Control.Monad
                 , module Rpc.Core
                 , proxy
