@@ -18,7 +18,6 @@
 
 module Vm.Balloon
        ( balance
-       , balanceToBoot
        , getTotalOveruseKib
        )
        where
@@ -36,7 +35,6 @@ import Vm.Types
 
 import XenMgr.Host
 import XenMgr.Rpc
-import qualified XenMgr.Connect.Xenvm as Xenvm
 
 import Tools.XenStore
 import Tools.Log
@@ -148,10 +146,6 @@ balance kib = go maxRebalanceIters where
   go 0 = return False
   go n = ifM (balanceIter kib) (return True) (delay >> info "rebalance: another iteration" >> go (n-1))
   delay = liftIO $ threadDelay (10^6) -- 1s
-
-balanceToBoot :: Uuid -> Rpc Bool
-balanceToBoot vm
-  = balance =<< Xenvm.requiredToBootKib vm where
 
 getTotalOveruseKib :: Rpc Integer
 getTotalOveruseKib = sum . Map.elems . overuses <$> memMap
