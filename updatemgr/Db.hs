@@ -81,7 +81,7 @@ class DbRepr a where
     toDbTree :: a -> DbTree
 
 -- DbRepr type can be marshalled easily
-instance (Eq a, DbRepr a) => Marshall a where
+instance {-# OVERLAPPABLE #-} (Eq a, DbRepr a) => Marshall a where
     dbWrite p v = dbWrite p (toDbTree v)
     dbRead p = dbRead p >>= \tree -> case fromDbTree tree of
                                        Nothing -> error ("failed to parse DB tree: " ++ show tree)
@@ -176,7 +176,7 @@ instance Marshall Bool where
                 toS False = "false"
 
 -- List of marshalled types is marshalled as well
-instance (Marshall a) => Marshall [a] where
+instance {-# OVERLAPPABLE #-} (Marshall a) => Marshall [a] where
     dbRead  x      = dbListPaths x >>= mapM dbRead
     dbWrite x vs   = dbRm x        >>  mapM_ setOne (zip paths vs)
                      where paths        = map (\id -> x ++ "/" ++ (show id)) [0..]
