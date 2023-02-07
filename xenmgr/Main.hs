@@ -418,7 +418,7 @@ main = do
                  else do pid <- forkProcess (runMe f)
                          dumpPid opts pid
 
-    runMe f = withSyslog "xenmgr" [] USER f
+    runMe f = withSyslog "xenmgr" [] User f
     dumpPid opts pid =
         case fname opts of
           Just path -> writeFile path $ show pid ++ "\n"

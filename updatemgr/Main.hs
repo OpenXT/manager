@@ -54,7 +54,7 @@ waitPrerequisites = mapM_ rpcWaitForService prerequisites
 
 main :: IO ()
 main =
-    withSyslog "updatemgr" [] USER . rpcServe "com.citrix.xenclient.updatemgr" $ \rpcContext ->
+    withSyslog "updatemgr" [] User . rpcServe "com.citrix.xenclient.updatemgr" $ \rpcContext ->
         do r <- E.try $
                 do debug "starting.."
                    primary_job <- initJob

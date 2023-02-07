@@ -336,5 +336,5 @@ main = do
     Nothing  -> usage
     Just cmd@(Cmd flags _) ->
       do when (not $ query flags) $
-           withSyslog "xec" [] USER $ syslog Info ( "invoked with: " ++ intercalate " " args )
+           withSyslog "xec" [] User $ syslog Info ( "invoked with: " ++ intercalate " " args )
          exec cmd
