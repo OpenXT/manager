@@ -21,6 +21,7 @@ Executable xec
     hsyslog,
     network,
     containers,
+    xchutils,
     xchargo
 
   Main-Is: xec.hs

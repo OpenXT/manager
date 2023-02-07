@@ -43,6 +43,7 @@ import Network.DBus.Actions (serializeSignature)
 import Network.DBus.Introspect
 
 import qualified DBusArgo as A
+import Tools.Log
 
 str = DBusString . PackedString . C.pack
 
@@ -336,5 +337,5 @@ main = do
     Nothing  -> usage
     Just cmd@(Cmd flags _) ->
       do when (not $ query flags) $
-           withSyslog "xec" [] User $ syslog Info ( "invoked with: " ++ intercalate " " args )
+           withSyslog "xec" [] User $ info ( "invoked with: " ++ intercalate " " args )
          exec cmd
