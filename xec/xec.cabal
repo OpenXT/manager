@@ -29,6 +29,8 @@ Executable xec
   else
     GHC-Options: -O2 -Werror -fwarn-incomplete-patterns -dynamic
 
+  Other-Modules: Cmd DBusArgo Option Parse Show
+
 Executable xec-vm
   Build-Depends:
     base,
@@ -41,3 +43,5 @@ Executable xec-vm
     GHC-Options: -O2 -Werror -fwarn-incomplete-patterns
   else
     GHC-Options: -O2 -Werror -fwarn-incomplete-patterns -dynamic
+
+  Other-Modules: Option Show
