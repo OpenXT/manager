@@ -70,18 +70,21 @@ convToMethodCall :: TypeConvMode -> JReq -> Maybe MethodCall
 convToMethodCall sig r
   = MethodCall
       <$> parseObjectPath (jreqPath r)
-      <*> parseMemberName (jreqMethod r)
       <*> pure (parseInterfaceName $ jreqInterface r)
+      <*> parseMemberName (jreqMethod r)
+      <*> pure Nothing
       <*> pure (parseBusName $ jreqDest r)
-      <*> pure Data.Set.empty
+      <*> pure True
+      <*> pure True
       <*> convJArgs sig (jreqArgs r)
 
 convToSignal :: TypeConvMode -> JSignal -> Maybe Signal
 convToSignal sig s
   = Signal
       <$> parseObjectPath (jsigPath s)
-      <*> parseMemberName (jsigMethod s)
       <*> parseInterfaceName (jsigInterface s)
+      <*> parseMemberName (jsigMethod s)
+      <*> pure Nothing
       <*> pure Nothing
       <*> convJArgs sig (jsigArgs s)
 
@@ -90,6 +93,7 @@ convToMethodReturn sig r
   = MethodReturn
          <$> pure (mkSerial (intReqID $ jrespFor r))
          <*> pure Nothing
+         <*> pure Nothing
          <*> convJArgs sig (jrespArgs r)
 
 convToError :: TypeConvMode -> JRespErr -> Maybe MethodError
@@ -97,6 +101,7 @@ convToError sig e
   = MethodError
          <$> parseErrorName (jerrName e)
          <*> pure (mkSerial (intReqID $ jerrFor e))
+         <*> pure Nothing
          <*> pure Nothing
          <*> convJArgs sig (jerrArgs e)
 
