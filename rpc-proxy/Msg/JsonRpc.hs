@@ -48,40 +48,40 @@ newtype JReqID = JReqID { intReqID :: Integer }
 
 data JReq =
      JReq { jreqId :: JReqID
-          , jreqMethod :: TL.Text
-          , jreqDest :: TL.Text
-          , jreqPath :: TL.Text
-          , jreqInterface :: TL.Text
-          , jreqSignature :: Maybe TL.Text             -- optional dbus sig for arguments to ease conversion
+          , jreqMethod :: String
+          , jreqDest :: String
+          , jreqPath :: String
+          , jreqInterface :: String
+          , jreqSignature :: Maybe String             -- optional dbus sig for arguments to ease conversion
           , jreqArgs :: [JArg] }
 
 data JSignal
    = JSignal { jsigId :: JReqID
-             , jsigPath :: TL.Text
-             , jsigMethod :: TL.Text
-             , jsigInterface :: TL.Text
-             , jsigSignature :: Maybe TL.Text             -- optional dbus sig for arguments to ease conversion
+             , jsigPath :: String
+             , jsigMethod :: String
+             , jsigInterface :: String
+             , jsigSignature :: Maybe String             -- optional dbus sig for arguments to ease conversion
              , jsigArgs :: [JArg] }
 
 data JResp
    = JResp { jrespId :: JReqID
            , jrespFor :: JReqID
-           , jrespSignature :: Maybe TL.Text             -- optional dbus sig for arguments to ease conversion
+           , jrespSignature :: Maybe String             -- optional dbus sig for arguments to ease conversion
            , jrespArgs :: [JArg] }
 
 data JRespErr
    = JRespErr { jerrId :: JReqID
               , jerrFor :: JReqID
-              , jerrName :: TL.Text
-              , jerrSignature :: Maybe TL.Text             -- optional dbus sig for arguments to ease conversion
+              , jerrName :: String
+              , jerrSignature :: Maybe String             -- optional dbus sig for arguments to ease conversion
               , jerrArgs :: [JArg] }
 
 data JArg =
      JArgBool Bool
    | JArgNumber Rational
-   | JArgString TL.Text
+   | JArgString String
    | JArgArray [JArg]
-   | JArgDict [(TL.Text,JArg)]
+   | JArgDict [(String,JArg)]
 
 sget k m
   = k `lookup` m >>= unp where unp (JSString s) = return . fromJSString $ s
@@ -105,7 +105,7 @@ jreqFromJson (JSObject v)
           <*> s "interface"
           <*> pure (s "dbus-signature")
           <*> (mapM arg =<< arr "args")
-            where s   k = TL.pack <$> k `sget` kv
+            where s   k = k `sget` kv
                   arr k = k `lookup` kv >>= unp where unp (JSArray x) = Just x
                                                       unp _ = Nothing
 
@@ -125,7 +125,7 @@ jsignalFromJson (JSObject v)
           <*> s "interface"
           <*> pure (s "dbus-signature")
           <*> (mapM arg =<< arr "args")
-            where s   k = TL.pack <$> k `sget` kv
+            where s   k = k `sget` kv
                   arr k = k `lookup` kv >>= unp where unp (JSArray x) = Just x
                                                       unp _ = Nothing
 jsignalFromJson _ = Nothing
@@ -139,7 +139,7 @@ jrespFromJson (JSObject v) = from (fromJSObject v)
           <*> (JReqID <$> ("response-to" `nget` kv))
           <*> pure (s "dbus-signature")
           <*> (mapM arg =<< arr "args")
-            where s   k = TL.pack <$> k `sget` kv
+            where s   k = k `sget` kv
                   arr k = k `lookup` kv >>= unp where unp (JSArray x) = Just x
                                                       unp _ = Nothing
 jrespFromJson _ = Nothing
@@ -154,45 +154,44 @@ jerrFromJson (JSObject v) = from (fromJSObject v)
           <*> s "name"
           <*> pure (s "dbus-signature")
           <*> (mapM arg =<< arr "args")
-            where s   k = TL.pack <$> k `sget` kv
+            where s   k = k `sget` kv
                   arr k = k `lookup` kv >>= unp where unp (JSArray x) = Just x
                                                       unp _ = Nothing
 jerrFromJson _ = Nothing
 
-str_ = JSString . toJSString
-str  = str_ . TL.unpack
+str = JSString . toJSString
 
 jreqToJson :: JReq -> JSValue
 jreqToJson r
   = JSObject $ toJSObject [
       ( "id", JSRational False (fromIntegral $ intReqID $ jreqId r))
-    , ( "type", str_ "request" )
+    , ( "type", str "request" )
     , ( "method", str (jreqMethod r))
     , ( "destination", str (jreqDest r))
     , ( "path", str (jreqPath r))
     , ( "interface", str (jreqInterface r))
     , ( "args", JSArray (map value $ jreqArgs r))
     ]
-    where str = JSString . toJSString . TL.unpack
+    where str = JSString . toJSString
 
 jsignalToJson :: JSignal -> JSValue
 jsignalToJson s
   = JSObject $ toJSObject [
       ( "id", JSRational False (fromIntegral $ intReqID $ jsigId s))
-    , ( "type", str_ "signal" )
+    , ( "type", str "signal" )
     , ( "interface", str (jsigInterface s) )
     , ( "member", str (jsigMethod s) )
     , ( "path", str (jsigPath s) )
     , ( "args", JSArray (map value $ jsigArgs s) )
     ]
-    where str = JSString . toJSString . TL.unpack
+    where str = JSString . toJSString
 
 jrespToJson :: JResp -> JSValue
 jrespToJson r
   = JSObject $ toJSObject [
       ( "id", JSRational False (fromIntegral $ intReqID $ jrespId r))
-    , ( "type", str_ "response" )
-    , ( "response-to", str_ $ show $ intReqID (jrespFor r) )
+    , ( "type", str "response" )
+    , ( "response-to", str $ show $ intReqID (jrespFor r) )
     , ( "args", JSArray (map value $ jrespArgs r) )
     ]
 
@@ -201,8 +200,8 @@ jerrToJson :: JRespErr -> JSValue
 jerrToJson e
   = JSObject $ toJSObject [
       ( "id", JSRational False (fromIntegral $ intReqID $ jerrId e))
-    , ( "type", str_ "error" )
-    , ( "response-to", str_ $ show $ intReqID (jerrFor e) )
+    , ( "type", str "error" )
+    , ( "response-to", str $ show $ intReqID (jerrFor e) )
     , ( "name", str (jerrName e) )
     , ( "args", JSArray (map value $ jerrArgs e) )
     ]
@@ -210,17 +209,17 @@ jerrToJson e
 arg :: JSValue -> Maybe JArg
 arg (JSBool v) = Just $ JArgBool v
 arg (JSRational _ v) = Just $ JArgNumber v
-arg (JSString v) = Just $ JArgString (TL.pack $ fromJSString v)
+arg (JSString v) = Just $ JArgString (fromJSString v)
 arg (JSArray xs) = JArgArray <$> mapM arg xs
 arg (JSObject o)
   = JArgDict <$> mapM f (fromJSObject o)
-  where f (k,v) = (,) <$> pure (TL.pack k) <*> arg v
+  where f (k,v) = (,) <$> pure k <*> arg v
 arg _ = Nothing
 
 value :: JArg -> JSValue
 value (JArgBool v) = JSBool v
 value (JArgNumber v) = JSRational False v
-value (JArgString v) = JSString $ toJSString (TL.unpack v)
+value (JArgString v) = JSString $ toJSString v
 value (JArgArray xs) = JSArray (map value xs)
-value (JArgDict kv) = JSObject $ toJSObject (map f kv) where f (k,v) = (TL.unpack k, value v)
+value (JArgDict kv) = JSObject $ toJSObject (map f kv) where f (k,v) = (k, value v)
 

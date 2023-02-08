@@ -216,7 +216,7 @@ mkSerial :: (Integral a) => a -> Serial
 mkSerial v = fromJust . DB.fromVariant . DB.toVariant $ (fromIntegral v :: Word32)
 
 class Signed a where
-  signature :: a -> Maybe TL.Text
+  signature :: a -> Maybe String
 
 instance Signed JReq where signature = jreqSignature
 instance Signed JSignal where signature = jsigSignature

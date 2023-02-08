@@ -69,19 +69,19 @@ dtypes GuessTypes as = map dtype as
 convToMethodCall :: TypeConvMode -> JReq -> Maybe MethodCall
 convToMethodCall sig r
   = MethodCall
-      <$> mkObjectPath (jreqPath r)
-      <*> mkMemberName (jreqMethod r)
-      <*> pure (mkInterfaceName $ jreqInterface r)
-      <*> pure (mkBusName $ jreqDest r)
+      <$> parseObjectPath (jreqPath r)
+      <*> parseMemberName (jreqMethod r)
+      <*> pure (parseInterfaceName $ jreqInterface r)
+      <*> pure (parseBusName $ jreqDest r)
       <*> pure Data.Set.empty
       <*> convJArgs sig (jreqArgs r)
 
 convToSignal :: TypeConvMode -> JSignal -> Maybe Signal
 convToSignal sig s
   = Signal
-      <$> mkObjectPath (jsigPath s)
-      <*> mkMemberName (jsigMethod s)
-      <*> mkInterfaceName (jsigInterface s)
+      <$> parseObjectPath (jsigPath s)
+      <*> parseMemberName (jsigMethod s)
+      <*> parseInterfaceName (jsigInterface s)
       <*> pure Nothing
       <*> convJArgs sig (jsigArgs s)
 
@@ -92,10 +92,10 @@ convToMethodReturn sig r
          <*> pure Nothing
          <*> convJArgs sig (jrespArgs r)
 
-convToError :: TypeConvMode -> JRespErr -> Maybe Error
+convToError :: TypeConvMode -> JRespErr -> Maybe MethodError
 convToError sig e
-  = Error
-         <$> mkErrorName (jerrName e)
+  = MethodError
+         <$> parseErrorName (jerrName e)
          <*> pure (mkSerial (intReqID $ jerrFor e))
          <*> pure Nothing
          <*> convJArgs sig (jerrArgs e)
@@ -114,8 +114,8 @@ convJArg TypeWord16 (JArgNumber x) = Just $ toVariant (floor x :: Word16)
 convJArg TypeWord32 (JArgNumber x) = Just $ toVariant (floor x :: Word32)
 convJArg TypeWord64 (JArgNumber x) = Just $ toVariant (floor x :: Word64)
 convJArg TypeDouble (JArgNumber x) = Just $ toVariant (realToFrac x :: Double)
-convJArg TypeSignature (JArgString x) = toVariant <$> mkSignature x
-convJArg TypeObjectPath (JArgString x) = toVariant <$> mkObjectPath x
+convJArg TypeSignature (JArgString x) = toVariant <$> parseSignature $ x
+convJArg TypeObjectPath (JArgString x) = toVariant <$> parseObjectPath $ x
 convJArg (TypeArray et) (JArgArray xs)
   = liftM toVariant . arrayFromItems et =<< mapM (convJArg et) xs
 convJArg (TypeDictionary kt vt) (JArgDict d)
@@ -133,21 +133,21 @@ convJArg _ _ = Nothing
 convFromMethodCall :: (Serial, MethodCall) -> Maybe JReq
 convFromMethodCall (serial, m)
   = JReq     (JReqID (fromSerial serial))
-             (strMemberName $ methodCallMember m)
-         <$> (strBusName <$> methodCallDestination m)
-         <*> pure (strObjectPath $ methodCallPath m)
-         <*> (strInterfaceName <$> methodCallInterface m)
-         <*> pure (Just . TL.concat . map (typeCode . variantType) $ methodCallBody m)
+             (formatMemberName $ methodCallMember m)
+         <$> (formatBusName <$> methodCallDestination m)
+         <*> pure (formatObjectPath $ methodCallPath m)
+         <*> (formatInterfaceName <$> methodCallInterface m)
+         <*> pure (Just . concat . map (typeCode . variantType) $ methodCallBody m)
          <*> mapM convVariant (methodCallBody m)
 
 convFromSignal :: (Serial,Signal) -> Maybe JSignal
 convFromSignal (serial,s)
   = JSignal
       (JReqID (fromSerial serial))
-      (strObjectPath $ signalPath s)
-      (strMemberName $ signalMember s)
-      (strInterfaceName $ signalInterface s)
-      (Just . TL.concat . map (typeCode . variantType) $ signalBody s)
+      (formatObjectPath $ signalPath s)
+      (formatMemberName $ signalMember s)
+      (formatInterfaceName $ signalInterface s)
+      (Just . concat . map (typeCode . variantType) $ signalBody s)
       <$> mapM convVariant (signalBody s)
 
 convFromMethodReturn :: (Serial,MethodReturn) -> Maybe JResp
@@ -155,17 +155,17 @@ convFromMethodReturn (serial,r) =
   JResp
     (JReqID (fromSerial serial))
     (JReqID (fromSerial $ methodReturnSerial r))
-    (Just . TL.concat . map (typeCode . variantType) $ methodReturnBody r)
+    (Just . concat . map (typeCode . variantType) $ methodReturnBody r)
     <$> mapM convVariant (methodReturnBody r)
 
-convFromError :: (Serial,Error) -> Maybe JRespErr
+convFromError :: (Serial,MethodError) -> Maybe JRespErr
 convFromError (serial,e) =
   JRespErr
        (JReqID $ fromSerial serial)
-       (JReqID . fromSerial $ errorSerial e)
-       (strErrorName $ errorName e)
-       (Just . TL.concat . map (typeCode . variantType) $ errorBody e)
-       <$> mapM convVariant (errorBody e)
+       (JReqID . fromSerial $ methodErrorSerial e)
+       (formatErrorName $ methodErrorName e)
+       (Just . concat . map (typeCode . variantType) $ methodErrorBody e)
+       <$> mapM convVariant (methodErrorBody e)
 
 convVariant :: Variant -> Maybe JArg
 convVariant v = go (variantType v) where
@@ -179,8 +179,8 @@ convVariant v = go (variantType v) where
   go TypeWord64 = JArgNumber . toRational <$> (fromVariant v :: Maybe Word64)
   go TypeDouble = JArgNumber . toRational <$> (fromVariant v :: Maybe Double)
   go TypeString = JArgString <$> fromVariant v
-  go TypeSignature = JArgString . strSignature <$> fromVariant v
-  go TypeObjectPath = JArgString . strObjectPath <$> fromVariant v
+  go TypeSignature = JArgString . formatSignature <$> fromVariant v
+  go TypeObjectPath = JArgString . formatObjectPath <$> fromVariant v
   go TypeVariant = convVariant =<< fromVariant v
   go (TypeStructure ts) =
     do Structure items <- fromVariant v
@@ -188,5 +188,5 @@ convVariant v = go (variantType v) where
   go (TypeArray et)
     = liftM JArgArray . mapM convVariant . arrayItems =<< fromVariant v
   go (TypeDictionary _ _)
-    = let item (k, dv) = (,) <$> (fromVariant k :: Maybe TL.Text) <*> convVariant dv in
+    = let item (k, dv) = (,) <$> (fromVariant k :: Maybe String) <*> convVariant dv in
       liftM JArgDict . mapM item . dictionaryItems =<< fromVariant v
