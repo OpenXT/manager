@@ -204,9 +204,7 @@ _GetUiReady = liftIO $ xsRead "/xenmgr/ui-ready" >>= return . (== Just "true")
 _GetSafeGraphics :: Rpc Bool
 _GetSafeGraphics = do
   cmdline <- liftIO $ readFile "/proc/cmdline"
-  return $ case T.find (T.pack "safe-graphic") (T.pack cmdline) of
-             (_, []) -> False
-             _       -> True
+  return $ T.isInfixOf (T.pack "safe-graphic") (T.pack cmdline)
 
 -- This is called when UI notifies us about being ready
 -- we fill in notification mvar and a xenstore node

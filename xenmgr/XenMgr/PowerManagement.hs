@@ -442,8 +442,8 @@ isTXTLaunch :: IO Bool
 isTXTLaunch =
     do (_, out, _) <- readProcessWithExitCode "txt-stat" [] ""
        let out' = TL.pack out
-       case (TL.find flag'a out', TL.find flag'b out') of
-         ((_, ma), (_, mb)) | not (null ma) && not (null mb)
+       case (TL.isInfixOf flag'a out', TL.isInfixOf flag'b out') of
+         (ma, mb) | not ma && not mb
              -> return True
          _   -> return False
     where
