@@ -329,6 +329,8 @@ instance Marshall PorticaStatus where
         do dbWrite (x ++ "/portica-installed") installed
            dbWrite (x ++ "/portica-enabled")   enabled
 
+instance MonadFail Rpc where
+    fail = error
 
 -- A path to database from given VM
 dbPath :: Uuid -> Location

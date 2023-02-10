@@ -228,6 +228,9 @@ data EventHookFailMode
    | ContinueOnFail
      deriving (Eq, Show)
 
+instance MonadFail Vm where
+    fail = error
+
 vmSuspendImageStatePath :: Uuid -> String
 vmSuspendImageStatePath uuid = "/xenmgr/service-vm-snapshot/" ++ show uuid ++ "/state"
 
