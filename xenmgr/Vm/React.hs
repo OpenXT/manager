@@ -101,7 +101,9 @@ whenE e f
 
 instance Monoid React where
   mempty = ignore
-  (React p) `mappend` (React q) = React (p ++ q)
+
+instance Semigroup React where
+  React p <> (React q) = React (p ++ q)
 
 data ShutdownReason = CreationFailure | Reboot | Hibernate | Halt | Restarting | AcpiPoweroff
                     deriving (Eq, Show)
