@@ -82,16 +82,22 @@ _Delete (ID uuid id) =
     do removeNicFromVm uuid id
        liftRpc $ unexpose uuid id
 
+_show_uuid :: Uuid -> String
+_show_uuid uuid = show uuid
+
 _GetBackendUuid :: ID -> Rpc String
-_GetBackendUuid id =  fromMaybe "" . fmap show  <$> _nic_field id nicdefBackendUuid
+_GetBackendUuid id =  fromMaybe "" . fmap _show_uuid  <$> _nic_field id nicdefBackendUuid
 
 _SetBackendUuid :: ID -> String -> Vm ()
 _SetBackendUuid id uuid = _modify_nic id $ \n -> n { nicdefBackendUuid = case uuid of
                                                                            "" -> Nothing
                                                                            _  -> Just (fromString uuid) }
 
+_show_backend :: String -> String
+_show_backend backend = show backend
+
 _GetBackendName :: ID -> Rpc String
-_GetBackendName id =  fromMaybe "" . fmap show  <$> _nic_field id nicdefBackendName
+_GetBackendName id =  fromMaybe "" . fmap _show_backend  <$> _nic_field id nicdefBackendName
 
 _SetBackendName :: ID -> String -> Vm ()
 _SetBackendName id name = _modify_nic id $ \n -> n { nicdefBackendName = case name of
