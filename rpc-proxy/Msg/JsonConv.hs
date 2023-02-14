@@ -15,6 +15,7 @@
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Msg.JsonConv
        ( TypeConvMode(..)
@@ -31,24 +32,39 @@ module Msg.JsonConv
 
 import Control.Applicative
 import Control.Monad
+import Control.Exception (Exception, handle, throwIO)
 import Data.String
 import Data.Int
 import Data.Word
 import Data.Maybe
 import Data.Ratio
+import Data.Char (ord)
+import qualified Data.Map.Internal as M
 import qualified Data.Set
-import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Internal as T
+import qualified Data.Text.Internal.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TE
+import qualified Foreign as F
+import qualified Data.Vector as V
 
 import DBus.Internal.Types
 import DBus.Internal.Message
 
 import Msg.JsonRpc
 
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Char8 as Char8
+import Data.ByteString.Unsafe ( unsafeUseAsCStringLen, unsafeHead )
+import Data.Typeable (Typeable)
+
+import qualified Text.ParserCombinators.Parsec as Parsec
+import System.IO.Unsafe
 -- hacky crap due to bindings limitations
 mkSerial :: (Integral a) => a -> Serial
 mkSerial v = fromJust . fromVariant . toVariant $ (fromIntegral v :: Word32)
 fromSerial :: (Integral a) => Serial -> a
-fromSerial s = fromIntegral (read (show s) :: Word32)
+fromSerial s = fromIntegral $ serialValue s
 
 data TypeConvMode
    = SpecifyTypes [Type]
@@ -119,10 +135,16 @@ convJArg TypeWord16 (JArgNumber x) = Just $ toVariant (floor x :: Word16)
 convJArg TypeWord32 (JArgNumber x) = Just $ toVariant (floor x :: Word32)
 convJArg TypeWord64 (JArgNumber x) = Just $ toVariant (floor x :: Word64)
 convJArg TypeDouble (JArgNumber x) = Just $ toVariant (realToFrac x :: Double)
-convJArg TypeSignature (JArgString x) = toVariant <$> parseSignature $ x
-convJArg TypeObjectPath (JArgString x) = toVariant <$> parseObjectPath $ x
+convJArg TypeSignature (JArgString x) = toVariant <$> parseSignature x
+convJArg TypeObjectPath (JArgString x) = toVariant <$> parseObjectPath x
 convJArg (TypeArray et) (JArgArray xs)
-  = liftM toVariant . arrayFromItems et =<< mapM (convJArg et) xs
+  = liftM toVariant . arrayConv et . map (toValue) =<< mapM (convJArg et) xs
+  where 
+    -- [Jargs] --mapM--> [Variant] -map-> [Value]
+    -- now arrayConv just the list length, then converts the [Value] to Vector of Values, then use
+    -- to enable the Array contructor, then wrap that in a Maybe
+    arrayConv et ls = if (length ls > 0) then Just $ Array et (V.fromList ls) else Just $ Array et (V.fromList [toValue $ "xyz"])
+
 convJArg (TypeDictionary kt vt) (JArgDict d)
   = fmap toVariant . dictionaryFromItems kt vt =<< mapM item d
   where item (k,v) = (,) <$> convJArg kt (JArgString k) <*> convJArg vt v
@@ -187,11 +209,43 @@ convVariant v = go (variantType v) where
   go TypeSignature = JArgString . formatSignature <$> fromVariant v
   go TypeObjectPath = JArgString . formatObjectPath <$> fromVariant v
   go TypeVariant = convVariant =<< fromVariant v
-  go (TypeStructure ts) =
-    do Structure items <- fromVariant v
-       JArgArray <$> mapM convVariant items
+  go (TypeStructure ts)
+    = liftM JArgArray . mapM convVariant . structureItems =<< fromVariant v
   go (TypeArray et)
     = liftM JArgArray . mapM convVariant . arrayItems =<< fromVariant v
   go (TypeDictionary _ _)
     = let item (k, dv) = (,) <$> (fromVariant k :: Maybe String) <*> convVariant dv in
       liftM JArgDict . mapM item . dictionaryItems =<< fromVariant v
+
+
+typeIsAtomic TypeVariant = False
+typeIsAtomic TypeArray{} = False
+typeIsAtomic TypeDictionary{} = False
+typeIsAtomic TypeStructure{} = False
+typeIsAtomic _ = True
+
+-- Reimplementation of the original dictionaryFromItems, but geared toward the
+-- new DBus lib. Originally a 'Dictionary' stored the key/value pairs in a list
+-- of tuples: [(Key, Value)] and we were easily able to iterate over this.
+-- The new DBus libs define the Dictionary as a Map Atom Value, so we need to do
+-- an extra conversion here to get our list of tuples into this Map form. This
+-- requires some pattern matching magic to unwrap the Variants into their
+-- Atom, Value forms. The kt (key type) and vt (value type) are passed into this
+-- function, and we check first if the key type is Atomic, and therefore we can
+-- be very confident that we will pattern match to a ValueAtom if we continue
+-- onward in the function.
+dictionaryFromItems :: Type -> Type -> [(Variant, Variant)] -> Maybe Dictionary
+dictionaryFromItems kt vt pairs = do
+       unless (typeIsAtomic kt) Nothing
+
+       let sameType (k, v) = variantType k == kt &&
+                             variantType v == vt
+           convMap = M.fromList $ map itemConv pairs
+
+       if all sameType pairs
+               then Just $ Dictionary kt vt convMap
+               else Nothing
+  where
+     itemConv :: (Variant, Variant) -> (Atom, Value)
+     itemConv (Variant (ValueAtom k), Variant v) = (k, v)
+     itemConv (Variant _, _) = error "recevied Variant that isn't atomic and didn't bail eariler. hard stop."
