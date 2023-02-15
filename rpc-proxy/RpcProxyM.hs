@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, TypeFamilies, FlexibleInstances, ExistentialQuantification, TypeSynonymInstances, RankNTypes, ScopedTypeVariables, StandaloneDeriving, ViewPatterns, NoMonomorphismRestriction #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, TypeFamilies, FlexibleInstances, ExistentialQuantification, TypeSynonymInstances, RankNTypes, ScopedTypeVariables, StandaloneDeriving, ViewPatterns, NoMonomorphismRestriction, UndecidableInstances, InstanceSigs #-}
 module RpcProxyM where
 
 import Control.Applicative
@@ -49,10 +49,13 @@ runRpcProxyM c f = runRpcM (unRpcProxy f) c
 -- re-using the instance for RpcM
 
 instance MonadBaseControl IO RpcProxy where
-    newtype StM RpcProxy a = StRpcProxy {unSt :: Either RpError a}
-    liftBaseWith op = RpcProxy . liftBaseWith $
-                      op . \rib -> liftM (StRpcProxy . unStRpcM) . rib . unRpcProxy
-    restoreM = RpcProxy . restoreM . StRpcM . unSt
+    type StM (RpcProxy) a = (Either RpError) a
+
+    liftBaseWith f = RpcProxy $ liftBaseWith $ (\rib -> f (rib . unRpcProxy))
+
+    restoreM f = RpcProxy $ restoreM f
+    {-# INLINE liftBaseWith #-}
+    {-# INLINE restoreM #-}
 
 -- -- Or directly implementing the instance:
 
@@ -65,6 +68,10 @@ instance (IsRemoteError e) => MonadBase IO (RpcM e) where
     liftBase = liftIO
 
 instance (IsRemoteError e) => MonadBaseControl IO (RpcM e) where
-    newtype StM (RpcM e) a = StRpcM {unStRpcM :: (Either e) a}
-    liftBaseWith op = freeze $ op . \ctx -> liftM StRpcM . thaw ctx
-    restoreM = cont . unStRpcM
+    type StM (RpcM e) a = (Either e) a
+
+    liftBaseWith f = freeze $ \ctx -> liftBaseWith $ \rib -> f $ \rpcm -> rib $ thaw ctx rpcm
+
+    restoreM = cont
+    {-# INLINE liftBaseWith #-}
+    {-# INLINE restoreM #-}
