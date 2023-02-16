@@ -64,6 +64,8 @@ let rules = [
 	{ node_path = ["dom-store"]; place = FillDir "/config/dom-store" }
 ]
 
+let debugging = ref false
+
 (* tree is dirty when disk update is pending *)
 let tree_dirty = ref false
 
@@ -327,7 +329,7 @@ and placement_in_dir nodes dir =
 	List.map place nodes
 
 let write_db ~unlink_files =
-	info "Updating database";
+	if !debugging then debug "Updating database";
 	(* go through placement rules and write using them *)
 	List.iter (fun rul -> write_db_using_rule ~unlink_files ~rul) rules;
 

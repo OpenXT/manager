@@ -59,8 +59,9 @@ let monitor_rpc_dbus pidfile =
 
 let _ =
 	let pidf = ref "" in
-	let speclist = [("--pidfile", Arg.Set_string pidf, "")] in
-	let usage_msg = "usage: dbd [--pidfile <filename>] [--help]" in
+	let speclist = [("--pidfile", Arg.Set_string pidf, "");
+			("--debug", Arg.Unit (fun() -> debugging := true), "")] in
+	let usage_msg = "usage: dbd [--pidfile <filename>] [--debug] [--help]" in
 	Arg.parse speclist (fun _ -> ()) usage_msg;
 
 	let pidfile = if !pidf <> "" then !pidf else default_pidfile in
