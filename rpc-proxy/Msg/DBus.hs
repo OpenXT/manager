@@ -37,7 +37,7 @@ import System.IO.Unsafe
 import Text.Printf
 
 import DBus.Internal.Message ( ReceivedMessage(..) )
-import DBus.Wire ( marshalMessage, unmarshalMessage, Endianness(..) )
+import DBus.Internal.Wire ( marshalMessage, unmarshalMessage, unmarshalMessageM, Endianness(..) )
 
 import Channel
 import Tools.Log
@@ -48,7 +48,11 @@ data Msg
 bufferSz :: Int
 bufferSz = 4096
 
--- Lazy stream of unmarshalled messages given input buffer. Each message is paired with its contents in form of byte buffer
+-- OLDWAY: Lazy stream of unmarshalled messages given input buffer. Each message is paired with its contents in form of byte buffer
+-- NEW WAY: Going to try using lazyBS for incoming data like the original implementation, but otherwise convert to strict BS
+-- because newer DBus library unmarshalMessagesM operates on strict BS and don't want to keep converting back and forth
+-- It should still be 'fine' to use unsafeInterleaveIO for lazy IO handling of the now strict BS, but possible
+-- runtime regressions with changes to the toChunks/compactChunks logic for putting all the buffer bytes together.
 unmarshaledMessages :: Channel -> IO [ Msg ]
 unmarshaledMessages sock =
     do inc <- incomingData sock
@@ -64,7 +68,7 @@ unmarshaledMessages' buf_ref =
           else do -- will be filled with contents of single unmarshalled message (just the byte buffer)
                   contents_ref <- newIORef BS.empty
                   -- unmarshal byte buffer using reader
-                  r <- unmarshalMessage (reader contents_ref)
+                  r <- unmarshalMessageM (reader contents_ref)
                   contents <- readIORef contents_ref
                   case r of
                     Right m -> do ms <- unsafeInterleaveIO $ unmarshaledMessages' buf_ref
@@ -82,7 +86,7 @@ unmarshaledMessages' buf_ref =
              -- append the beginning bytes to current message contents
              modifyIORef contents (\current -> BS.append current (compactChunks x))
              -- and finally return the begininng bytes to demarshaller
-             return x
+             return $ LazyBS.toStrict x
 
 compactChunks :: LazyBS.ByteString -> ByteString
 compactChunks b = foldl' BS.append BS.empty (LazyBS.toChunks b)
