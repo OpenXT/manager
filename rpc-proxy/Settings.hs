@@ -25,7 +25,7 @@ module Settings ( Settings(..),
     where
 
 import Data.String
-import System
+import System.Environment
 import System.Exit
 import System.FilePath
 import System.Console.GetOpt
