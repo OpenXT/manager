@@ -52,9 +52,11 @@ runTransform (Transform f) = runMaybeT . f
 dropMsg :: MaybeT IO Msg
 dropMsg = MaybeT $ return Nothing
 
+instance Semigroup Transform where
+  (Transform f) <> (Transform g) = Transform (f >=> g)
+
 instance Monoid Transform where
   mempty = Transform return
-  mappend (Transform f) (Transform g) = Transform (f >=> g)
 
 class ReceiveMessages src a where receiveMessages ::  src -> IO [a]
 class SendMessages    dst a where sendMessage :: dst -> a -> IO ()
