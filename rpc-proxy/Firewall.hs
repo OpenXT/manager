@@ -188,7 +188,7 @@ xenmgrVmProxy objp =
 
 vmPath :: Uuid -> ObjectPath
 vmPath uuid
-  = mkObjectPath_  $ fromString "/vm/" `TL.append` TL.map replaceMinus (uuidText uuid)
+  = mkObjectPath_  $ TL.unpack $ fromString "/vm/" `TL.append` TL.map replaceMinus (uuidText uuid)
     where
       replaceMinus '-' = '_'
       replaceMinus x   = x
