@@ -42,9 +42,10 @@ import Msg.DBus
 import Types
 import Tools.Log
 
-import DBus.Internal.Message ( Message(..), ReceivedMessage(..), Serial, receivedSerial, receivedSender
-                    , MethodCall(..),Signal(..),MethodReturn(..),Error(..), firstSerial, nextSerial )
-import DBus.Internal.Types ( strBusName, strInterfaceName, strObjectPath, strMemberName, toVariant )
+import DBus (Serial, receivedMessageSerial, receivedMessageSender)
+import DBus.Internal.Message ( Message(..), ReceivedMessage(..)
+                    , MethodCall(..),Signal(..),MethodReturn(..),MethodError(..) )
+import DBus.Internal.Types ( formatBusName, formatInterfaceName, formatMemberName, toVariant )
 import qualified DBus.Internal.Types as DT
 
 import Rpc.Core ( Proxy (..), fromVariant, RemoteObject (..), ObjectPath, remote, Dispatcher, mkObjectPath_, Variable (..) )
@@ -67,28 +68,28 @@ instance Artefact MsgAndSource where
     artefactType (MAS _ (Msg ReceivedMethodCall {} _)) = TagMethodCall
     artefactType (MAS _ (Msg ReceivedMethodReturn {} _)) = TagMethodReturn
     artefactType (MAS _ (Msg ReceivedSignal {} _)) = TagSignal
-    artefactType (MAS _ (Msg ReceivedError {} _)) = TagError
+    artefactType (MAS _ (Msg ReceivedMethodError {} _)) = TagError
     artefactType (MAS _ (Msg ReceivedUnknown {} _)) = undefined
 
     artefactSource (MAS src _) = src
 
-    artefactSender (MAS _ (Msg m _)) = fmap strBusName $ receivedSender m
+    artefactSender (MAS _ (Msg m _)) = fmap formatBusName $ receivedMessageSender m
 
-    artefactDestination (MAS _ (Msg (ReceivedMethodCall _ _ m) _)) = fmap strBusName $ methodCallDestination m
-    artefactDestination (MAS _ (Msg (ReceivedMethodReturn _ _ m) _)) = fmap strBusName $ methodReturnDestination m
-    artefactDestination (MAS _ (Msg (ReceivedError _ _ m) _)) = fmap strBusName $ errorDestination m
-    artefactDestination (MAS _ (Msg (ReceivedSignal _ _ m) _)) = fmap strBusName $ signalDestination m
+    artefactDestination (MAS _ (Msg (ReceivedMethodCall _ m) _)) = fmap formatBusName $ methodCallDestination m
+    artefactDestination (MAS _ (Msg (ReceivedMethodReturn _ m) _)) = fmap formatBusName $ methodReturnDestination m
+    artefactDestination (MAS _ (Msg (ReceivedMethodError _ m) _)) = fmap formatBusName $ methodErrorDestination m
+    artefactDestination (MAS _ (Msg (ReceivedSignal _ m) _)) = fmap formatBusName $ signalDestination m
     artefactDestination _ = Nothing
 
-    artefactInterface (MAS _ (Msg (ReceivedMethodCall _ _ m) _)) = fmap strInterfaceName $ methodCallInterface m
-    artefactInterface (MAS _ (Msg (ReceivedSignal _ _ m) _)) = Just . strInterfaceName $ signalInterface m
+    artefactInterface (MAS _ (Msg (ReceivedMethodCall _ m) _)) = fmap formatInterfaceName $ methodCallInterface m
+    artefactInterface (MAS _ (Msg (ReceivedSignal _ m) _)) = Just . formatInterfaceName $ signalInterface m
     artefactInterface _ = Nothing
 
-    artefactMember (MAS _ (Msg (ReceivedMethodCall _ _ m) _)) = Just . strMemberName $ methodCallMember m
-    artefactMember (MAS _ (Msg (ReceivedSignal _ _ m) _)) = Just . strMemberName $ signalMember m
+    artefactMember (MAS _ (Msg (ReceivedMethodCall _ m) _)) = Just . formatMemberName $ methodCallMember m
+    artefactMember (MAS _ (Msg (ReceivedSignal _ m) _)) = Just . formatMemberName $ signalMember m
     artefactMember _ = Nothing
 
-    artefactPropertyInterface (MAS _ (Msg (ReceivedMethodCall _ _ m) _))
+    artefactPropertyInterface (MAS _ (Msg (ReceivedMethodCall _ m) _))
      |   methodCallInterface m == Just (fromString "org.freedesktop.DBus.Properties")
        , methodCallMember m `elem` [fromString "Get", fromString "Set", fromString "GetAll"]
        = case methodCallBody m of
@@ -143,20 +144,20 @@ createFirewall client c
          do let artefact = MAS (fireSource c) msg
             let domid = sourceDomainID (fireSource c)
                 uuid  = sourceUuid (fireSource c)
-                em    = TL.pack "<none>"
+                em    = "<none>"
                 typ   = artefactType artefact
                 sndr  = fromMaybe em $ artefactSender artefact -- why this is usually null
                 dest  = fromMaybe em $ artefactDestination artefact
                 intf  = fromMaybe em $ artefactInterface artefact
                 memb  = fromMaybe em $ artefactMember artefact
                 reply_serial = case rm of
-                  ( ReceivedMethodReturn _ _ m ) -> Just $ methodReturnSerial m
-                  ( ReceivedError _ _ m ) -> Just $ errorSerial m
+                  ( ReceivedMethodReturn _ m ) -> Just $ methodReturnSerial m
+                  ( ReceivedMethodError _ m ) -> Just $ methodErrorSerial m
                   _ -> Nothing
                 description rulet =
                   printf "(%d->%d) %s %s { sender='%s' dest='%s' intf='%s' member='%s' serial='%s' reply-to='%s' }"
-                            domid (fireDestination c) rulet (show typ) (TL.unpack sndr) (TL.unpack dest) (TL.unpack intf) (TL.unpack memb)
-                            (show $ receivedSerial rm) (show reply_serial)
+                            domid (fireDestination c) rulet (show typ) sndr dest intf memb
+                            (show $ receivedMessageSerial rm) (show reply_serial)
 
             access <- if fireActive c && domid /= 0
                       then testAugmented (fireRules c) (augmentRule (client,uuid,pmap))
@@ -170,7 +171,7 @@ subjectFor :: Direction -> ReceivedMessage -> RuleSubject
 subjectFor d ReceivedMethodCall {}   = RuleSubject d TagMethodCall
 subjectFor d ReceivedSignal {}       = RuleSubject d TagSignal
 subjectFor d ReceivedMethodReturn {} = RuleSubject d TagMethodReturn
-subjectFor d ReceivedError {}        = RuleSubject d TagError
+subjectFor d ReceivedMethodError {}  = RuleSubject d TagError
 subjectFor d _                       = RuleSubject d TagAny
 
 xenmgrProxy :: Proxy

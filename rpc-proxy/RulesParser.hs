@@ -85,10 +85,10 @@ matchAll = Match Nothing Nothing Nothing Nothing Nothing Nothing (Just False) []
 
 matchOfSpecifiers :: [Spec] -> Match
 matchOfSpecifiers = foldl' f matchAll where
-    f m (Dest p) = m { destination = Just $ TL.pack p }
-    f m (Sender p) = m { sender = Just $ TL.pack p }
-    f m (Intf p) = m { interface = Just $ TL.pack p }
-    f m (Member p) = m { member = Just $ TL.pack p }
+    f m (Dest p) = m { destination = Just $ p }
+    f m (Sender p) = m { sender = Just $ p }
+    f m (Intf p) = m { interface = Just $ p }
+    f m (Member p) = m { member = Just $ p }
     f m (DomainUuid p) = m { domain_uuid = Just $ fromString p }
     f m (DomainID p) = m { domain_id = Just $ fromIntegral p }
     f m (Stubdom p) = m { stubdom = Just p }
