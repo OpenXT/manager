@@ -17,7 +17,7 @@
 --
 
 {-# LANGUAGE GADTs, PatternGuards #-}
-{-# LANGUAGE OverloadedStrings, ViewPatterns, ScopedTypeVariables, ExistentialQuantification, RankNTypes #-}
+{-# LANGUAGE OverloadedStrings, ViewPatterns, ScopedTypeVariables, ExistentialQuantification, RankNTypes, FlexibleContexts #-}
 module UpdateMgr.UpdateReqHandler (handleUpdateReq, DownloadHandle()) where
 
 
@@ -182,8 +182,8 @@ handleUpdateReq AreGuestVmsRunning = eitherErr . liftRpc $
     where
       is_running_guest :: ObjectPath -> Rpc Bool
       is_running_guest obj = andM [
-          ("stopped"/=) <$> comCitrixXenclientXenmgrVmGetState xenmgrService (TL.unpack . strObjectPath $ obj)
-        , ("svm"==) <$> comCitrixXenclientXenmgrVmGetType xenmgrService (TL.unpack . strObjectPath $ obj)]
+          ("stopped"/=) <$> comCitrixXenclientXenmgrVmGetState xenmgrService (strObjectPath $ obj)
+        , ("svm"==) <$> comCitrixXenclientXenmgrVmGetType xenmgrService (strObjectPath $ obj)]
 
 handleUpdateReq RebootHost = eitherErr . liftRpc $
     comCitrixXenclientXenmgrHostReboot xenmgrService xenmgrHostObjectPath

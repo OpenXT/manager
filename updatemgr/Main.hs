@@ -22,7 +22,6 @@ module Main where
 
 import Data.String
 import Control.Applicative
-import System
 import System.IO
 import System.Posix.Syslog
 import System.Posix.Process
