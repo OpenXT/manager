@@ -52,13 +52,6 @@ type Path = String
 -- Tree of strings really
 data DbTree = Leaf String | Record [ (String,DbTree) ] deriving ( Eq, Show )
 
-instance (IsRemoteError e, MonadRpc e m) => Applicative m where
-    pure  = return
-    (<*>) = ap
-
-instance (IsRemoteError e, MonadRpc e m) => Functor m where
-    fmap = ap . return
-
 -- Db tree can be serialised into database daemon
 instance Marshall DbTree where
     dbWrite p (Leaf v) =

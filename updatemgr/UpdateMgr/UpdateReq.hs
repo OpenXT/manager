@@ -30,6 +30,7 @@ import Control.Monad.Prompt as X
 import Control.Monad.Error as X
 import UpdateMgr.DbReq as X
 import UpdateMgr.Error
+import Rpc.Core
 
 type UpdateReqE a = UpdateReq (Either UpdateMgrError a)
 
@@ -67,4 +68,4 @@ newtype Update a = Update {
                     ( PromptT UpdateReq
                       ( Prompt DbReq )
                     ) a
-    } deriving (Functor, Monad, MonadError UpdateMgrError)
+    } deriving (Applicative, Functor, Monad, MonadError UpdateMgrError)
