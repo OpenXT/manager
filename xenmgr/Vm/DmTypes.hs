@@ -48,7 +48,6 @@ import Data.Int
 import Data.String
 import Data.List (intersperse)
 import Data.Char (digitToInt)
-import qualified Data.Text.Lazy as TL
 import qualified Data.Map as M
 import Text.Printf
 import Vm.Uuid
@@ -160,7 +159,7 @@ fallbackNetwork :: Network
 fallbackNetwork = Network (fromString "/wired/0/bridged")
 
 networkToStr :: Network -> String
-networkToStr (Network p) = TL.unpack (strObjectPath p)
+networkToStr (Network p) = strObjectPath p
 
 networkFromStr :: String -> Network
 networkFromStr s = Network (mkObjectPath_ $ fromString $ legacyNNames s)

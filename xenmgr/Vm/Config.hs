@@ -110,7 +110,6 @@ import Data.Char
 import Data.String
 import Data.List
 import Data.Maybe
-import qualified Data.Text.Lazy as TL
 import qualified Data.Map as M
 import System.Directory
 import Text.Printf
@@ -752,7 +751,7 @@ nicSpec cfg amt eth0Mac nic networkDomID =
                 (ni:_) -> Just ni
                 _      -> Nothing
       -- bridge name, only necessary for emulated net interfaces as qemu manages them
-      bridge    = ["bridge=" ++ (TL.unpack $ strObjectPath $ networkObjectPath$ nicdefNetwork nic)]
+      bridge    = ["bridge=" ++ (strObjectPath $ networkObjectPath$ nicdefNetwork nic)]
       bridgename= niBridgeName `fmap` netinfo
       -- force backend domid for NIC if specified
       backend   = ["backend=" ++ show networkDomID]

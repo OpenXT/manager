@@ -33,7 +33,6 @@ import Data.String
 import Control.Monad
 import Tools.Misc
 import Vm.Types
-import qualified Data.Text.Lazy as TL
 import qualified XenMgr.Connect.Xl as Xl
 import Rpc.Core
 import Rpc.Autogen.GuestClient
@@ -81,7 +80,7 @@ onAgentStartedRemove uuid action =
       rpcOnSignalRemove rule process
   where
     process sender_name signal = do
-      do let sender = TL.unpack (strBusName sender_name)
+      do let sender = strBusName sender_name
          connection_domid <- orgFreedesktopDBusGetConnectionDOMID "org.freedesktop.DBus" "/org/freedesktop/DBus" sender
          expected_domid   <- getDomainID uuid
          case expected_domid of
@@ -98,7 +97,7 @@ onAgentStarted uuid action =
       rpcOnSignal rule process
   where
     process sender_name signal = do
-      do let sender = TL.unpack (strBusName sender_name)
+      do let sender = strBusName sender_name
          connection_domid <- orgFreedesktopDBusGetConnectionDOMID "org.freedesktop.DBus" "/org/freedesktop/DBus" sender
          expected_domid   <- getDomainID uuid
          case expected_domid of
@@ -115,7 +114,7 @@ onAgentUninstalledRemove uuid action =
       rpcOnSignalRemove rule process
   where
     process sender_name signal = do
-      do let sender = TL.unpack (strBusName sender_name)
+      do let sender = strBusName sender_name
          connection_domid <- orgFreedesktopDBusGetConnectionDOMID "org.freedesktop.DBus" "/org/freedesktop/DBus" sender
          expected_domid   <- getDomainID uuid
          case expected_domid of
@@ -132,7 +131,7 @@ onAgentUninstalled uuid action =
       rpcOnSignal rule process
   where
     process sender_name signal = do
-      do let sender = TL.unpack (strBusName sender_name)
+      do let sender = strBusName sender_name
          connection_domid <- orgFreedesktopDBusGetConnectionDOMID "org.freedesktop.DBus" "/org/freedesktop/DBus" sender
          expected_domid   <- getDomainID uuid
          case expected_domid of
@@ -149,7 +148,7 @@ onXorgRunning action =
       rpcOnSignal rule process
   where
     process sender_name signal = do
-      do let sender = TL.unpack (strBusName sender_name)
+      do let sender = strBusName sender_name
          connection_domid <- orgFreedesktopDBusGetConnectionDOMID "org.freedesktop.DBus" "/org/freedesktop/DBus" sender
          maybe_uuid <- getDomainUuid connection_domid
          case maybe_uuid of

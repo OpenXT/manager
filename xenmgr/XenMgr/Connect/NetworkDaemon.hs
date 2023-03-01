@@ -41,7 +41,6 @@ import Control.Concurrent
 import Vm.Types
 import Vm.DmTypes
 import Vm.Uuid
-import qualified Data.Text.Lazy as TL
 import Text.Printf
 import Tools.Misc
 import Tools.Log
@@ -59,7 +58,7 @@ vifS :: DomainID -> XbDeviceID -> String
 vifS domid (XbDeviceID di) = printf "vif%d.%d" domid di
 
 npathS :: Network -> String
-npathS = TL.unpack . strObjectPath . networkObjectPath
+npathS = strObjectPath . networkObjectPath
 
 ready :: Rpc Bool
 ready = comCitrixXenclientNetworkdaemonIsInitialized service rootS
