@@ -613,10 +613,14 @@ virtSpecs :: VmConfig -> Rpc [Param]
 virtSpecs cfg = do
     let virt = vmcfgVirtType cfg
     cmd <- readConfigProperty uuid vmCmdLine
+    initrd_path <- readConfigProperty uuid vmInitrd
     let builder = ["type='" ++ ( virtStr virt ) ++ "'"]
     let kernel = case virt of
                    HVM -> []
                    _   -> maybe [] (\path -> ["kernel='"++path++"'"]) (vmcfgKernelPath cfg)
+    let initrd = case virt of
+                    HVM -> []
+                    _   -> _initrd initrd_path
     let cmdline = case virt of
                     HVM -> []
                     _   -> _cmdline cmd
@@ -627,6 +631,7 @@ virtSpecs cfg = do
   where
     uuid = vmcfgUuid cfg
     _cmdline _cmd = maybe [] (\cmd -> ["cmdline=" ++ (wrapQuotes cmd)]) _cmd
+    _initrd path = maybe [] (\init -> ["ramdisk=" ++ (wrapQuotes init)]) path
     virtStr virt = case virt of
                          HVM -> "hvm"
                          PVH -> "pvh"
@@ -940,7 +945,6 @@ miscSpecs cfg = do
           , ("bios"            , vmBios)
           , ("secureboot"      , vmSecureboot) --set to False
           , ("authenforce"     , vmAuthenforce) --set to True
-          , ("initrd"          , vmInitrd)
           ]                                         --Remove this comment block when implemented.
 
       -- xl config handles certain options different than others (eg. quotes, brackets)
@@ -966,7 +970,6 @@ miscSpecs cfg = do
                                              "bios"     -> name ++ "=" ++ (wrapQuotes v)
                                              "stubdomain_cmdline" -> name ++ "=" ++ (wrapQuotes v)
                                              "stubdomain_memkb" -> name ++ "=" ++ show (1024 * read v)
-                                             "initrd"   -> name ++ "=" ++ (wrapQuotes v)
                                              _          -> name ++ "=" ++ v) <$>
                                 readConfigProperty uuid prop
 
