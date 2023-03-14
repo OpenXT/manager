@@ -47,7 +47,7 @@
     "memory": "192",
     "display": "none",
     "cmdline": "root=\/dev\/xvda2 iommu=soft console=hvc0",
-    "kernel-extract": "0,1:\/bzImage",
+    "kernel": "\/usr\/lib\/xen\/boot\/grub-xen-pv64",
     "flask-label": "system_u:system_r:ndvm_t",
     "pci": {
       "0": {
