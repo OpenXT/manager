@@ -1226,10 +1226,10 @@ doVmFirewallRules message which =
         (vms, vms') <- which
         seamlessVms <- getSeamlessVms
 
-        info $ "firewall rule delta vms:" 
+        info $ "firewall rule delta vms:"
         info $ "BEFORE: " ++ show vms
-        info $ "NOW: " ++ show vms
-        
+        info $ "NOW:    " ++ show vms'
+
         let reduce vms ((Firewall.ActiveVm _ _ vm _ _), rule) =
                 Firewall.reduce (Firewall.ReduceContext vm seamlessVms vms) [rule]
             vm_rules = mapM (getEffectiveVmFirewallRules . Firewall.vmUuid)
