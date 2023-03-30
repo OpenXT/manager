@@ -24,7 +24,7 @@
     "memory": "256",
     "display": "none",
     "cmdline": "root=\/dev\/xvda1 console=hvc0",
-    "kernel-extract": "\/boot\/bzImage",
+    "kernel": "\/usr\/lib\/xen\/boot\/grub-xen-pvh",
     "flask-label": "system_u:system_r:syncvm_t",
     "nic": {
       "0": {
