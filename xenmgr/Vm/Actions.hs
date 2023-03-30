@@ -1563,21 +1563,12 @@ tapCreateForVm :: Uuid -> Bool -> FilePath -> Rpc FilePath
 tapCreateForVm uuid ro path = do
   env <- tapEnvForVm uuid
   liftIO $ tapCreateVhd env ro path
-  
--- Computer sha1 sum for disk. Has to be through tap device because the vhd file changes
--- even for completely readonly fs
+
+-- Compute sha1sum for disk. Read-only VHDs must be mounted "tap-ctl create -R"
+-- to ensure they are not updated.
 computeDiskSha1Sum :: Uuid -> Disk -> Rpc Integer
 computeDiskSha1Sum vm_uuid d
-    | diskType d == VirtualHardDisk =
-        do tapdev <- tapCreateForVm vm_uuid True (diskPath d)
-           liftIO $
-             E.finally (fileSha1Sum tapdev) (spawnShell' $ "tap-ctl destroy -d " ++ tapdev)
-    | diskType d == Aio = liftIO $ 
-        do tapdev <- fromMaybe (error $ "FAILED to create tap device for " ++ diskPath d ++ ", possibly in use?")
-                     . fmap chomp
-                    <$> (spawnShell' $ "tap-ctl create -a aio:" ++ (diskPath d))
-           E.finally (fileSha1Sum tapdev) (spawnShell' $ "tap-ctl destroy -d " ++ tapdev)
-    | diskType d `elem` [PhysicalDevice, DiskImage] = liftIO $
+    | diskType d `elem` [PhysicalDevice, DiskImage, VirtualHardDisk, Aio] = liftIO $
           fileSha1Sum (diskPath d)
     | otherwise = error "unsupported disk type, should be vhd or phy or file"
 
@@ -1624,7 +1615,7 @@ extractFileFromPvDomain (Just dst_path) ext_loc uuid = withKernelPath dst_path w
 
 copyKernelFromDisk :: [ (String, String) ] -> Disk -> FilePath -> (Maybe PartitionNum,FilePath) -> IO ()
 copyKernelFromDisk extraEnv disk dst_path src
- = copyFileFromDisk extraEnv (diskType disk) (diskMode disk == ReadOnly) (diskPath disk) src dst_path
+ = copyFileFromDisk extraEnv (diskType disk) (diskPath disk) src dst_path
 
 changeVmNicNetwork :: Uuid -> NicID -> Network -> XM ()
 changeVmNicNetwork uuid nicid network = do
