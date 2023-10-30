@@ -805,7 +805,7 @@ hostSetLicense expiryDateStr deviceUuid hashStr = do
       when (before /= after) $ notifyLicenseChanged
 
 getHostPcmDevices :: IO [PcmDevice]
-getHostPcmDevices = catMaybes . map parseDev . lines <$> readFile "/proc/asound/pcm" where
+getHostPcmDevices = catMaybes . map parseDev . lines <$> pcmDevs where
   parseDev l = case map strip (split ':' l) of
     (idStr : name : _ : rest) ->
       Just $ PcmDevice
@@ -814,6 +814,8 @@ getHostPcmDevices = catMaybes . map parseDev . lines <$> readFile "/proc/asound/
                ("playback 1" `elem` rest)
                ("capture 1" `elem` rest)
     _ -> Nothing
+  pcmDevs = catch ( readFile "/proc/asound/pcm" )
+                  ( \e -> return "" )
 
 getHostPlaybackDevices = filter pcmPlayback <$> getHostPcmDevices
 getHostCaptureDevices = filter pcmCapture <$> getHostPcmDevices
