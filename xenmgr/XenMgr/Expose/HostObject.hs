@@ -397,11 +397,13 @@ listSoundCards = liftIO
                  $ map kv
                  . catMaybes
                  . map parse
-                 . lines <$> readFile "/proc/asound/cards" where
+                 . lines <$> cards where
   parse line = case line `matchG` "\\s*(\\w+)\\s+\\[.*\\]: (.+)" of
     [id,name] -> Just (id,name)
     _ -> Nothing
   kv (id, name) = M.fromList [("id", id), ("name", name)]
+  cards = catch ( readFile "/proc/asound/cards" )
+                ( \e -> return "" )
 
 parseSSControl line =
  case line `matchG` "(.) '(.+)' (\\w+) (.*)" of
