@@ -1,0 +1,61 @@
+{
+  "uuid": "00000000-0000-0000-0000-000000000003",
+  "type": "usbvm",
+  "name": "USB",
+  "stubdom": "true",
+  "slot": "-1",
+  "hidden": "true",
+  "start_on_boot": "true",
+  "start_on_boot_priority": "10",
+  "shutdown-priority": "-15",
+  "hidden-in-ui": "false",
+  "measured": "true",
+  "s3-mode": "restart",
+  "image_path": "plugins\/serviceimages\/citrix.png",
+  "argo-firewall-rules": {
+    "0": "0:12222 -> myself:2222",
+    "1": "myself -> 0:7777",
+    "2": "my-stubdom -> 0:5100"
+  },
+  "policies": {
+    "audio-access": "false",
+    "audio-rec": "false",
+    "cd-access": "false",
+    "cd-rec": "false",
+    "modify-vm-settings": "false"
+  },
+  "config": {
+    "notify": "dbus",
+    "debug": "true",
+    "pae": "true",
+    "acpi": "true",
+    "virt-type": "hvm",
+    "apic": "true",
+    "nx": "true",
+    "argo": "true",
+    "memory": "192",
+    "display": "nogfx",
+    "boot": "c",
+    "cmdline": "root=\/dev\/xvda2",
+    "kernel-extract": "0,1:\/bzImage",
+    "flask-label": "system_u:system_r:usbvm_t",
+    "stubdom-flask-label": "system_u:system_r:dm_usbvm_t",
+    "pci": {
+      "0": {
+        "class": "0x0c03",
+        "force-slot": "false"
+      }
+    },
+    "disk": {
+      "0": {
+        "path": "\/storage\/disks\/usbvm.vhd",
+        "type": "vhd",
+        "mode": "r",
+        "shared": "true",
+        "device": "hda",
+        "devtype": "disk"
+      }
+    },
+    "qemu-dm-path": "\/usr\/sbin\/svirt-interpose"
+  }
+}

@@ -64,6 +64,11 @@ getNdvmMode =
     do mode <- dbReadWithDefault ndvmDefaultMode "/xenmgr/ndvm-mode"
        return $ mode
 
+getUsbvmEnable :: Rpc Bool
+getUsbvmEnable =
+    do run <- dbReadWithDefault False "/xenmgr/usbvm-enable"
+       return $ run
+
 readJSONFile :: FilePath -> IO JSValue
 readJSONFile path = do
   contents <- readFile path
@@ -132,16 +137,18 @@ enumServiceVmTags :: Rpc [String]
 enumServiceVmTags =
     do tags <- catMaybes . map get_tag <$> template_files
        ndvm_mode <- getNdvmMode
+       usbvm_enable <- getUsbvmEnable
        info $ "ndvm mode " ++ ndvm_mode ++ " tags: " ++ ( intercalate " " tags )
-       return $ filter ( filt_ndvm ndvm_mode ) tags
+       return $ filter ( filt_ndvm ndvm_mode usbvm_enable ) tags
     where
       template_files = liftIO $ do template_dir <- getTemplateDir
                                    filesInDir template_dir
       get_tag f = case takeBaseName f of
                     's':'e':'r':'v':'i':'c':'e':'-':tag -> Just tag
                     _ -> Nothing
-      filt_ndvm ndvm_mode f = case f of
+      filt_ndvm ndvm_mode usbvm_enable f = case f of
                                 'n':'d':'v':'m':'-':mode -> mode == ndvm_mode
+                                "usbvm" -> usbvm_enable
                                 _ -> True
 
 enumChildServiceVmTags :: IO [String]
