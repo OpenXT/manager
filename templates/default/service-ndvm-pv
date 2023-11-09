@@ -2,6 +2,7 @@
   "uuid": "00000000-0000-0000-0000-000000000002",
   "type": "ndvm",
   "name": "Network",
+  "stubdom": "true",
   "slot": "-1",
   "hidden": "true",
   "start_on_boot": "true",
@@ -21,7 +22,8 @@
     "0": "0:12222 -> myself:2222",
     "1": "myself -> 0:5555",
     "2": "0:15555 -> myself:5555",
-    "3": "myself -> 0:4878"
+    "3": "myself -> 0:4878",
+    "4": "my-stubdom -> 0:5100"
   },
   "rpc-firewall-rules": {
       "0": "allow destination org.freedesktop.DBus interface org.freedesktop.DBus",
@@ -45,10 +47,12 @@
     "nx": "true",
     "argo": "true",
     "memory": "192",
-    "display": "none",
+    "display": "nogfx",
+    "boot": "c",
     "cmdline": "root=\/dev\/xvda2 iommu=soft console=hvc0",
     "kernel": "\/usr\/lib\/xen\/boot\/grub-xen-pv64",
     "flask-label": "system_u:system_r:ndvm_t",
+    "stubdom-flask-label": "system_u:system_r:dm_ndvm_t",
     "pci": {
       "0": {
         "class": "0x0200",
@@ -59,23 +63,24 @@
         "force-slot": "false"
       }
     },
+    "hdtype": "ide",
     "disk": {
       "0": {
         "path": "\/storage\/ndvm\/ndvm.vhd",
         "type": "vhd",
         "mode": "r",
         "shared": "true",
-        "device": "xvda",
+        "device": "hda",
         "devtype": "disk"
       },
       "1": {
         "path": "\/storage\/ndvm\/ndvm-swap.vhd",
         "type": "vhd",
         "mode": "w",
-        "device": "xvdb",
+        "device": "hdb",
         "devtype": "disk"
       }
     },
-    "qemu-dm-path": ""
+    "qemu-dm-path": "\/usr\/sbin\/svirt-interpose"
   }
 }

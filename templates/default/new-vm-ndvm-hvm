@@ -45,7 +45,10 @@
     "memory": "192",
     "display": "nogfx",
     "boot": "c",
+    "cmdline": "root=\/dev\/xvda2 iommu=soft console=hvc0",
+    "kernel": "\/usr\/lib\/xen\/boot\/grub-xen-pv64",
     "flask-label": "system_u:system_r:ndvm_t",
+    "stubdom-flask-label": "system_u:system_r:dm_ndvm_t",
     "hdtype": "ide",
     "disk": {
       "0": {
