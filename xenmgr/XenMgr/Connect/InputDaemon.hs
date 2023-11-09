@@ -24,7 +24,6 @@ module XenMgr.Connect.InputDaemon (
                        , inputAuthSetContextFlags
                        , inputOnSignal
                        , inputGetFocusedDomainID
-                       , inputGetIdleTime
                        , inputSwitchFocus
                        , inputLock
                        , inputUpdateSeamlessMouseSettings
@@ -85,10 +84,3 @@ inputDaemon =
     Proxy inputDaemonObj $ fromString "com.citrix.xenclient.input"
   where
     inputDaemonObj = RemoteObject (fromString "com.citrix.xenclient.input") (fromString "/")
-
-inputGetIdleTime :: Rpc (Int32)
-inputGetIdleTime = call comCitrixXenclientInputGetIdleTime
-
-
-
-

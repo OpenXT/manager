@@ -233,19 +233,12 @@ periodics xm_context rpccontext =
     -- The list of actions we run periodically
     actions =
         [
-         (30000, checkStorage),(30000, void $ rpc rpccontext (hostMonitorIdleness xm_context) )-- every 30 secs checks amount of free space on storage partition and idle time of host
+         (30000, checkStorage)-- every 30 secs checks amount of free space on storage partition
         ]
 
     checkStorage = do
       rpc rpccontext hostCheckFreeStorage
       return ()
-
-hostMonitorIdleness :: XmContext -> Rpc ()
-hostMonitorIdleness xm_context = do
-    idle_time <- fromIntegral <$> inputGetIdleTime
-    idle_time_threshold <- appIdleTimeThreshold
-    when (idle_time_threshold /= 0 && idle_time >= idle_time_threshold ) $
-      runXM xm_context hostSleep
 
 exposeStuff :: XM ()
 exposeStuff = do
