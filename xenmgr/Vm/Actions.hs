@@ -775,20 +775,10 @@ setupAcpiNode uuid =
      case stubdom of
          Just stubdomid -> liftIO $ xsChmod (xsp domid ++ "/acpi-state") ("b" ++ show stubdomid)
          Nothing        -> liftIO $ xsChmod (xsp domid ++ "/acpi-state") ("b" ++ show domid)
- 
---Watch acpi state when booting a VM, used to be handled in xenvm
-monitorAcpi :: Uuid -> VmMonitor -> AcpiState -> IO ()
-monitorAcpi uuid m state = do
-    acpi_state <- Xl.acpiState uuid
-    if state == 5
-      then do return ()
-      else do
-        if state /= acpi_state
-          then do vmStateSubmit m acpi_state
-                  threadDelay (10^6)
-                  monitorAcpi uuid m acpi_state
-          else do threadDelay (10^6)
-                  monitorAcpi uuid m acpi_state
+     liftIO $ xsWrite (xsp domid ++ "/power-state") ("")
+     case stubdom of
+         Just stubdomid -> liftIO $ xsChmod (xsp domid ++ "/power-state") ("b" ++ show stubdomid)
+         Nothing        -> liftIO $ xsChmod (xsp domid ++ "/power-state") ("b" ++ show domid)
 
 -- Creates a snapshot from the primary disk when the disk persistence option is
 -- set. It first checks to see if a snapshot already exists and deletes it before
@@ -888,7 +878,6 @@ bootVm config reboot
        -- ensure bootstrap and phase handling synchronously terminates before returning (and errors get propagated)
        force bootstrap
        force phases
-       liftIO . void $ forkIO $ monitorAcpi uuid monitor 0
 
       writable domid path = do
         xsWrite path ""

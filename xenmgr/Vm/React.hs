@@ -123,6 +123,18 @@ runEventScriptR = mkReact f where
     f (VmStateChange CreatingDomain) = return ()
     f (VmStateChange CreatingDevices) = return ()
     f (VmStateChange Created) = return ()
+    f (VmStateChange Running) =
+      do uuid <- vmUuid
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnStateChange [uuidStr uuid, stateToPublicStr Running]
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnAcpiStateChange [uuidStr uuid, "0"]
+    f (VmStateChange Suspended) =
+      do uuid <- vmUuid
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnStateChange [uuidStr uuid, stateToPublicStr Suspended]
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnAcpiStateChange [uuidStr uuid, "3"]
+    f (VmStateChange Shutdown) =
+      do uuid <- vmUuid
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnStateChange [uuidStr uuid, stateToPublicStr Shutdown]
+         liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnAcpiStateChange [uuidStr uuid, "5"]
     f (VmStateChange state) =
       do uuid <- vmUuid
          liftRpc $ void $ runEventScript ContinueOnFail uuid getVmRunOnStateChange [uuidStr uuid, stateToPublicStr state]
@@ -150,6 +162,9 @@ detectStateChange mon =
 
 detectAcpiChange =
   whenE VmAcpiUpdate reactVmAcpiUpdate
+
+detectPowerChange =
+  whenE VmPowerUpdate reactVmPowerUpdate
 
 clockR = mkReact f where
   f (VmRtcChange offset) = vmUuid >>= \uuid -> saveConfigProperty uuid vmTimeOffset offset
@@ -262,6 +277,7 @@ vmEventProcessor monitor
                `mappend` notifyExternalR
                `mappend` detectStateChange monitor
                `mappend` detectAcpiChange
+               `mappend` detectPowerChange
          return $
                 \hid e -> sequence_ $ [err (f e) | f <- r]
       where
@@ -489,7 +505,7 @@ checkBsgDevStatus = uuidRpc $ \uuid -> whenDomainID_ uuid $ \domid ->
 -- 1 acpi state we care about: s3. Xenvm used to fork a thread that polled xen
 -- for domain acpi state with xc_hvm_param_get, which is BAD since xc_hvm_param_get
 -- makes a hypercall.Second, we can remove responsibility from inputserver to react
--- to acpi state changes (it shouldn't have to deal with that anyway). Third, we 
+-- to acpi state changes (it shouldn't have to deal with that anyway). Third, we
 -- won't have to patch libxl.
 reactVmAcpiUpdate :: Vm ()
 reactVmAcpiUpdate = do
@@ -497,12 +513,25 @@ reactVmAcpiUpdate = do
     whenDomainID_ uuid $ \domid -> do
       maybe_acpi <- liftIO $ xsRead ("/local/domain/" ++ show domid ++ "/acpi-state")
       case maybe_acpi of
-          Just acpi -> if acpi == "s3" then do switchVm domainUIVM 
-                                               notifyVmAcpiState 3
-                                               return () 
-                                       else return () 
-          Nothing   -> return () 
-   
+          Just "s3" -> do switchVm domainUIVM
+                          notifyVmAcpiState 3
+                          return ()
+          Just "s0" -> do notifyVmAcpiState 0
+                          return ()
+          _         -> return ()
+
+reactVmPowerUpdate :: Vm ()
+reactVmPowerUpdate = do
+    uuid <- vmUuid
+    whenDomainID_ uuid $ \domid -> do
+      maybe_acpi <- liftIO $ xsRead ("/local/domain/" ++ show domid ++ "/power-state")
+      info $ "reactVmPowerUpdate " ++ (fromMaybe "nothing" maybe_acpi)
+      case maybe_acpi of
+          Just "4" -> do switchVm domainUIVM
+                         notifyVmAcpiState 4
+                         return ()
+          _         -> return ()
+
 -- This is a new notify function to support state updates coming from xl
 -- Instead of implementing dbus support in xl, state updates are written to a
 -- xenstore node which XenMgr watches, which then fires off a dbus message, upon
