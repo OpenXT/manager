@@ -16,13 +16,14 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, ScopedTypeVariables #-}
 module XenMgr.Expose.HostObject (expose) where
 
 import Control.Concurrent
 import Control.Monad
 import Control.Monad.Error hiding (liftIO)
 import Control.Applicative
+import qualified Control.Exception as E
 import Data.Maybe
 import Data.Char
 import Data.Int
@@ -399,8 +400,8 @@ listSoundCards = liftIO
     [id,name] -> Just (id,name)
     _ -> Nothing
   kv (id, name) = M.fromList [("id", id), ("name", name)]
-  cards = catch ( readFile "/proc/asound/cards" )
-                ( \e -> return "" )
+  cards = E.catch ( readFile "/proc/asound/cards" )
+                ( \(e::IOError) -> return "" )
 
 parseSSControl line =
  case line `matchG` "(.) '(.+)' (\\w+) (.*)" of

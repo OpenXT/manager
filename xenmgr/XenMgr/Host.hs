@@ -813,8 +813,8 @@ getHostPcmDevices = catMaybes . map parseDev . lines <$> pcmDevs where
                ("playback 1" `elem` rest)
                ("capture 1" `elem` rest)
     _ -> Nothing
-  pcmDevs = catch ( readFile "/proc/asound/pcm" )
-                  ( \e -> return "" )
+  pcmDevs = E.catch ( readFile "/proc/asound/pcm" )
+                  ( \(e::IOError) -> return "" )
 
 getHostPlaybackDevices = filter pcmPlayback <$> getHostPcmDevices
 getHostCaptureDevices = filter pcmCapture <$> getHostPcmDevices
