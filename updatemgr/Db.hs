@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE TypeSynonymInstances,OverlappingInstances,TypeOperators,FlexibleInstances,UndecidableInstances #-}
+{-# LANGUAGE TypeSynonymInstances,TypeOperators,FlexibleInstances,UndecidableInstances #-}
 
 -- Higher level interface for database access
 -- which allows to read / write any types implementing Marshall class
@@ -52,13 +52,6 @@ type Path = String
 -- Tree of strings really
 data DbTree = Leaf String | Record [ (String,DbTree) ] deriving ( Eq, Show )
 
-instance (IsRemoteError e, MonadRpc e m) => Applicative m where
-    pure  = return
-    (<*>) = ap
-
-instance (IsRemoteError e, MonadRpc e m) => Functor m where
-    fmap = ap . return
-
 -- Db tree can be serialised into database daemon
 instance Marshall DbTree where
     dbWrite p (Leaf v) =
@@ -81,7 +74,7 @@ class DbRepr a where
     toDbTree :: a -> DbTree
 
 -- DbRepr type can be marshalled easily
-instance (Eq a, DbRepr a) => Marshall a where
+instance {-# OVERLAPPABLE #-} (Eq a, DbRepr a) => Marshall a where
     dbWrite p v = dbWrite p (toDbTree v)
     dbRead p = dbRead p >>= \tree -> case fromDbTree tree of
                                        Nothing -> error ("failed to parse DB tree: " ++ show tree)
@@ -176,7 +169,7 @@ instance Marshall Bool where
                 toS False = "false"
 
 -- List of marshalled types is marshalled as well
-instance (Marshall a) => Marshall [a] where
+instance {-# OVERLAPPABLE #-} (Marshall a) => Marshall [a] where
     dbRead  x      = dbListPaths x >>= mapM dbRead
     dbWrite x vs   = dbRm x        >>  mapM_ setOne (zip paths vs)
                      where paths        = map (\id -> x ++ "/" ++ (show id)) [0..]

@@ -40,10 +40,10 @@ import Tools.Log
 import qualified Data.Traversable as DT
 
 expose :: RulesCache -> RpcProxy ()
-expose rulesCache = rpcExpose (fromString "/") . interfaces . implementation $ test rulesCache
+expose rulesCache = rpcExpose (fromString "/") . interfaces . implementation $ rulesCache
 
-implementation :: (forall a . Artefact a => a -> RuleSubject -> RpcProxy Bool) -> RpcProxyServer RpcProxy
-implementation test =
+implementation :: RulesCache -> RpcProxyServer RpcProxy
+implementation rulesCache =
     RpcProxyServer
     { comCitrixXenclientRpcProxyValidateCall = validateCall
     , comCitrixXenclientRpcProxyValidateRecvSignal = validateRecvSignal
@@ -53,26 +53,32 @@ implementation test =
     validateCall :: Int32 -> String -> String -> String -> RpcProxy Bool
     validateCall domid dest intf member =
         validateWithUuid domid descr $ \uuid ->
-        test ( CallHeader (ArtefactSource domid (Just uuid) False) (TL.pack dest) (TL.pack intf) (TL.pack member) )
+        abstr ( CallHeader (ArtefactSource domid (Just uuid) False) dest intf member )
               ( RuleSubject Incoming TagMethodCall )
       where
         descr = "UID method call:" ++ show domid ++ ":" ++ dest ++ ":" ++ intf ++ ":" ++ member
+        abstr :: CallHeader -> RuleSubject -> RpcProxy Bool
+        abstr ch rs = test rulesCache ch rs
 
     validateRecvSignal :: Int32 -> String -> String -> RpcProxy Bool
     validateRecvSignal domid intf member =
         validateWithUuid domid descr $ \uuid ->
-        test ( SignalHeader (ArtefactSource domid (Just uuid) False) (TL.pack intf) (TL.pack member) )
+        abstr ( SignalHeader (ArtefactSource domid (Just uuid) False) intf member )
               ( RuleSubject Outgoing TagSignal )
       where
         descr = "UID incoming signal:" ++ show domid ++ ":" ++ intf ++ ":" ++ member
+        abstr :: SignalHeader -> RuleSubject -> RpcProxy Bool
+        abstr sh rs = test rulesCache sh rs
 
     validateSendSignal :: Int32 -> String -> String -> RpcProxy Bool
     validateSendSignal domid intf member =
         validateWithUuid domid descr $ \uuid ->
-        test ( SignalHeader (ArtefactSource domid (Just uuid) False) (TL.pack intf) (TL.pack member) )
+        abstr ( SignalHeader (ArtefactSource domid (Just uuid) False) intf member )
               ( RuleSubject Incoming TagSignal )
       where
         descr = "UID outgoing signal:" ++ show domid ++ ":" ++ intf ++ ":" ++ member
+        abstr :: SignalHeader -> RuleSubject -> RpcProxy Bool
+        abstr sh rs = test rulesCache sh rs
 
     validateWithUuid domid descr test_f =
         do maybe_uuid <- liftIO $ uuidOfDomid ( fromIntegral domid )
@@ -80,7 +86,7 @@ implementation test =
            unless allow $ liftIO (warn $ "DENY " ++ descr)
            return allow
 
-data CallHeader = CallHeader !ArtefactSource !Text !Text !Text
+data CallHeader = CallHeader !ArtefactSource !String !String !String
 
 instance Artefact CallHeader where
     artefactType _ = TagMethodCall
@@ -91,7 +97,7 @@ instance Artefact CallHeader where
     artefactMember (CallHeader _ d i m) = Just m
     artefactPropertyInterface _ = Nothing
     
-data SignalHeader = SignalHeader !ArtefactSource !Text !Text
+data SignalHeader = SignalHeader !ArtefactSource !String !String
 
 instance Artefact SignalHeader where
     artefactType _ = TagSignal

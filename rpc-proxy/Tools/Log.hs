@@ -22,6 +22,7 @@ module Tools.Log where
 import Control.Monad
 import Control.Monad.Trans
 import System.Posix.Syslog
+import Foreign.C
 
 class Log m where
     debug :: String -> m ()
@@ -30,7 +31,7 @@ class Log m where
     info  :: String -> m ()
 
 instance (MonadIO m) => Log m where
-    debug = liftIO . syslog Debug
-    warn  = liftIO . syslog Warning
-    fatal = liftIO . syslog Error
-    info  = liftIO . syslog Info
+    debug s = liftIO $ withCStringLen s (\p ->syslog (Just User) Debug p)
+    warn s = liftIO $ withCStringLen s (\p ->syslog (Just User) Warning p)
+    fatal s = liftIO $ withCStringLen s (\p ->syslog (Just User) Error p)
+    info s = liftIO $ withCStringLen s (\p ->syslog (Just User) Info p)

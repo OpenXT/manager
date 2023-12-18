@@ -45,10 +45,10 @@ import Text.JSON
 import Text.Printf
 import System.IO.Unsafe
 
-import DBus.Types hiding (fromVariant,toVariant)
-import qualified DBus.Types as DB
-import DBus.Message
-import DBus.Wire ( marshalMessage, unmarshalMessage, Endianness(..) )
+import DBus.Internal.Types hiding (fromVariant,toVariant,signature)
+import qualified DBus.Internal.Types as DB
+import DBus.Internal.Message
+import DBus.Internal.Wire ( marshalMessage, unmarshalMessage, Endianness(..) )
 
 import Rpc.Core hiding (ObjectPath, BusName, MemberName, InterfaceName, mkObjectPath_, mkBusName_, mkMemberName_, mkInterfaceName_) --hiding (ObjectPath, BusName, MemberName, InterfaceName)
 import qualified Rpc.Core as Rpc
@@ -68,6 +68,7 @@ import Data.String
 import qualified Data.Map as M
 
 import qualified DBus.Introspection as I
+import qualified DBus.Introspection.Parse as IP
 
 data JMsg
    = JMsgReq JReq
@@ -175,10 +176,10 @@ newJConvContext =
        findSig = \m ->
         case m of
           JMsgReq r ->
-            let q = QSig <$> Just (mkBusName_ (jreqDest r))
-                         <*> Just (mkObjectPath_ (jreqPath r))
-                         <*> Just (mkInterfaceName_ (jreqInterface r))
-                         <*> Just (mkMemberName_ (jreqMethod r))
+            let q = QSig <$> Just (busName_ (jreqDest r))
+                         <*> Just (objectPath_ (jreqPath r))
+                         <*> Just (interfaceName_ (jreqInterface r))
+                         <*> Just (memberName_ (jreqMethod r))
             in case q of
               Just (QSig b o i m) -> f b o i m
               _ -> return Nothing
@@ -188,7 +189,7 @@ newJConvContext =
 newtype
     JConvT m a
   = JConvT { unJConvT :: ReaderT (JConvContext m) m a }
-    deriving (Functor, Monad, MonadIO)
+    deriving (Applicative, Functor, Monad, MonadIO)
 
 instance MonadTrans JConvT where
   lift f = JConvT $ lift f
@@ -216,7 +217,7 @@ mkSerial :: (Integral a) => a -> Serial
 mkSerial v = fromJust . DB.fromVariant . DB.toVariant $ (fromIntegral v :: Word32)
 
 class Signed a where
-  signature :: a -> Maybe TL.Text
+  signature :: a -> Maybe String
 
 instance Signed JReq where signature = jreqSignature
 instance Signed JSignal where signature = jsigSignature
@@ -232,26 +233,26 @@ instance Signed JMsg where
 marshaled serial m =
   case marshalMessage BigEndian serial m of
     Left _    -> Nothing
-    Right buf -> Just $ (B.concat $ BL.toChunks buf)
+    Right buf -> Just buf
 
 mkMethodCallMsg :: Serial -> MethodCall -> Maybe Msg
 mkMethodCallMsg serial m
-  = Msg <$> pure (ReceivedMethodCall serial Nothing m)
+  = Msg <$> pure (ReceivedMethodCall serial m)
         <*> marshaled serial m
 
 mkSignalMsg :: Serial -> Signal -> Maybe Msg
 mkSignalMsg serial m
-  = Msg <$> pure (ReceivedSignal serial Nothing m)
+  = Msg <$> pure (ReceivedSignal serial m)
         <*> marshaled serial m
 
-mkErrorMsg :: Serial -> Error -> Maybe Msg
+mkErrorMsg :: Serial -> MethodError -> Maybe Msg
 mkErrorMsg serial m
-  = Msg <$> pure (ReceivedError serial Nothing m)
+  = Msg <$> pure (ReceivedMethodError serial m)
         <*> marshaled serial m
 
 mkMethodReturnMsg :: Serial -> MethodReturn -> Maybe Msg
 mkMethodReturnMsg serial m
-  = Msg <$> pure (ReceivedMethodReturn serial Nothing m)
+  = Msg <$> pure (ReceivedMethodReturn serial m)
         <*> marshaled serial m
 
 -- | type conversion mode
@@ -261,7 +262,7 @@ convMode msg
   where
     provided, introspected :: JConvT m (Maybe TypeConvMode)
     provided
-      = do let sig = join $ mkSignature `fmap` signature msg
+      = do let sig = join $ parseSignature `fmap` signature msg
            return (SpecifyTypes . signatureTypes <$> sig)
     introspected
       = do c <- context
@@ -303,10 +304,10 @@ instance MonadIO m => MsgConvert (JConvT m) JMsg Msg where
 instance MonadIO m => MsgConvert (JConvT m) Msg JMsg where
   msgconvert (Msg rm _)
     = MaybeT $ case rm of
-        ReceivedMethodCall s _ x -> err "method-call" $ return $ JMsgReq <$> convFromMethodCall (s,x)
-        ReceivedMethodReturn s _ x -> err "method-return" $ return $ JMsgResp <$> convFromMethodReturn (s,x)
-        ReceivedError  s _ x -> err "error" $ return $ JMsgRespErr <$> convFromError (s,x)
-        ReceivedSignal s _ x -> err "signal" $ return $ JMsgSignal <$> convFromSignal (s,x)
+        ReceivedMethodCall s x -> err "method-call" $ return $ JMsgReq <$> convFromMethodCall (s,x)
+        ReceivedMethodReturn s x -> err "method-return" $ return $ JMsgResp <$> convFromMethodReturn (s,x)
+        ReceivedMethodError  s x -> err "error" $ return $ JMsgRespErr <$> convFromError (s,x)
+        ReceivedSignal s x -> err "signal" $ return $ JMsgSignal <$> convFromSignal (s,x)
         _ -> return Nothing
     where
       err tag act =
@@ -318,14 +319,14 @@ instance MonadIO m => MsgConvert (JConvT m) Msg JMsg where
 -- | dbus signature lookup via introspection
 introspect :: (MonadRpc e m) => BusName -> ObjectPath -> m I.Object
 introspect service p
-  = do r <- rpcCallOnce $ RpcCall (Rpc.mkBusName_ . DB.strBusName $ service)
-                                  (Rpc.mkObjectPath_ . DB.strObjectPath $ p)
-                                  (Rpc.mkInterfaceName_ . DB.strInterfaceName $ introspectable)
+  = do r <- rpcCallOnce $ RpcCall (Rpc.mkBusName_ . DB.formatBusName $ service)
+                                  (Rpc.mkObjectPath_ . DB.formatObjectPath $ p)
+                                  (Rpc.mkInterfaceName_ . DB.formatInterfaceName $ introspectable)
                                   "Introspect" []
        ret (conv $ r)
     where
       conv [xmlv] = do xml <- fromVariant xmlv
-                       I.fromXML p xml
+                       IP.parseXML p xml
       conv _ = error "unexpected introspect response"
       ret Nothing = error $ "failed to introspect " ++ show service ++ " " ++ show p
       ret (Just v) = return v
@@ -347,11 +348,9 @@ sigFinder
            mapM paramSig (inparams m')
         where
           find_i n = find (\(I.Interface n' _ _ _) -> n == n')
-          find_m n (I.Interface _ methods _ _) = find (\(I.Method n' _ _) -> n == n') methods
-          inparams (I.Method _ p _) = p
-          paramSig (I.Parameter _ ps) = shead (signatureTypes ps)
-          shead (x:xs) = Just x
-          shead _ = Nothing
+          find_m n (I.Interface _ methods _ _) = find (\(I.Method n' _) -> n == n') methods
+          inparams (I.Method _ p) = filter (\(I.MethodArg _ _ dir) -> dir == I.In) p
+          paramSig (I.MethodArg _ ps _) = Just ps
 
     finder :: (MVar OMap) -> BusName -> ObjectPath -> InterfaceName -> MemberName -> m (Maybe [Type])
     finder cache service path intf meth =

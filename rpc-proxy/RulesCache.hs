@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE Rank2Types, ScopedTypeVariables, ImpredicativeTypes #-}
+{-# LANGUAGE Rank2Types, ScopedTypeVariables, ImpredicativeTypes, DatatypeContexts, ExistentialQuantification #-}
 module RulesCache (dropCache, test, testAugmented, mkRulesCache, RulesCache()) where
 import qualified Data.Map as M
 import Control.Concurrent.MVar.Lifted
@@ -43,9 +43,9 @@ data RulesCachePure = RulesCachePure { global :: Maybe [Rule]
 emptyCache :: RulesCachePure
 emptyCache = RulesCachePure { global = Nothing, perUuid = M.empty }
 
-data RulesCache = RulesCache { dropCache :: MonadIO m => m ()
-                             , test :: (Artefact a, MonadIO m) => a -> RuleSubject -> m Bool
-                             , testAugmented :: (Artefact a, MonadIO m) =>
+data RulesCache = RulesCache { dropCache :: forall m. MonadIO m => m ()
+                             , test :: forall a m. (Artefact a, MonadIO m) => a -> RuleSubject -> m Bool
+                             , testAugmented :: forall a m. (Artefact a, MonadIO m) =>
                                (Rule -> m Rule ) -> a -> RuleSubject -> m Bool}
 
 mkRulesCache :: Settings -> RpcProxy RulesCache
@@ -55,7 +55,7 @@ mkRulesCache settings =
        return RulesCache { dropCache = liftIO $ dropCache' cache
                          , test = testAugmented' settings cache runner return
                          , testAugmented = testAugmented' settings cache runner }
-  where mkRunner :: RpcProxy (forall a. RpcProxy a ->  IO a)
+  where mkRunner :: RpcProxy (RpcProxy a ->  IO a)
         mkRunner = (\action -> (<=<) (either (fail . show) return) . runRpcProxyM $ action)
                    <$> rpcGetContext
 

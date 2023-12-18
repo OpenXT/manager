@@ -70,14 +70,16 @@ makeIncomingTransport (FromArgo port) =
        closed <- newMVar False
        return $ ArgoSocket sock closed
 makeIncomingTransport (FromTCP port) =
-    do sock <- NS.socket NS.AF_INET NS.Stream NS.defaultProtocol
-       NS.bindSocket sock (NS.SockAddrInet (fromIntegral port) NS.iNADDR_ANY)
+    do let hints = NS.defaultHints { NS.addrFlags = [NS.AI_PASSIVE], NS.addrSocketType = NS.Stream}
+       addr:_ <- NS.getAddrInfo (Just hints) Nothing (Just $ show port)
+       sock <- NS.socket NS.AF_INET NS.Stream NS.defaultProtocol
+       NS.bind sock (NS.addrAddress addr)
        NS.listen sock 5
        closed <- newMVar False
        return $ StdSocket sock closed
 makeIncomingTransport (FromUnixSocket path) =
     do sock <- NS.socket NS.AF_UNIX NS.Stream NS.defaultProtocol
-       NS.bindSocket sock (NS.SockAddrUnix path)
+       NS.bind sock (NS.SockAddrUnix path)
        NS.listen sock 5
        closed <- newMVar False
        return $ StdSocket sock closed
@@ -168,7 +170,7 @@ shutdownRecv _ = return ()
 
 close :: Channel -> IO ()
 close (ArgoSocket s closed) = perhaps closed (AR.close s)
-close (StdSocket s closed) = perhaps closed (NS.sClose s)
+close (StdSocket s closed) = perhaps closed (NS.close s)
 close (FdChann fd closed) = perhaps closed (closeFd fd)
 close (WebSocketCh s ch closed) = perhaps closed $ {- E.finally (W.shutdown s) -} (close ch)
 

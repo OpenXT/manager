@@ -22,8 +22,8 @@ module Tools.Apptool
        , getOvfEnvXml
        ) where
 
+import Control.Monad
 import Tools.Process
-import Tools.Misc
 import Vm.Uuid
 
 apptool args = readProcessOrDie "apptool" args ""

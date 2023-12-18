@@ -20,31 +20,33 @@ import Distribution.Simple
 import Distribution.Simple.PreProcess
 import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.Package
-         ( Package(..), PackageName(..) )
+         ( Package(..) )
+import Distribution.Types.PackageName (mkPackageName)
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
-         , Library(..), withLib, libModules )
-import qualified Distribution.InstalledPackageInfo as Installed
-         ( InstalledPackageInfo_(..) )
+         , Library(..), withLib )
+import qualified Distribution.Types.InstalledPackageInfo as Installed
+         ( InstalledPackageInfo(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.BuildPaths (autogenModulesDir,cppHeaderName)
+import Distribution.Types.LocalBuildInfo (LocalBuildInfo(..))
+import Distribution.Types.ComponentLocalBuildInfo (ComponentLocalBuildInfo(..))
+import Distribution.Simple.BuildPaths (cppHeaderName)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
-         , die, setupMessage, intercalate, copyFileVerbose
+         , setupMessage, intercalate, copyFileVerbose
          , findFileWithExtension, findFileWithExtension' )
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), lookupProgram, programPath
-         , rawSystemProgramConf, rawSystemProgram
+         , runDbProgram, runProgram
          , greencardProgram, cpphsProgram, hsc2hsProgram, c2hsProgram
          , happyProgram, alexProgram, haddockProgram, ghcProgram, gccProgram, ldProgram )
 import Distribution.System
          ( OS(OSX, Windows), buildOS )
-import Distribution.Version (Version(..))
+import Distribution.Version
 import Distribution.Verbosity
 import Distribution.Text
          ( display )
@@ -56,20 +58,21 @@ import System.Directory (getModificationTime, doesFileExist)
 import System.Info (os, arch)
 import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
                         takeDirectory, normalise, replaceExtension)
+import System.Exit (die)
 import Distribution.Simple.Program (simpleProgram)
 
 hsc2hsLdProgram = simpleProgram "hsc2hs-ld"
 
-my_ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
-my_ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
+my_ppHsc2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
+my_ppHsc2hs bi lbi _ = standardPP lbi hsc2hsProgram $
     [ "--cc=" ++ programPath gccProg
     , "--ld=" ++ programPath ldProg ]
 --    [ "--cc=" ++ cc
 --    , "--ld=" ++ ld ]
 
     -- Additional gcc options
- ++ [ "--cflag=" ++ opt | opt <- programArgs gccProg ]
- ++ [ "--lflag=" ++ opt | opt <- programArgs gccProg ]
+ ++ [ "--cflag=" ++ opt | opt <- programDefaultArgs gccProg ]
+ ++ [ "--lflag=" ++ opt | opt <- programDefaultArgs gccProg ]
 
     -- OSX frameworks:
  ++ [ what ++ "=-F" ++ opt
@@ -123,7 +126,7 @@ my_ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
     -- OS X (it's ld is a tad stricter than gnu ld). Thus we remove the
     -- ldOptions for GHC's rts package:
     hackRtsPackage index =
-      case PackageIndex.lookupPackageName index (PackageName "rts") of
+      case PackageIndex.lookupPackageName index (mkPackageName "rts") of
         [(_, [rts])]
            -> PackageIndex.insert rts { Installed.ldOptions = [] } index
         _  -> error "No (or multiple) ghc rts package is registered!!"
@@ -133,10 +136,11 @@ my_ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
 -- FIXME: this forces GHC's crazy 4.8.2 -> 408 convention on all the other
 -- compilers. Check if that's really what they want.
 versionInt :: Version -> String
-versionInt (Version { versionBranch = [] }) = "1"
-versionInt (Version { versionBranch = [n] }) = show n
-versionInt (Version { versionBranch = n1:n2:_ })
-  = -- 6.8.x -> 608
+versionInt v = case versionNumbers v of
+  [] -> "1"
+  [n] -> show n
+  n1:n2:_ ->
+    -- 6.8.x -> 608
     -- 6.10.x -> 610
     let s1 = show n1
         s2 = show n2
@@ -150,7 +154,7 @@ standardPP lbi prog args =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      do rawSystemProgramConf verbosity prog (withPrograms lbi)
+      do runDbProgram verbosity prog (withPrograms lbi)
                               (args ++ ["-o", outFile, inFile])
          -- XXX This is a nasty hack. GHC requires that hs-boot files
          -- be in the same place as the hs files, so if we put the hs

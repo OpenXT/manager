@@ -27,7 +27,7 @@ import Control.Applicative
 import Data.List
 import System.IO
 import System.FilePath
-import Directory
+import System.Directory
 import Tools.File
 import Tools.Log
 import Tools.Process

@@ -34,6 +34,7 @@ import Data.Int
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Control.Concurrent
+import Control.Monad
 import System.IO.Unsafe
 import XenMgr.Rpc
 import Rpc.Autogen.XenmgrNotify

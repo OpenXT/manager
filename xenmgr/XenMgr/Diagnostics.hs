@@ -36,7 +36,7 @@ import Data.List
 import Control.Concurrent
 import Control.Monad
 import Control.Applicative
-import Directory
+import System.Directory
 import Text.Printf
 import XenMgr.Rpc
 import Tools.XenStore

@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, MultiParamTypeClasses, TypeFamilies, RankNTypes#-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, MultiParamTypeClasses, TypeFamilies, RankNTypes, UndecidableInstances#-}
 
 module UpdateMgr.App ( App, AppState(..), runApp, initAppState, getAppState, liftRpc, module UpdateMgr.Rpc ) where
 
@@ -45,10 +45,9 @@ newtype App a = App { unApp :: ReaderT AppState Rpc a }
 
 -- TODO: See if new versions of ghc can derive this automatically.
 instance MonadBaseControl IO App where
-    newtype StM App a = StApp { unStApp :: StM (ReaderT AppState Rpc) a }
-    liftBaseWith op = App . liftBaseWith $ op . \runInBase ->
-        liftM StApp . runInBase . unApp
-    restoreM = App . restoreM . unStApp
+    type StM App a =  StM (ReaderT AppState Rpc) a
+    liftBaseWith op = App $ liftBaseWith $ (\runInBase -> op (runInBase . unApp))
+    restoreM = App . restoreM
 
 initAppState :: IO AppState
 initAppState = do

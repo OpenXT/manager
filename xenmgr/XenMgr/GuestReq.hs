@@ -27,7 +27,6 @@ import Data.String
 import Data.Int
 import qualified Data.Map as Map
 import Data.Map (Map)
-import qualified Data.Text.Lazy as TL
 import Control.Concurrent
 import XenMgr.Rpc
 import Rpc.Autogen.DbusClient
@@ -45,7 +44,7 @@ maybeWithSender f = rpcGetSender >>= go where
 maybeWithSenderUuid :: MonadRpc e m => (Uuid -> m a) -> m (Maybe a)
 maybeWithSenderUuid f =
   fmap join $ maybeWithSender $ \sender ->
-    let s = TL.unpack (strBusName sender) in do
+    let s = strBusName sender in do
       domid <- orgFreedesktopDBusGetConnectionDOMID "org.freedesktop.DBus" "/org/freedesktop/DBus" s
       uuid  <- getDomainUuid domid
       case uuid of

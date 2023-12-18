@@ -28,7 +28,7 @@ import UpgradeEngine
 import Data.List (foldl')
 import ShellTools
 import Control.Monad
-import Directory
+import System.Directory
 
 migration = Migration {
               sourceVersion = 24

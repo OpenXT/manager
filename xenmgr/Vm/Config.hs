@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE TypeSynonymInstances,OverlappingInstances,TypeOperators,PatternGuards,ScopedTypeVariables,FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances,TypeOperators,PatternGuards,ScopedTypeVariables,FlexibleInstances,FlexibleContexts #-}
 module Vm.Config (
                   ConfigProperty
 
@@ -110,9 +110,8 @@ import Data.Char
 import Data.String
 import Data.List
 import Data.Maybe
-import qualified Data.Text.Lazy as TL
 import qualified Data.Map as M
-import Directory
+import System.Directory
 import Text.Printf
 import System.FilePath.Posix
 
@@ -329,6 +328,8 @@ instance Marshall PorticaStatus where
         do dbWrite (x ++ "/portica-installed") installed
            dbWrite (x ++ "/portica-enabled")   enabled
 
+instance MonadFail Rpc where
+    fail = error
 
 -- A path to database from given VM
 dbPath :: Uuid -> Location
@@ -750,7 +751,7 @@ nicSpec cfg amt eth0Mac nic networkDomID =
                 (ni:_) -> Just ni
                 _      -> Nothing
       -- bridge name, only necessary for emulated net interfaces as qemu manages them
-      bridge    = ["bridge=" ++ (TL.unpack $ strObjectPath $ networkObjectPath$ nicdefNetwork nic)]
+      bridge    = ["bridge=" ++ (strObjectPath $ networkObjectPath$ nicdefNetwork nic)]
       bridgename= niBridgeName `fmap` netinfo
       -- force backend domid for NIC if specified
       backend   = ["backend=" ++ show networkDomID]
@@ -886,9 +887,9 @@ miscSpecs cfg = do
       -- Activate sound
       sound = do
           sound_type <- readConfigPropertyDef uuid vmSound "none"
-	  case sound_type of
-	    "none" -> return []
-	    _      -> return ["soundhw=" ++ wrapQuotes sound_type]
+          case sound_type of
+            "none" -> return []
+            _      -> return ["soundhw=" ++ wrapQuotes sound_type]
 
       -- Tells xl to use a stubdom or not
       stubdom | isHvm cfg && vmcfgStubdom cfg = return ["device_model_stubdomain_override=1"]

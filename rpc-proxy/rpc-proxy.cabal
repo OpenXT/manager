@@ -15,17 +15,15 @@ Executable rpc-proxy
     base,
     deepseq,
     containers,
-    haskell98,
     process,
     unix,
     text,
     mtl,
     network,
-    network-bytestring,
     bytestring,
     utf8-string,
     filepath,
-    dbus-core,
+    dbus,
     hsyslog,
     xch-rpc,
     json,
@@ -38,7 +36,9 @@ Executable rpc-proxy
     transformers-base,
     xchwebsocket,
     xchxenstore,
-    xchdb
+    xchdb,
+    vector,
+    hashtables
   Main-Is: Main.hs
   if flag(stubdom)
     GHC-Options: -O2 -fwarn-incomplete-patterns -static -optl-static -optl-pthread

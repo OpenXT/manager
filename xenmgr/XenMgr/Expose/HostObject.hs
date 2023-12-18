@@ -16,13 +16,14 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, ScopedTypeVariables #-}
 module XenMgr.Expose.HostObject (expose) where
 
 import Control.Concurrent
 import Control.Monad
 import Control.Monad.Error hiding (liftIO)
 import Control.Applicative
+import qualified Control.Exception as E
 import Data.Maybe
 import Data.Char
 import Data.Int
@@ -43,9 +44,8 @@ import Tools.Process
 import Tools.Text
 import System.FilePath
 import System.Posix.Time
-import Locale
 import Data.Time
-import Directory
+import System.Directory
 import System.Directory (canonicalizePath)
 
 import XenMgr.XM
@@ -205,9 +205,7 @@ _GetUiReady = liftIO $ xsRead "/xenmgr/ui-ready" >>= return . (== Just "true")
 _GetSafeGraphics :: Rpc Bool
 _GetSafeGraphics = do
   cmdline <- liftIO $ readFile "/proc/cmdline"
-  return $ case T.find (T.pack "safe-graphic") (T.pack cmdline) of
-             (_, []) -> False
-             _       -> True
+  return $ T.isInfixOf (T.pack "safe-graphic") (T.pack cmdline)
 
 -- This is called when UI notifies us about being ready
 -- we fill in notification mvar and a xenstore node
@@ -402,8 +400,8 @@ listSoundCards = liftIO
     [id,name] -> Just (id,name)
     _ -> Nothing
   kv (id, name) = M.fromList [("id", id), ("name", name)]
-  cards = catch ( readFile "/proc/asound/cards" )
-                ( \e -> return "" )
+  cards = E.catch ( readFile "/proc/asound/cards" )
+                ( \(e::IOError) -> return "" )
 
 parseSSControl line =
  case line `matchG` "(.) '(.+)' (\\w+) (.*)" of

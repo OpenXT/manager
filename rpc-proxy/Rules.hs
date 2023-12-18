@@ -52,10 +52,10 @@ data MessageTag = TagMethodCall | TagMethodReturn | TagSignal | TagError | TagAn
 -- match can be applied to artefact
 data Match = Match { domain_id :: Maybe DomID
                    , domain_uuid :: Maybe Uuid
-                   , sender :: Maybe Text
-                   , destination :: Maybe Text
-                   , interface :: Maybe Text
-                   , member :: Maybe Text
+                   , sender :: Maybe String
+                   , destination :: Maybe String
+                   , interface :: Maybe String
+                   , member :: Maybe String
                    , stubdom :: Maybe Bool
                    , properties :: [PropertyMatch]
                    }
@@ -77,11 +77,11 @@ propertyMatchMatches (PropertyMatchS _ a b) = Just a == b
 class Artefact a where
     artefactType :: a -> MessageTag
     artefactSource :: a -> ArtefactSource
-    artefactSender :: a -> Maybe Text
-    artefactDestination :: a -> Maybe Text
-    artefactInterface :: a -> Maybe Text
-    artefactMember :: a -> Maybe Text
-    artefactPropertyInterface :: a -> Maybe Text
+    artefactSender :: a -> Maybe String
+    artefactDestination :: a -> Maybe String
+    artefactInterface :: a -> Maybe String
+    artefactMember :: a -> Maybe String
+    artefactPropertyInterface :: a -> Maybe String
 
 -- where is the thingy incoming from
 data ArtefactSource

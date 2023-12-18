@@ -49,10 +49,6 @@ import UpdateMgr.DbReq as X
 import UpdateMgr.App
 
 
-instance Applicative Update where
-    pure  = return
-    (<*>) = ap
-
 -- rethrow left Either prompt computation in Error monad if necessary
 promptU p = from =<< (Update . lift $ prompt p) where
     from (Right r) = return r

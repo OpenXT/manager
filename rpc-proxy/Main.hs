@@ -48,7 +48,7 @@ import RulesCache
 
 main = do
   settings <- getSettings <$> getArgs
-  withSyslog "rpc-proxy" [] USER . E.handle (\(ex::E.SomeException) -> warn (show ex)) . runClient_ $ do
+  withSyslog "rpc-proxy" [] User . E.handle (\(ex::E.SomeException) -> warn (show ex)) . runClient_ $ do
         rulesCache <- mkRulesCache settings
         -- re-read rules on SIGHUP
         liftIO $ installHandler sigHUP (Catch $ () <$ dropCache rulesCache) Nothing

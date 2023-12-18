@@ -13,7 +13,6 @@ Executable updatemgr
     time,
     deepseq,
     containers,
-    haskell98,
     process,
     unix,
     text,
@@ -37,4 +36,4 @@ Executable updatemgr
     hinotify,
     HTTP
   Main-Is: Main.hs
-  GHC-Options: -O2 -fwarn-incomplete-patterns -dynamic -threaded
+  GHC-Options: -O2 -fwarn-incomplete-patterns -dynamic -threaded -rtsopts

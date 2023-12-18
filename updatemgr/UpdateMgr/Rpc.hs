@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, MultiParamTypeClasses, TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, MultiParamTypeClasses, TypeFamilies, UndecidableInstances #-}
 
 module UpdateMgr.Rpc ( Rpc, rpc, module Rpc.Core ) where
 
@@ -35,10 +35,9 @@ newtype Rpc a = Rpc { unRpc :: RpcM UpdateMgrError a }
     deriving (Functor, Applicative, Monad, MonadIO, MonadError UpdateMgrError, MonadRpc UpdateMgrError, FreezeIOM RpcContext (Either UpdateMgrError), MonadBase IO)
 
 instance MonadBaseControl IO Rpc where
-    newtype StM Rpc a = StRpc { unStRpc :: StM (RpcM UpdateMgrError) a }
-    liftBaseWith op = Rpc . liftBaseWith $ op . \runInBase ->
-        liftM StRpc . runInBase . unRpc
-    restoreM = Rpc . restoreM . unStRpc
+    type StM Rpc a = (Either UpdateMgrError) a
+    liftBaseWith op = Rpc $ liftBaseWith $ (\runInBase -> op (runInBase . unRpc))
+    restoreM = Rpc . restoreM
 
 -- ToDo: Move these istances (and their copies in rpc-proxy) to
 -- xch-rpc, where they logically belong.
@@ -46,8 +45,8 @@ instance (IsRemoteError e) => MonadBase IO (RpcM e) where
     liftBase = liftIO
 
 instance (IsRemoteError e) => MonadBaseControl IO (RpcM e) where
-    newtype StM (RpcM e) a = StRpcM {unStRpcM :: (Either e) a}
-    liftBaseWith op = freeze $ op . \ctx -> liftM StRpcM . thaw ctx
-    restoreM = cont . unStRpcM
+    type StM (RpcM e) a = (Either e) a
+    liftBaseWith op = freeze $ \ctx -> liftBaseWith $ \rib -> op $ \rpcm -> rib $ thaw ctx rpcm
+    restoreM = cont
 
 rpc ctx (Rpc f) = runRpcM f ctx

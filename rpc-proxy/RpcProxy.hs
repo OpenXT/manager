@@ -16,7 +16,7 @@
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, PatternGuards, FlexibleContexts, ScopedTypeVariables, MultiParamTypeClasses, FlexibleInstances, TupleSections, OverlappingInstances, ViewPatterns #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, PatternGuards, FlexibleContexts, ScopedTypeVariables, MultiParamTypeClasses, FlexibleInstances, TupleSections, ViewPatterns #-}
 module RpcProxy ( module Control.Monad
                 , module Rpc.Core
                 , proxy
@@ -42,20 +42,17 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import qualified Data.ByteString.UTF8 as UTF8
 import qualified Control.Exception as E
-import qualified Data.HashTable as H
-import Data.HashTable (HashTable)
+import qualified Data.HashTable.IO as H
 import System.IO
 import Data.ByteString (ByteString, isPrefixOf)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LazyBS
 import Text.Printf
 
-import DBus.Wire ( marshalMessage, unmarshalMessage, Endianness(..) )
-import DBus.Message ( Message(..), ReceivedMessage(..), Serial, receivedSerial, receivedSender
-                    , MethodCall(..),Signal(..),MethodReturn(..),Error(..), firstSerial, nextSerial
-                    , serialValue )
-import DBus.Types ( InterfaceName, MemberName )
-import qualified DBus.Types
+import DBus.Internal.Wire ( marshalMessage, unmarshalMessage, Endianness(..) )
+import DBus.Internal.Message ( Message(..), ReceivedMessage(..), MethodCall(..),Signal(..),MethodReturn(..))
+import DBus.Internal.Types ( InterfaceName, MemberName, serialValue)
+import qualified DBus.Internal.Types
 import Rpc.Core
 import Rpc.Autogen.DbusClient
 
@@ -84,10 +81,11 @@ instance Show Client where
 data InOutTransforms
    = InOutTransforms Transform Transform
 
+instance Semigroup InOutTransforms where
+  (<>) (InOutTransforms a b) (InOutTransforms p q) = InOutTransforms (a `mappend` p) (b `mappend` q)
+
 instance Monoid InOutTransforms where
   mempty = InOutTransforms mempty mempty
-  (InOutTransforms a b) `mappend` (InOutTransforms p q) =
-      InOutTransforms (a `mappend` p) (b `mappend` q)
 
 proxy :: RulesCache -> Settings -> IO ()
 proxy rulesCache settings = do
@@ -150,7 +148,7 @@ currentDomainSource :: ArtefactSource
 currentDomainSource = ArtefactSource currentDomain Nothing False
 
 newtype JConvM a = JConvM { unJC :: JConvT RpcProxy a }
-                   deriving (Functor, Monad, MonadIO)
+                   deriving (Applicative, Functor, Monad, MonadIO)
 
 runJConvM :: RpcContext -> JConvContext RpcProxy -> JConvM a -> IO (Either RpError a)
 runJConvM c jc = runRpcProxyM c . runJConvT jc . unJC
@@ -452,24 +450,27 @@ replaceAnonymousXF context = do
     go names = return $ InOutTransforms transformIn (Transform return) where
       transformIn = Transform $ \m@(Msg rm buf) ->
         case rm of
-          ReceivedMethodCall serial _ call
-            | Just dest <- DBus.Message.methodCallDestination call
-            , destStr <- DBus.Types.strBusName dest
-            , not (TL.null destStr), TL.index destStr 0 == ':' -> do
-              let d = TL.unpack destStr
+          ReceivedMethodCall serial call
+            | Just dest <- DBus.Internal.Message.methodCallDestination call
+            , destStr <- DBus.Internal.Types.formatBusName dest
+            , not (null destStr), check_head destStr -> do
+              let d = destStr
               liftIO $ whenM (isNothing <$> lookupName names d) $ runRpcProxyM context (queryUpdateNameTable names)
               name <- liftIO (lookupName names d)
               case name of
                 Nothing   -> warn ("failed to find well known name for " ++ d) >> return m
                 Just name -> replaceDestination m name
           _ -> return m
+       where
+         check_head (x:xs) = x == ':'
+         check_head []     = False
               
-      replaceDestination m@(Msg (ReceivedMethodCall serial sender call) buf) new_dest
+      replaceDestination m@(Msg (ReceivedMethodCall serial call) buf) new_dest
         = case marshal of
-            Right buf  -> return $ Msg rm' (BS.concat $ LazyBS.toChunks buf)
+            Right buf  -> return $ Msg rm' buf
             Left  err  -> warn (show err) >> dropMsg
           where
-            rm' = ReceivedMethodCall serial sender (spoofed call)
+            rm' = ReceivedMethodCall serial (spoofed call)
             marshal = marshalMessage BigEndian serial (spoofed call)
             spoofed call = call { methodCallDestination = Just (fromString new_dest) }
       replaceDestination m _ = return m
@@ -492,12 +493,15 @@ replaceAnonymousXF context = do
 -- |
 -- | It's probably good anyway not to expose dom0 connection names.
 
+type HashTable k v = H.BasicHashTable k v
+
+changeNameOwnerXF :: IO (InOutTransforms)
 changeNameOwnerXF = do
-  ownerNameRequests <- H.new (==) H.hashInt
+  ownerNameRequests <- newHashTable
   let transformIn =
         Transform $ \m@(Msg rm buf) ->
           case rm of
-            ReceivedMethodCall serial _ call -> catch_call m serial call
+            ReceivedMethodCall serial call -> catch_call m serial call
             _ -> return m
         where
           catch_call m serial call =
@@ -510,13 +514,14 @@ changeNameOwnerXF = do
       transformOut =
         Transform $ \m@(Msg rm buf) ->
           case rm of
-            ReceivedMethodReturn serial bus ret -> let
+            ReceivedMethodReturn serial ret -> let
               spoof new_body
                 = case marshal of
-                    Right buf  -> return $ Msg (ReceivedMethodReturn serial bus new_m) (BS.concat $ LazyBS.toChunks buf)
+                    Right buf  -> return $ Msg (ReceivedMethodReturn serial new_m) buf
                     Left  err  -> lift (warn (show err)) >> dropMsg
                   where
                     new_m = MethodReturn { methodReturnSerial = methodReturnSerial ret
+                                         , methodReturnSender = methodReturnSender ret
                                          , methodReturnDestination = methodReturnDestination ret
                                          , methodReturnBody = new_body }
                     marshal = marshalMessage BigEndian serial new_m
@@ -529,28 +534,33 @@ changeNameOwnerXF = do
                  where retSerial = fromIntegral . serialValue . methodReturnSerial $ ret
             _ -> return m
   return $ InOutTransforms transformIn transformOut
+    where
+      newHashTable :: IO (HashTable Int [DBus.Internal.Types.Variant])
+      newHashTable = H.new
 
 -- | replaces all RequestName messages with name constructed from guest vm uuid
 changeRequestNameXF :: Maybe String -> ArtefactSource -> Transform
 changeRequestNameXF service (ArtefactSource _ maybe_uuid _)
   = Transform $ \m@(Msg rm buf) ->
       case rm of
-        ReceivedMethodCall serial _ call -> change_call m serial call
+        ReceivedMethodCall serial call -> change_call m serial call
         _ -> return m
     where
       spoofed call n =
-        MethodCall { methodCallPath        = pathOrgFreedesktopDBus
-                   , methodCallMember      = memberRequestName
-                   , methodCallInterface   = Just intfOrgFreedesktopDBus
-                   , methodCallDestination = Just nameOrgFreedesktopDBus
-                   , methodCallFlags       = methodCallFlags call
-                   , methodCallBody        = replace_name n (methodCallBody call) }
-          where replace_name n [name_v, flags_v] = [DBus.Types.toVariant n, flags_v]
+        MethodCall { methodCallPath          = pathOrgFreedesktopDBus
+                   , methodCallMember        = memberRequestName
+                   , methodCallInterface     = Just intfOrgFreedesktopDBus
+                   , methodCallSender        = methodCallSender call
+                   , methodCallDestination   = Just nameOrgFreedesktopDBus
+                   , methodCallReplyExpected = methodCallReplyExpected call
+                   , methodCallAutoStart     = methodCallAutoStart call
+                   , methodCallBody          = replace_name n (methodCallBody call) }
+          where replace_name n [name_v, flags_v] = [DBus.Internal.Types.toVariant n, flags_v]
                 replace_name _ args = args
 
       spoof m@(Msg rm _) serial call new_name
         = case marshal of
-            Right buf  -> return $ Msg rm (BS.concat $ LazyBS.toChunks buf)
+            Right buf  -> return $ Msg rm buf
             Left  err  -> warn (show err) >> dropMsg
           where
             marshal = marshalMessage BigEndian serial (spoofed call new_name)

@@ -22,7 +22,6 @@ module Main where
 
 import Data.String
 import Control.Applicative
-import System
 import System.IO
 import System.Posix.Syslog
 import System.Posix.Process
@@ -54,7 +53,7 @@ waitPrerequisites = mapM_ rpcWaitForService prerequisites
 
 main :: IO ()
 main =
-    withSyslog "updatemgr" [] USER . rpcServe "com.citrix.xenclient.updatemgr" $ \rpcContext ->
+    withSyslog "updatemgr" [] User . rpcServe "com.citrix.xenclient.updatemgr" $ \rpcContext ->
         do r <- E.try $
                 do debug "starting.."
                    primary_job <- initJob

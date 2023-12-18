@@ -24,7 +24,7 @@ import Control.Monad
 import Control.Monad.Trans
 
 import System.IO
-import Directory
+import System.Directory
 
 import Tools.Process
 import Tools.Log

@@ -168,7 +168,7 @@ import System.Exit
 import System.IO
 import System.Timeout
 import Data.Time
-import Directory
+import System.Directory
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import qualified Data.Foldable
 
@@ -227,6 +227,9 @@ data EventHookFailMode
    = HardFail
    | ContinueOnFail
      deriving (Eq, Show)
+
+instance MonadFail Vm where
+    fail = error
 
 vmSuspendImageStatePath :: Uuid -> String
 vmSuspendImageStatePath uuid = "/xenmgr/service-vm-snapshot/" ++ show uuid ++ "/state"
@@ -474,7 +477,7 @@ removeVm uuid =
        
        -- Need to quit xenvm
        -- FIXME: cleanly stop monitoring events
-       removeDefaultEvents uuid	--cleanly...stop monitoring events
+       removeDefaultEvents uuid --cleanly...stop monitoring events
        liftIO $ xsRm $ "/state/" ++ show uuid --vm is deleted, no need for state node anymore
        notifyVmDeleted uuid
   where
@@ -1223,8 +1226,8 @@ doVmFirewallRules message which =
                 Firewall.reduce (Firewall.ReduceContext vm seamlessVms vms) [rule]
             vm_rules = mapM (getEffectiveVmFirewallRules . Firewall.vmUuid)
         let makeRules vms = (concat . map (reduce vms) .
-                	     concat . zipWith (\vm rs -> map (vm,) rs) vms) <$>
- 		             vm_rules vms
+                         concat . zipWith (\vm rs -> map (vm,) rs) vms) <$>
+                     vm_rules vms
         changeset <- Firewall.changeset <$> makeRules vms <*> makeRules vms'
         liftIO $ Firewall.applyChangeset changeset
 
